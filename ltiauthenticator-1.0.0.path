@@ -1,0 +1,16 @@
+--- ltiauthenticator/__init__.py.orig   2021-08-01 11:35:32.047430657 +0900
++++ ltiauthenticator/__init__.py    2021-08-01 11:45:27.120452288 +0900
+@@ -157,9 +157,13 @@
+             # If Canvas is running in anonymous mode, we'll still want the 'user_id' (which is the `lti_user_id``)
+
+             canvas_id = handler.get_body_argument('custom_canvas_user_id', default=None)
++            # by T.ISHIZAKA, Y.KUWATA, et. al., Moodle Moot Japan 2019 Proceedings (2019), pp.32-37
++            product_code = handler.get_body_argument('tool_consumer_info_product_family_code', default=None)
+
+             if canvas_id is not None:
+                 user_id = handler.get_body_argument('custom_canvas_user_id')
++            elif 'moodle' in product_code:
++                user_id = handler.get_body_argument('ext_user_username')
+             else:
+                 user_id = handler.get_body_argument('user_id')
+
