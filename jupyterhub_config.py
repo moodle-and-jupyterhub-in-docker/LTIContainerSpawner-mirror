@@ -152,7 +152,8 @@ c.LDAPAuthenticator.user_attribute = 'sAMAccountName'
 
 ##
 # My IP Address
-my_ip_addr = '172.22.1.75'
+#my_ip_addr = '172.22.1.75'
+my_ip_addr = '202.26.150.55'
 
 ## The public facing URL of the whole JupyterHub application.
 #  
@@ -544,11 +545,12 @@ class MDLDockerSpawner(SystemUserSpawner):
         return self.image_homedir_format_string.format(username=self.user.name, groupname=self.get_groupname())
 
 
-    def get_args(self):
-        args = super(MDLDockerSpawner, self).get_args()
-        if (not self._user_set_cmd) and self.dobleArguments:
-            args = []
-        return args
+    # v1.4.2 で _user_set_cmd が無くなった?
+    #def get_args(self):
+    #    args = super(MDLDockerSpawner, self).get_args()
+    #    if (not self._user_set_cmd) and self.dobleArguments:
+    #        args = []
+    #    return args
 
 
     def template_namespace(self):
@@ -569,7 +571,7 @@ class MDLDockerSpawner(SystemUserSpawner):
     # Moodle のカスタムパラメータから情報を得る
     #
     def userdata_hook(self, auth_state):
-        self.userdata = auth_state
+        self.userdata = auth_state              # raw data
         self.init_custom_parameters()
 
         for key, value in self.userdata.items():
@@ -617,10 +619,10 @@ class MDLDockerSpawner(SystemUserSpawner):
             if flnm == '' : flnm = '.'
 
             mnt = False
-            if len(usrs) != 0:
+            if len(usrs) != 0 :                                                         # : によるアクセス制限の指定あり
                 if ('*' in usrs) or (self.user.name in usrs) : 
                     mnt = True
-            elif ('*' in self.custom_users) or (self.user.name in self.custom_users) : 
+            elif ('*' in self.custom_users) or (self.user.name in self.custom_users) :  # : によるアクセス制限の指定なし
                 mnt = True
 
             if mnt:
@@ -725,13 +727,6 @@ courses_dir   = '.courses'
 #
 teacher_gid   = 7000       # 1000以上で，システムで使用していないGID
 
-# LTI custom command
-custom_grpname_com  = 'mdl_grpname'
-custom_users_com    = 'mdl_user'
-custom_teachers_com = 'mdl_teacher'
-custom_volumes_com  = 'mdl_vol_'
-custom_submits_com  = 'mdl_sub_'
-
 #
 notebook_dir = user_home_dir + '/' + projects_dir
 c.MDLDockerSpawner.host_homedir_format_string  = user_home_dir
@@ -739,11 +734,20 @@ c.MDLDockerSpawner.image_homedir_format_string = user_home_dir
 c.MDLDockerSpawner.courses_dir = courses_dir
 c.MDLDockerSpawner.works_dir   = works_dir
 c.MDLDockerSpawner.teacher_gid = teacher_gid
-c.MDLDockerSpawner.custom_grpname_com  = custom_grpname_com
-c.MDLDockerSpawner.custom_users_com    = custom_users_com
-c.MDLDockerSpawner.custom_teachers_com = custom_teachers_com
-c.MDLDockerSpawner.custom_volumes_com  = custom_volumes_com
-c.MDLDockerSpawner.custom_submits_com  = custom_submits_com
+
+#
+# LTI custom command: 変更する場合は Moodle のモジュールも変更する必要がある
+#custom_grpname_com  = 'mdl_grpname'
+#custom_users_com    = 'mdl_user'
+#custom_teachers_com = 'mdl_teacher'
+#custom_volumes_com  = 'mdl_vol_'
+#custom_submits_com  = 'mdl_sub_'
+
+#c.MDLDockerSpawner.custom_grpname_com  = custom_grpname_com
+#c.MDLDockerSpawner.custom_users_com    = custom_users_com
+#c.MDLDockerSpawner.custom_teachers_com = custom_teachers_com
+#c.MDLDockerSpawner.custom_volumes_com  = custom_volumes_com
+#c.MDLDockerSpawner.custom_submits_com  = custom_submits_com
 
 
 c.Spawner.environment = {
@@ -884,12 +888,14 @@ c.DockerSpawner.notebook_dir = notebook_dir
 ## Path to SSL certificate file for the public facing interface of the proxy
 #  
 #  When setting this, you should also set ssl_key
-c.JupyterHub.ssl_cert = '/etc/pki/tls/certs/postfix.pem'
+#c.JupyterHub.ssl_cert = '/etc/pki/tls/certs/postfix.pem'
+c.JupyterHub.ssl_cert = '/etc/gitlab/ssl/gitlab.crt'
 
 ## Path to SSL key file for the public facing interface of the proxy
 #  
 #  When setting this, you should also set ssl_cert
-c.JupyterHub.ssl_key = '/etc/pki/tls/private/postfix.key'
+#c.JupyterHub.ssl_key = '/etc/pki/tls/private/postfix.key'
+c.JupyterHub.ssl_key = '/etc/gitlab/ssl/gitlab.key'
 
 ## Host to send statsd metrics to. An empty string (the default) disables sending
 #  metrics.

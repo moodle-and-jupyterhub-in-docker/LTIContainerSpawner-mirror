@@ -1,5 +1,5 @@
-#FROM jupyterhub/singleuser
-FROM jupyter_single-course2
+FROM jupyterhub/singleuser
+#FROM jupyter_single-course2
 USER root
 COPY start.sh /usr/local/bin
 #COPY .bashrc .bash_profile .vimrc /etc/skel
