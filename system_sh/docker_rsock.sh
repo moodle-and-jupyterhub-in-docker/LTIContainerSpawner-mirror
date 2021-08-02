@@ -4,11 +4,11 @@
 #
 
 SSH_USER=docker
-SSH_PASS=********
+SSH_PASS=*********
 SSH_HOST=202.26.150.55
 WEBGROUP=apache
 
-LLSOCKET=/var/run/mdlds.sock
+LLSOCKET=/var/run/mdlds_$SSH_HOST.sock
 RTSOCKET=/var/run/docker.sock
 
 #
