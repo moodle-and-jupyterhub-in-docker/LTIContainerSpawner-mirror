@@ -130,7 +130,7 @@ if [ $(id -u) == 0 ] ; then
                 FLOWN=`ls -ld $FL | awk -F" " '{print $3}'`
                 if [[ "$FLOWN" == "root" && "$NB_TEACHER" == "$NB_USER" ]]; then
                     chown $NB_UID:$EGID $FL || true
-                    chmod 0775 $NB_UID:$EGID $FL || true
+                    chmod 2775 $NB_UID:$EGID $FL || true
                 fi
                 ln -s $FL $LK 
             fi
