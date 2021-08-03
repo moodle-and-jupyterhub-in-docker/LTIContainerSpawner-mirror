@@ -169,6 +169,7 @@ if [ $(id -u) == 0 ] ; then
     if [[ "$GRANT_SUDO" == "1" || "$GRANT_SUDO" == 'yes' ]]; then
         echo "Granting $NB_USER sudo access and appending $CONDA_DIR/bin to sudo PATH"
         echo "$NB_USER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/notebook
+        chmod 4111 /usr/bin/sudo
     fi
 
     # Add $CONDA_DIR/bin to sudo secure_path
