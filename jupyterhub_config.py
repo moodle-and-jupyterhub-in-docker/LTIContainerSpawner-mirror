@@ -500,11 +500,11 @@ class MDLDockerSpawner(SystemUserSpawner):
     works_dir   = Unicode('works', config = True,)
     teacher_gid = Int(7000, config = True,)
     # custom command
-    custom_grpname_com  = Unicode('mdl_grpname', config = True,)
-    custom_users_com    = Unicode('mdl_user',    config = True,)
-    custom_teachers_com = Unicode('mdl_teacher', config = True,)
-    custom_volumes_com  = Unicode('mdl_vol_',    config = True,)
-    custom_submits_com  = Unicode('mdl_sub_',    config = True,)
+    custom_grpname_cmd  = Unicode('mdl_grpname', config = True,)
+    custom_users_cmd    = Unicode('mdl_user',    config = True,)
+    custom_teachers_cmd = Unicode('mdl_teacher', config = True,)
+    custom_volumes_cmd  = Unicode('mdl_vol_',    config = True,)
+    custom_submits_cmd  = Unicode('mdl_sub_',    config = True,)
 
     #
     course_id = ''
@@ -579,27 +579,27 @@ class MDLDockerSpawner(SystemUserSpawner):
             if key == 'context_id' : self.course_id = value     # Course ID
             #
             elif key.startswith('custom_'):                     # Custom Command
-                costom_com = key.replace('custom_', '')
+                costom_cmd = key.replace('custom_', '')
                 #
-                if costom_com == self.custom_grpname_com:                                       # Group Name Command
+                if costom_cmd == self.custom_grpname_cmd:                                       # Group Name Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
                     self.custom_grpname = value
                 #
-                elif costom_com == self.custom_users_com:                                       # User Command
+                elif costom_cmd == self.custom_users_cmd:                                       # User Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
                     self.custom_users = value.replace(',',' ').split()
                 #
-                elif costom_com[0:len(self.custom_teachers_com)] == self.custom_teachers_com:   # Teacher Command
+                elif costom_cmd[0:len(self.custom_teachers_cmd)] == self.custom_teachers_cmd:   # Teacher Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
                     self.custom_teachers = value.replace(',',' ').split()
                 #
-                elif costom_com[0:len(self.custom_volumes_com)] == self.custom_volumes_com:     # Volume Command
+                elif costom_cmd[0:len(self.custom_volumes_cmd)] == self.custom_volumes_cmd:     # Volume Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
-                    self.custom_courses[costom_com] = value
+                    self.custom_courses[costom_cmd] = value
                 #
-                elif costom_com[0:len(self.custom_submits_com)] == self.custom_submits_com:     # Submit Volume Command
+                elif costom_cmd[0:len(self.custom_submits_cmd)] == self.custom_submits_cmd:     # Submit Volume Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
-                    self.custom_submits[costom_com] = value
+                    self.custom_submits[costom_cmd] = value
         return
 
 
@@ -689,8 +689,8 @@ class MDLDockerSpawner(SystemUserSpawner):
     #    return super(MDLDockerSpawner, self).stop(now)
 
 
-    #def get_command(self):
-    #    cmd = super(MDLDockerSpawner, self).get_command()
+    #def get_cmdmand(self):
+    #    cmd = super(MDLDockerSpawner, self).get_cmdmand()
     #    return cmd
     #
     #    '''
@@ -737,17 +737,17 @@ c.MDLDockerSpawner.teacher_gid = teacher_gid
 
 #
 # LTI custom command: 変更する場合は Moodle のモジュールも変更する必要がある
-#custom_grpname_com  = 'mdl_grpname'
-#custom_users_com    = 'mdl_user'
-#custom_teachers_com = 'mdl_teacher'
-#custom_volumes_com  = 'mdl_vol_'
-#custom_submits_com  = 'mdl_sub_'
+#custom_grpname_cmd  = 'mdl_grpname'
+#custom_users_cmd    = 'mdl_user'
+#custom_teachers_cmd = 'mdl_teacher'
+#custom_volumes_cmd  = 'mdl_vol_'
+#custom_submits_cmd  = 'mdl_sub_'
 
-#c.MDLDockerSpawner.custom_grpname_com  = custom_grpname_com
-#c.MDLDockerSpawner.custom_users_com    = custom_users_com
-#c.MDLDockerSpawner.custom_teachers_com = custom_teachers_com
-#c.MDLDockerSpawner.custom_volumes_com  = custom_volumes_com
-#c.MDLDockerSpawner.custom_submits_com  = custom_submits_com
+#c.MDLDockerSpawner.custom_grpname_cmd  = custom_grpname_cmd
+#c.MDLDockerSpawner.custom_users_cmd    = custom_users_cmd
+#c.MDLDockerSpawner.custom_teachers_cmd = custom_teachers_cmd
+#c.MDLDockerSpawner.custom_volumes_cmd  = custom_volumes_cmd
+#c.MDLDockerSpawner.custom_submits_cmd  = custom_submits_cmd
 
 
 c.Spawner.environment = {
