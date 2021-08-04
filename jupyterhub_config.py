@@ -500,6 +500,7 @@ class MDLDockerSpawner(SystemUserSpawner):
     works_dir   = Unicode('works', config = True,)
     teacher_gid = Int(7000, config = True,)
     # custom command
+    custom_image_cmd    = Unicode('mdl_image',   config = True,)
     custom_grpname_cmd  = Unicode('mdl_grpname', config = True,)
     custom_users_cmd    = Unicode('mdl_user',    config = True,)
     custom_teachers_cmd = Unicode('mdl_teacher', config = True,)
@@ -509,6 +510,7 @@ class MDLDockerSpawner(SystemUserSpawner):
     #
     course_id = ''
     userdata  = {}
+    custom_image    = ''
     custom_grpname  = ''
     custom_users    = []
     custom_teachers = []
@@ -518,8 +520,9 @@ class MDLDockerSpawner(SystemUserSpawner):
     def init_custom_parameters(self):
         self.course_id = '0'
         self.userdara  = {}
+        self.custom_image    = ''
         self.custom_grpname  = 'TEACHERS'
-        self.custom_users    = ['*']
+        self.custom_users    = []
         self.custom_teachers = []
         self.custom_courses  = {}
         self.custom_submits  = {}
@@ -546,11 +549,12 @@ class MDLDockerSpawner(SystemUserSpawner):
 
 
     # v1.4.2 で _user_set_cmd が無くなった?
-    #def get_args(self):
-    #    args = super(MDLDockerSpawner, self).get_args()
-    #    if (not self._user_set_cmd) and self.dobleArguments:
-    #        args = []
-    #    return args
+    def get_args(self):
+        args = super(MDLDockerSpawner, self).get_args()
+        #if (not self._user_set_cmd) and self.dobleArguments:
+        if self.dobleArguments:
+            args = []
+        return args
 
 
     def template_namespace(self):
@@ -581,7 +585,11 @@ class MDLDockerSpawner(SystemUserSpawner):
             elif key.startswith('custom_'):                     # Custom Command
                 costom_cmd = key.replace('custom_', '')
                 #
-                if costom_cmd == self.custom_grpname_cmd:                                       # Group Name Command
+                if costom_cmd == self.custom_image_cmd:                                         # Container Image Command
+                    value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~ ]', '', value)
+                    self.custom_image = value
+                #
+                elif costom_cmd == self.custom_grpname_cmd:                                     # Group Name Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
                     self.custom_grpname = value
                 #
@@ -670,6 +678,9 @@ class MDLDockerSpawner(SystemUserSpawner):
         mount_courses = self.get_volumes_info(self.custom_courses)
         mount_submits = self.get_volumes_info(self.custom_submits)
 
+        if self.custom_image != '':
+            self.image = self.custom_image
+
         for course in mount_courses:
             mountp  = course.rsplit(':')[0]
             dirname = mountp.split('/')[-1]
@@ -735,14 +746,17 @@ c.MDLDockerSpawner.courses_dir = courses_dir
 c.MDLDockerSpawner.works_dir   = works_dir
 c.MDLDockerSpawner.teacher_gid = teacher_gid
 
-#
+# for debug
+# do not change this!
 # LTI custom command: 変更する場合は Moodle のモジュールも変更する必要がある
+#custom_image_cmd    = 'mdl_image'
 #custom_grpname_cmd  = 'mdl_grpname'
 #custom_users_cmd    = 'mdl_user'
 #custom_teachers_cmd = 'mdl_teacher'
 #custom_volumes_cmd  = 'mdl_vol_'
 #custom_submits_cmd  = 'mdl_sub_'
-
+#
+#c.MDLDockerSpawner.custom_image_cmd    = custom_image_cmd
 #c.MDLDockerSpawner.custom_grpname_cmd  = custom_grpname_cmd
 #c.MDLDockerSpawner.custom_users_cmd    = custom_users_cmd
 #c.MDLDockerSpawner.custom_teachers_cmd = custom_teachers_cmd
@@ -848,7 +862,8 @@ c.JupyterHub.spawner_class = MDLDockerSpawner
 #c.DockerSpawner.image = 'jupyter_single-project'
 #c.DockerSpawner.image = 'jupyter_single-devel'
 #c.DockerSpawner.image = 'scipy-notebook-test'
-c.DockerSpawner.image = 'jupyter_single-course'
+#c.DockerSpawner.image = 'jupyter_single-course'
+c.DockerSpawner.image = 'jupyter_single-lab'
 
 #c.DockerSpawner.image_whitelist = {
 #    "deepdetect-gpu (Tensorflow+PyTorch)": "jolibrain/jupyter-dd-notebook-gpu",
