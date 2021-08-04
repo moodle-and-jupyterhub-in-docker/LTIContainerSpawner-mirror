@@ -1,5 +1,5 @@
-#FROM jupyterhub/singleuser
-FROM jupyter/datascience-notebook
+FROM jupyterhub/singleuser
+#FROM jupyter/datascience-notebook
 USER root
 COPY start.sh /usr/local/bin
 #COPY .bashrc .bash_profile .vimrc /etc/skel
