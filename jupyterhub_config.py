@@ -475,6 +475,11 @@ c.ConfigurableHTTPProxy.pid_file = '/var/lib/jupyterhub/jupyterhub-proxy.pid'
 ## Purge and reset the database.
 #c.JupyterHub.reset_db = False
 
+
+#
+# MDLDockerSpawner for Moodle/LTI by Fumi.Iseki
+#
+
 from dockerspawner import SystemUserSpawner
 
 from traitlets import (
@@ -490,7 +495,7 @@ import pwd, os, grp, re
 
 class MDLDockerSpawner(SystemUserSpawner):
 
-    dobleArguments = Bool(False, config = True,)
+    doubleArguments = Bool(False, config = True,)       # for debug
 
     use_group = Bool(True, config = True,)
     host_homedir_format_string  = Unicode( "/home/{groupname}/{username}", config = True,)
@@ -548,11 +553,12 @@ class MDLDockerSpawner(SystemUserSpawner):
         return self.image_homedir_format_string.format(username=self.user.name, groupname=self.get_groupname())
 
 
+    # for debug
     # v1.4.2 で _user_set_cmd が無くなった?
     def get_args(self):
         args = super(MDLDockerSpawner, self).get_args()
-        #if (not self._user_set_cmd) and self.dobleArguments:
-        if self.dobleArguments:
+        #if (not self._user_set_cmd) and self.doubleArguments:
+        if self.doubleArguments:
             args = []
         return args
 
@@ -723,7 +729,7 @@ class MDLDockerSpawner(SystemUserSpawner):
 #
 # MDLDockerSpawner Parameters
 #
-c.MDLDockerSpawner.dobleArguments = False           # for Debug
+c.MDLDockerSpawner.doubleArguments = False           # for debug
 
 # Moodle と合わせる
 os.environ['JUPYTERHUB_CRYPT_KEY'] = 'c283a5e73c8f74cdc8c6fef5415f1c97948a5a5450b5dc7524b9939093a2bd1d'
@@ -734,10 +740,6 @@ user_home_dir = '/home/{groupname}/{username}'
 projects_dir  = 'jupyter'
 works_dir     = 'works'
 courses_dir   = '.courses'
-
-#
-teacher_gid   = 7000       # 1000以上で，システムで使用していないGID
-
 #
 notebook_dir = user_home_dir + '/' + projects_dir
 c.MDLDockerSpawner.host_homedir_format_string  = user_home_dir
@@ -746,6 +748,10 @@ c.MDLDockerSpawner.courses_dir = courses_dir
 c.MDLDockerSpawner.works_dir   = works_dir
 c.MDLDockerSpawner.teacher_gid = teacher_gid
 
+#
+teacher_gid   = 7000       # 1000以上で，システムで使用していないGID
+
+#
 # for debug
 # do not change this!
 # LTI custom command: 変更する場合は Moodle のモジュールも変更する必要がある
@@ -763,9 +769,9 @@ c.MDLDockerSpawner.teacher_gid = teacher_gid
 #c.MDLDockerSpawner.custom_volumes_cmd  = custom_volumes_cmd
 #c.MDLDockerSpawner.custom_submits_cmd  = custom_submits_cmd
 
-
+#
 c.Spawner.environment = {
-    'GRANT_SUDO': 'yes',
+    #'GRANT_SUDO': 'yes',
     'CHOWN_HOME': 'yes',
     'PRJCT_DIR' : projects_dir,
     'WORK_DIR'  : works_dir,
@@ -778,6 +784,9 @@ c.Spawner.environment = {
 # CHOWN_EXTRA, CHOWN_EXTRA_OPTS
 
 
+#
+# culler
+#
 import sys
 
 c.JupyterHub.services = [
@@ -792,11 +801,14 @@ c.JupyterHub.services = [
     }
 ]
 
+
+#
 #c.NbGrader.logfile = "/var/log/nbgrader.log"
 #c.Exchange.root = '/home/share/nbgrader/exchange'
 c.Exchange.timestamp_format = '%Y%m%d %H:%M:%S %Z'
-c.Exchange.timezone = 'JST'
+c.Exchange.timezone = 'JST-9'
 
+#
 ## Interval (in seconds) at which to check connectivity of services with web
 #  endpoints.
 #c.JupyterHub.service_check_interval = 60
