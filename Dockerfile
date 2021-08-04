@@ -1,10 +1,10 @@
-FROM jupyterhub/singleuser
-#FROM jupyter_single-course2
+#FROM jupyterhub/singleuser
+FROM jupyter/datascience-notebook
 USER root
 COPY start.sh /usr/local/bin
 #COPY .bashrc .bash_profile .vimrc /etc/skel
-RUN  /opt/conda/bin/conda update -n base conda -y \
-  && /opt/conda/bin/conda update -c conda-forge jupyterlab -y
+#RUN  /opt/conda/bin/conda update -n base conda -y \
+#  && /opt/conda/bin/conda update -c conda-forge jupyterlab -y
 #RUN apt-get update \
 # && apt-get upgrade -y \
 # && apt-get install -y --no-install-recommends \

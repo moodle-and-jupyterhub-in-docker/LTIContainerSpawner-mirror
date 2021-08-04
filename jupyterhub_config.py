@@ -595,17 +595,17 @@ class MDLDockerSpawner(SystemUserSpawner):
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~ ]', '', value)
                     self.custom_image = value
                 #
-                elif costom_cmd == self.custom_grpname_cmd:                                     # Group Name Command
+                elif costom_cmd[0:len(self.custom_teachers_cmd)] == self.custom_teachers_cmd:   # Teacher Command
+                    value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
+                    self.custom_teachers = value.replace(',',' ').split()
+                #
+                elif costom_cmd == self.custom_grpname_cmd:                                     # Teacher Group Name Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
                     self.custom_grpname = value
                 #
                 elif costom_cmd == self.custom_users_cmd:                                       # User Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
                     self.custom_users = value.replace(',',' ').split()
-                #
-                elif costom_cmd[0:len(self.custom_teachers_cmd)] == self.custom_teachers_cmd:   # Teacher Command
-                    value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
-                    self.custom_teachers = value.replace(',',' ').split()
                 #
                 elif costom_cmd[0:len(self.custom_volumes_cmd)] == self.custom_volumes_cmd:     # Volume Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
@@ -741,15 +741,15 @@ projects_dir  = 'jupyter'
 works_dir     = 'works'
 courses_dir   = '.courses'
 #
+teacher_gid   = 7000       # 1000以上で，システムで使用していないGID
+
+#
 notebook_dir = user_home_dir + '/' + projects_dir
 c.MDLDockerSpawner.host_homedir_format_string  = user_home_dir
 c.MDLDockerSpawner.image_homedir_format_string = user_home_dir
 c.MDLDockerSpawner.courses_dir = courses_dir
 c.MDLDockerSpawner.works_dir   = works_dir
 c.MDLDockerSpawner.teacher_gid = teacher_gid
-
-#
-teacher_gid   = 7000       # 1000以上で，システムで使用していないGID
 
 #
 # for debug
