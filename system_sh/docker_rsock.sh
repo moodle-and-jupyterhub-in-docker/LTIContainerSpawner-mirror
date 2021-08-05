@@ -12,12 +12,12 @@ LLSOCKET=/var/run/mdlds_$SSH_HOST.sock
 RTSOCKET=/var/run/docker.sock
 
 #
-rm -f $LLSOCKET
-
 if [ -n "$PASSWORD" ]; then
     echo "$PASSWORD"
     exit 0
 fi
+
+rm -f $LLSOCKET
 
 #
 export PASSWORD=$SSH_PASS
@@ -32,3 +32,4 @@ while [ ! -e $LLSOCKET ]; do
 done
 chmod g+rw $LLSOCKET
 chgrp $WEBGROUP $LLSOCKET
+
