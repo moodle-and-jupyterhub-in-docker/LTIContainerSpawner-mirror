@@ -477,7 +477,7 @@ c.ConfigurableHTTPProxy.pid_file = '/var/lib/jupyterhub/jupyterhub-proxy.pid'
 
 
 #
-# MDLDockerSpawner for Moodle/LTI by Fumi.Iseki
+# MDLDockerSpawner v0.3.0 for Moodle/LTI by Fumi.Iseki
 #
 
 from dockerspawner import SystemUserSpawner
@@ -624,24 +624,24 @@ class MDLDockerSpawner(SystemUserSpawner):
         vols = []
         for key, value in assoc.items():
             usrs = []
-            flnm = ''
+            disp = ''
             lst  = value.split(':')
             num  = len(lst)
 
-            if num > 0 : flnm = lst[0]
+            if num > 0 : disp = lst[0]
             if num > 1 : usrs = lst[1].replace(',',' ').split()
-            if flnm == '' : flnm = '.'
 
-            mnt = False
-            if len(usrs) != 0 :                                                         # : によるアクセス制限の指定あり
-                if ('*' in usrs) or (self.user.name in usrs) : 
+            if disp != '' :
+                mnt = False
+                if len(usrs) != 0 :                                                         # : によるアクセス制限の指定あり
+                    if ('*' in usrs) or (self.user.name in usrs) : 
+                        mnt = True
+                elif ('*' in self.custom_users) or (self.user.name in self.custom_users) :  # : によるアクセス制限の指定なし
                     mnt = True
-            elif ('*' in self.custom_users) or (self.user.name in self.custom_users) :  # : によるアクセス制限の指定なし
-                mnt = True
 
-            if mnt:
-                dirname = key + '_' + self.course_id
-                vols.append(self.courses_dir + '/' + dirname + ':' + flnm)
+                if mnt:
+                    dirname = key + '_' + self.course_id
+                    vols.append(self.courses_dir + '/' + dirname + ':' + disp)
         return vols
 
 
