@@ -506,6 +506,7 @@ class MDLDockerSpawner(SystemUserSpawner):
     teacher_gid = Int(7000, config = True,)
     # custom command
     custom_image_cmd    = Unicode('mdl_image',   config = True,)
+    custom_url_cmd      = Unicode('mdl_url',     config = True,)
     custom_grpname_cmd  = Unicode('mdl_grpname', config = True,)
     custom_users_cmd    = Unicode('mdl_user',    config = True,)
     custom_teachers_cmd = Unicode('mdl_teacher', config = True,)
@@ -516,6 +517,7 @@ class MDLDockerSpawner(SystemUserSpawner):
     course_id = ''
     userdata  = {}
     custom_image    = ''
+    custom_url      = ''
     custom_grpname  = ''
     custom_users    = []
     custom_teachers = []
@@ -526,6 +528,7 @@ class MDLDockerSpawner(SystemUserSpawner):
         self.course_id = '0'
         self.userdara  = {}
         self.custom_image    = ''
+        self.custom_url      = ''
         self.custom_grpname  = 'TEACHERS'
         self.custom_users    = []
         self.custom_teachers = []
@@ -594,6 +597,10 @@ class MDLDockerSpawner(SystemUserSpawner):
                 if costom_cmd == self.custom_image_cmd:                                         # Container Image Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~ ]', '', value)
                     self.custom_image = value
+                #
+                elif costom_cmd == self.custom_url_cmd:                                         # Container URL Command
+                    value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~ ]', '', value)
+                    self.custom_url = value
                 #
                 elif costom_cmd[0:len(self.custom_teachers_cmd)] == self.custom_teachers_cmd:   # Teacher Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
@@ -687,6 +694,9 @@ class MDLDockerSpawner(SystemUserSpawner):
         if self.custom_image != '':
             self.image = self.custom_image
 
+        if self.custom_url != '':
+            self.default_url = self.custom_url
+
         for course in mount_courses:
             mountp  = course.rsplit(':')[0]
             dirname = mountp.split('/')[-1]
@@ -756,6 +766,7 @@ c.MDLDockerSpawner.teacher_gid = teacher_gid
 # do not change this!
 # LTI custom command: 変更する場合は Moodle のモジュールも変更する必要がある
 #custom_image_cmd    = 'mdl_image'
+#custom_url_cmd      = 'mdl_url'
 #custom_grpname_cmd  = 'mdl_grpname'
 #custom_users_cmd    = 'mdl_user'
 #custom_teachers_cmd = 'mdl_teacher'
@@ -763,6 +774,7 @@ c.MDLDockerSpawner.teacher_gid = teacher_gid
 #custom_submits_cmd  = 'mdl_sub_'
 #
 #c.MDLDockerSpawner.custom_image_cmd    = custom_image_cmd
+#c.MDLDockerSpawner.custom_url_cmd      = custom_url_cmd
 #c.MDLDockerSpawner.custom_grpname_cmd  = custom_grpname_cmd
 #c.MDLDockerSpawner.custom_users_cmd    = custom_users_cmd
 #c.MDLDockerSpawner.custom_teachers_cmd = custom_teachers_cmd
@@ -771,7 +783,7 @@ c.MDLDockerSpawner.teacher_gid = teacher_gid
 
 #
 c.Spawner.environment = {
-    #'GRANT_SUDO': 'yes',
+    'GRANT_SUDO': 'yes',
     'CHOWN_HOME': 'yes',
     'PRJCT_DIR' : projects_dir,
     'WORK_DIR'  : works_dir,
