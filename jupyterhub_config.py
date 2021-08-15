@@ -669,6 +669,7 @@ class MDLDockerSpawner(SystemUserSpawner):
             env.update(NB_THRGROUP = self.custom_grpname)
             env.update(NB_THRGID   = self.teacher_gid)
 
+        # volumes
         courses = ' '.join(self.get_volumes_info(self.custom_courses))
         env.update(NB_COURSES = courses)
 
