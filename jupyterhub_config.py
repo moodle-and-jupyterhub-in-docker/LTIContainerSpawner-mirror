@@ -506,34 +506,37 @@ class MDLDockerSpawner(SystemUserSpawner):
     teacher_gid = Int(7000, config = True,)
     # custom command
     custom_image_cmd    = Unicode('mdl_image',   config = True,)
-    custom_url_cmd      = Unicode('mdl_url',     config = True,)
+    custom_suburl_cmd   = Unicode('mdl_suburl',  config = True,)
     custom_grpname_cmd  = Unicode('mdl_grpname', config = True,)
     custom_users_cmd    = Unicode('mdl_user',    config = True,)
     custom_teachers_cmd = Unicode('mdl_teacher', config = True,)
     custom_volumes_cmd  = Unicode('mdl_vol_',    config = True,)
     custom_submits_cmd  = Unicode('mdl_sub_',    config = True,)
+    custom_option_cmd   = Unicode('mdl_option',  config = True,)
 
     #
     course_id = ''
     userdata  = {}
     custom_image    = ''
-    custom_url      = ''
+    custom_suburl   = ''
     custom_grpname  = ''
     custom_users    = []
     custom_teachers = []
     custom_courses  = {}
     custom_submits  = {}
+    custom_option   = ''
 
     def init_custom_parameters(self):
         self.course_id = '0'
         self.userdara  = {}
         self.custom_image    = ''
-        self.custom_url      = ''
+        self.custom_suburl   = ''
         self.custom_grpname  = 'TEACHERS'
         self.custom_users    = []
         self.custom_teachers = []
         self.custom_courses  = {}
         self.custom_submits  = {}
+        self.custom_option   = ''
         return
 
 
@@ -598,9 +601,9 @@ class MDLDockerSpawner(SystemUserSpawner):
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~ ]', '', value)
                     self.custom_image = value
                 #
-                elif costom_cmd == self.custom_url_cmd:                                         # Container URL Command
+                elif costom_cmd == self.custom_suburl_cmd:                                      # Container URL Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~ ]', '', value)
-                    self.custom_url = value
+                    self.custom_suburl = value
                 #
                 elif costom_cmd[0:len(self.custom_teachers_cmd)] == self.custom_teachers_cmd:   # Teacher Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
@@ -621,6 +624,10 @@ class MDLDockerSpawner(SystemUserSpawner):
                 elif costom_cmd[0:len(self.custom_submits_cmd)] == self.custom_submits_cmd:     # Submit Volume Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
                     self.custom_submits[costom_cmd] = value
+                #
+                elif costom_cmd[0:len(self.custom_option_cmd)] == self.custom_option_cmd:        # Option Command
+                    value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
+                    self.custom_option = value
         return
 
 
@@ -695,8 +702,11 @@ class MDLDockerSpawner(SystemUserSpawner):
         if self.custom_image != '':
             self.image = self.custom_image
 
-        if self.custom_url != '':
-            self.default_url = self.custom_url
+        if self.custom_suburl != '':
+            self.default_url = self.custom_suburl
+
+        if self.custom_option == 'doubleargs':
+            self.doubleArguments = True
 
         for course in mount_courses:
             mountp  = course.rsplit(':')[0]
@@ -767,20 +777,22 @@ c.MDLDockerSpawner.teacher_gid = teacher_gid
 # do not change this!
 # LTI custom command: 変更する場合は Moodle のモジュールも変更する必要がある
 #custom_image_cmd    = 'mdl_image'
-#custom_url_cmd      = 'mdl_url'
+#custom_suburl_cmd   = 'mdl_suburl'
 #custom_grpname_cmd  = 'mdl_grpname'
 #custom_users_cmd    = 'mdl_user'
 #custom_teachers_cmd = 'mdl_teacher'
 #custom_volumes_cmd  = 'mdl_vol_'
 #custom_submits_cmd  = 'mdl_sub_'
+#custom_option_cmd   = 'mdl_option'
 #
 #c.MDLDockerSpawner.custom_image_cmd    = custom_image_cmd
-#c.MDLDockerSpawner.custom_url_cmd      = custom_url_cmd
+#c.MDLDockerSpawner.custom_suburl_cmd   = custom_suburl_cmd
 #c.MDLDockerSpawner.custom_grpname_cmd  = custom_grpname_cmd
 #c.MDLDockerSpawner.custom_users_cmd    = custom_users_cmd
 #c.MDLDockerSpawner.custom_teachers_cmd = custom_teachers_cmd
 #c.MDLDockerSpawner.custom_volumes_cmd  = custom_volumes_cmd
 #c.MDLDockerSpawner.custom_submits_cmd  = custom_submits_cmd
+#c.MDLDockerSpawner.custom_option_cmd   = custom_option_cmd
 
 #
 c.Spawner.environment = {
