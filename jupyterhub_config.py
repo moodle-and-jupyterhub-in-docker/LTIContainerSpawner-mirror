@@ -495,8 +495,6 @@ import pwd, os, grp, re
 
 class MDLDockerSpawner(SystemUserSpawner):
 
-    doubleArguments = Bool(False, config = True,)       # for debug
-
     use_group = Bool(True, config = True,)
     host_homedir_format_string  = Unicode( "/home/{groupname}/{username}", config = True,)
     image_homedir_format_string = Unicode( "/home/{groupname}/{username}", config = True,)
@@ -557,16 +555,6 @@ class MDLDockerSpawner(SystemUserSpawner):
     @property
     def homedir(self):
         return self.image_homedir_format_string.format(username=self.user.name, groupname=self.get_groupname())
-
-
-    # for debug
-    # v1.4.2 で _user_set_cmd が無くなった?
-    def get_args(self):
-        args = super(MDLDockerSpawner, self).get_args()
-        #if (not self._user_set_cmd) and self.doubleArguments:
-        if self.doubleArguments:
-            args = []
-        return args
 
 
     def template_namespace(self):
@@ -705,9 +693,6 @@ class MDLDockerSpawner(SystemUserSpawner):
         if self.custom_suburl != '':
             self.default_url = self.custom_suburl
 
-        if self.custom_option == 'doubleargs':
-            self.doubleArguments = True
-
         for course in mount_courses:
             mountp  = course.rsplit(':')[0]
             dirname = mountp.split('/')[-1]
@@ -750,7 +735,6 @@ class MDLDockerSpawner(SystemUserSpawner):
 #
 # MDLDockerSpawner Parameters
 #
-c.MDLDockerSpawner.doubleArguments = False           # for debug
 
 # Moodle と合わせる
 os.environ['JUPYTERHUB_CRYPT_KEY'] = 'c283a5e73c8f74cdc8c6fef5415f1c97948a5a5450b5dc7524b9939093a2bd1d'

@@ -157,7 +157,7 @@ if [ $(id -u) == 0 ] ; then
         if [ "$NB_GID" != "$(id -g $NB_USER)" ]; then
             groupadd -f -g $NB_GID -o ${NB_GROUP:-${NB_USER}}
         fi
-        userdel $NB_USER
+        userdel $NB_USER || true
         useradd --home $HOME_DIR/$NB_USER -u $NB_UID -g $NB_GID -l $NB_USER
         if [ "$NB_TEACHER" == "$NB_USER" ]; then
             usermod -aG $NB_THRGROUP $NB_USER
@@ -178,8 +178,6 @@ if [ $(id -u) == 0 ] ; then
     # Exec the command as NB_USER with the PATH and the rest of
     # the environment preserved
     run-hooks /usr/local/bin/before-notebook.d
-    #
-    cmd=( "${cmd[@]:0:5}" )
     echo "Executing the command: ${cmd[@]}"
     exec sudo -E -H -u $NB_USER PATH=$PATH XDG_CACHE_HOME=$HOME_DIR/$NB_USER/.cache PYTHONPATH=${PYTHONPATH:-} "${cmd[@]}"
 else
