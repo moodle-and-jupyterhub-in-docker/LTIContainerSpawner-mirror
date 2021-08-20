@@ -5,7 +5,7 @@ COPY bin/start.sh /usr/local/bin
 COPY bin/ipynb_conv /usr/bin
 RUN  chmod a+rx /usr/bin/ipynb_conv
 #COPY ./etc/.bashrc ./etc/.bash_profile ./etc/.vimrc /etc/skel
-RUN  /opt/conda/bin/conda update --prefix /opt/conda -n base conda \
+RUN  /opt/conda/bin/conda update -n base conda -y \
   && /opt/conda/bin/conda update --prefix /opt/conda --all -y \
 #  && /opt/conda/bin/conda update -c conda-forge jupyterlab -y
   && true
