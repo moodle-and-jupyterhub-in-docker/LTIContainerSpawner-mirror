@@ -750,7 +750,7 @@ class MDLDockerSpawner(SystemUserSpawner):
 #
 # MDLDockerSpawner Parameters
 #
-c.MDLDockerSpawner.doubleArguments = True           # for debug
+c.MDLDockerSpawner.doubleArguments = False           # for debug
 
 # Moodle と合わせる
 os.environ['JUPYTERHUB_CRYPT_KEY'] = 'c283a5e73c8f74cdc8c6fef5415f1c97948a5a5450b5dc7524b9939093a2bd1d'
