@@ -784,7 +784,7 @@ c.MDLDockerSpawner.teacher_gid = teacher_gid
 
 #
 c.Spawner.environment = {
-    'GRANT_SUDO': 'yes',                # 通常使用では 'no'
+    'GRANT_SUDO': 'no',                # 通常使用では 'no'
     'CHOWN_HOME': 'yes',
     'PRJCT_DIR' : projects_dir,
     'WORK_DIR'  : works_dir,
@@ -876,18 +876,12 @@ c.JupyterHub.shutdown_on_logout = True
 #c.JupyterHub.spawner_class = 'dockerspawner.DockerSpawner'
 #c.JupyterHub.spawner_class = 'dockerspawner.SwarmSpawner'
 #c.JupyterHub.spawner_class = 'dockerspawner.SystemUserSpawner'
-#c.JupyterHub.spawner_class = 'dockerspawner.NSLDockerSpawner'
 c.JupyterHub.spawner_class = MDLDockerSpawner
 
 #c.DockerSpawner.image = 'niicloudoperation/jupyterhub-singleuser'
 #c.DockerSpawner.image = 'niicloudoperation/notebook'
 #c.DockerSpawner.image = 'jupyter/datascience-notebook'
 #c.DockerSpawner.image = 'jupyterhub/singleuser'
-#c.DockerSpawner.image = 'jupyter_single-vim'
-#c.DockerSpawner.image = 'jupyter_single-project'
-#c.DockerSpawner.image = 'jupyter_single-devel'
-#c.DockerSpawner.image = 'scipy-notebook-test'
-#c.DockerSpawner.image = 'jupyter_single-course'
 c.DockerSpawner.image = 'jupyter_single-lab'
 
 #c.DockerSpawner.image_whitelist = {
