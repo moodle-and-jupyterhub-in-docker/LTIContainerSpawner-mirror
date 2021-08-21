@@ -1,0 +1,74 @@
+# .bashrc
+#################################################################
+#
+#         .bashrc file
+#
+#################################################################
+#
+# User specific aliases and functions
+
+# Source global definitions
+if [ -f /etc/bashrc ]; then
+    . /etc/bashrc
+fi
+
+#
+# set up search path
+LPATH=/usr/java/default/bin 
+PATH=$LPATH:/usr/local/bin:/usr/bin:/bin:/usr/X11R6/bin:/sbin:/usr/sbin
+
+#
+# set this for all shells
+ulimit -c 0 -s unlimited
+set -o noclobber
+umask 027
+#stty -ixon
+
+#
+# aliases for all shells
+alias cp='cp -i'
+alias mv='mv -i'
+alias rm='rm -i'
+
+#
+#
+# set Shell Variable
+IGNOREEOF=100
+HISTSIZE=500
+HISTFILESIZE=500
+
+#
+# set Prompt
+if [ "$USER" = "root" ]; then
+    PS1="#"
+else
+    PS1="$"
+fi
+PS1=$"[\\u@\\h \\W]:\!$PS1 "
+
+#
+# other aliases
+alias ls='ls -F --color=auto'
+alias eng='LANG=C LANGUAGE=C LC_ALL=C'
+alias hist='history | tail -20'
+alias cls=clear
+alias nkf='nkf -w'
+alias bd=popd
+alias pd=pushd
+alias vi='vim'
+
+
+# >>> conda initialize >>>
+# !! Contents within this block are managed by 'conda init' !!
+__conda_setup="$('/usr/local/anaconda/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "/usr/local/anaconda/etc/profile.d/conda.sh" ]; then
+        . "/usr/local/anaconda/etc/profile.d/conda.sh"
+    else
+        export PATH="/usr/local/anaconda/bin:$PATH"
+    fi
+fi
+unset __conda_setup
+# <<< conda initialize <<<

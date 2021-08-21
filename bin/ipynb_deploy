@@ -1,0 +1,27 @@
+#!/bin/bash
+#
+
+#
+if [ $# -lt 1 ]; then
+    echo "usage .... "$0"  dest_dir"
+    exit 1
+fi
+
+S_DIR="."
+D_DIR="$1"
+N_FAC="$2"
+
+FLS=`ls -l $S_DIR |grep ^- | awk -F" " '{print $9}'`
+
+if [[ "$FLS" != "" &&  -d $D_DIR ]]; then
+    for FL in $FLS ; do
+        EXN=`echo $FL | sed 's/^.*\.\([^\.]*\)$/\1/'`
+        FNM=`echo $FL | sed 's/\.[^\.]*$//'`
+        #
+        if [ "$EXN" == "ipynb" ]; then
+            echo deploy $FL $D_DIR/${FNM}"_tags."$EXN $N_FAC
+            /usr/bin/ipynb_conv $FL $D_DIR/${FNM}"_tags."$EXN $N_FAC
+        fi
+    done
+fi
+
