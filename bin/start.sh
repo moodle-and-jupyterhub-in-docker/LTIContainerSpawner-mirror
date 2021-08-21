@@ -56,6 +56,7 @@ if [ $(id -u) == 0 ] ; then
         usermod -d $HOME_DIR/$NB_USER -l $NB_USER jovyan
     fi
 
+    #
     # setup home directory
     if [ "$NB_USER" != "jovyan" ]; then
         #
@@ -63,8 +64,7 @@ if [ $(id -u) == 0 ] ; then
             mkdir -p $HOME_DIR/$NB_USER
         fi
 
-        cd $HOME_DIR/$NB_USER
-        DROWN=`ls -l $HOME_DIR/$NB_USER | grep ^d | awk -F" " '{print $3}'`
+        DROWN=`ls -ld $HOME_DIR/$NB_USER | grep ^d | awk -F" " '{print $3}'`
         if [ "$DROWN" != "$NB_USER" ]; then
             chown $NB_UID:$NB_GID $HOME_DIR/$NB_USER 
             chown $NB_UID:$NB_GID $HOME_DIR/$NB_USER/*
@@ -75,6 +75,7 @@ if [ $(id -u) == 0 ] ; then
         rm -rf /home/jovyan || true
     fi
 
+    #
     # setup Jupyter work directory
     if [ ! -d $HOME_DIR/$NB_USER/$PRJCT_DIR/$WORK_DIR/$COURSE_DIR ]; then
         mkdir -p $HOME_DIR/$NB_USER/$PRJCT_DIR/$WORK_DIR/$COURSE_DIR || true
@@ -84,7 +85,7 @@ if [ $(id -u) == 0 ] ; then
     #
     if [ ! -z "$CHOWN_EXTRA" ]; then
         for extra_dir in $(echo $CHOWN_EXTRA | tr ',' ' '); do
-            chown $CHOWN_EXTRA_OPTS $NB_UID:$NB_GID $extra_dir
+            chown $CHOWN_EXTRA_OPTS $NB_UID:$NB_GID $extra_dir || true
         done
     fi
 
@@ -99,6 +100,7 @@ if [ $(id -u) == 0 ] ; then
         ln -s .. home || true
     fi
 
+    #
     # setup new teacher group for docker volumes
     EGID=$NB_GID
     if [ "$NB_TEACHER" == "$NB_USER" ]; then
@@ -115,6 +117,7 @@ if [ $(id -u) == 0 ] ; then
         fi 
     fi
 
+    #
     # setup docker volumes
     NB_COURSES=`echo $NB_COURSES | sed -e "s/[*;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~]//g"`
     NB_SUBMITS=`echo $NB_SUBMITS | sed -e "s/[*;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~]//g"`
@@ -152,6 +155,7 @@ if [ $(id -u) == 0 ] ; then
         done
     fi
    
+    #
     # fixed user information
     if [[ "$NB_UID" != "$(id -u $NB_USER)" || "$NB_GID" != "$(id -g $NB_USER)" ]]; then
         if [ "$NB_GID" != "$(id -g $NB_USER)" ]; then
@@ -171,7 +175,6 @@ if [ $(id -u) == 0 ] ; then
         echo "$NB_USER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/notebook
         chmod 4111 /usr/bin/sudo
     fi
-
     # Add $CONDA_DIR/bin to sudo secure_path
     sed -r "s#Defaults\s+secure_path\s*=\s*\"?([^\"]+)\"?#Defaults secure_path=\"\1:$CONDA_DIR/bin\"#" /etc/sudoers | grep secure_path > /etc/sudoers.d/path
 

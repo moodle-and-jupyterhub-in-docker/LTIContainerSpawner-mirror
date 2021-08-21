@@ -657,12 +657,16 @@ class MDLDockerSpawner(SystemUserSpawner):
             import grp
             gname = self.get_groupname()
             env.update(NB_GROUP = gname)
+        else:
+            env.update(NB_GROUP = '')
 
+        env.update(NB_THRGROUP = self.custom_grpname)
+        env.update(NB_THRGID   = self.teacher_gid)
         if (self.user.name in self.custom_teachers) : 
             env.update(NB_UMASK = '0033')
             env.update(NB_TEACHER  = self.user.name)
-            env.update(NB_THRGROUP = self.custom_grpname)
-            env.update(NB_THRGID   = self.teacher_gid)
+        else:
+            env.update(NB_TEACHER  = '')
 
         # volumes
         courses = ' '.join(self.get_volumes_info(self.custom_courses))
@@ -780,7 +784,7 @@ c.MDLDockerSpawner.teacher_gid = teacher_gid
 
 #
 c.Spawner.environment = {
-    'GRANT_SUDO': 'yes',
+    'GRANT_SUDO': 'yes',                # 通常使用では 'no'
     'CHOWN_HOME': 'yes',
     'PRJCT_DIR' : projects_dir,
     'WORK_DIR'  : works_dir,
