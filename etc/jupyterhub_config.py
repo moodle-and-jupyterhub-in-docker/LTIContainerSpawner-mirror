@@ -477,7 +477,9 @@ c.ConfigurableHTTPProxy.pid_file = '/var/lib/jupyterhub/jupyterhub-proxy.pid'
 
 
 #
-# MDLDockerSpawner v0.3.0 for Moodle/LTI by Fumi.Iseki
+# MDLDockerSpawner v0.9.0 for Moodle/LTI by Fumi.Iseki
+#
+#                                      BSD License.
 #
 
 from dockerspawner import SystemUserSpawner

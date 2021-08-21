@@ -1,6 +1,9 @@
 #!/bin/bash
 # Copyright (c) Jupyter Development Team.
 # Distributed under the terms of the Modified BSD License.
+#
+# This is modified by Fumi.Iseki for MDLDockerSpawner 2021 8/21
+#
 
 set -e
 
