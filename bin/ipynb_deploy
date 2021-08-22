@@ -13,15 +13,19 @@ N_FAC="$2"
 
 FLS=`ls -l $S_DIR |grep ^- | awk -F" " '{print $9}'`
 
-if [[ "$FLS" != "" &&  -d $D_DIR ]]; then
-    for FL in $FLS ; do
-        EXN=`echo $FL | sed 's/^.*\.\([^\.]*\)$/\1/'`
-        FNM=`echo $FL | sed 's/\.[^\.]*$//'`
-        #
-        if [ "$EXN" == "ipynb" ]; then
-            echo deploy $FL $D_DIR/${FNM}"_tags."$EXN $N_FAC
-            /usr/bin/ipynb_conv $FL $D_DIR/${FNM}"_tags."$EXN $N_FAC
-        fi
-    done
+if [ "$FLS" != "" ]; then
+    if [  -d $D_DIR ]; then
+        for FL in $FLS ; do
+            EXN=`echo $FL | sed 's/^.*\.\([^\.]*\)$/\1/'`
+            FNM=`echo $FL | sed 's/\.[^\.]*$//'`
+            #
+            if [ "$EXN" == "ipynb" ]; then
+                echo   "配置中...  "$FL $D_DIR/${FNM}_tags.$EXN $N_FAC
+                /usr/bin/ipynb_conv $FL $D_DIR/${FNM}_tags.$EXN $N_FAC
+            fi
+        done
+    else
+        echo "配置先のディレクトリ "$D_DIR" が存在しません．"
+    fi
 fi
 
