@@ -573,6 +573,11 @@ class MDLDockerSpawner(SystemUserSpawner):
         return gname
 
 
+    def get_args(self):
+        args = super(MDLDockerSpawner, self).get_args()
+        return args
+
+
     # for custom data
     # Moodle のカスタムパラメータから情報を得る
     #
