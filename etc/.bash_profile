@@ -6,12 +6,11 @@ if [ -f ~/.bashrc ]; then
 fi
 
 # User specific environment and startup programs
-stty dec pass8 cs8 erase '^H'
+stty dec pass8 cs8 erase '^?'
 LANG=ja_JP.UTF-8
 
 if [ "$TERM" = "linux" ]; then
     LANG=C
-    stty erase '^?'
 fi
 
 
@@ -22,4 +21,3 @@ USERNAME=""
 
 export LANG USERNAME BASH_ENV PATH LESSOPEN PKG_CONFIG_PATH
 
-mesg n

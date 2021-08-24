@@ -3,6 +3,7 @@
 FROM jupyter/tensorflow-notebook
 USER root
 COPY bin/start.sh /usr/local/bin
+COPY bin/cmmit.sh /usr/local/bin
 #COPY bin/start-notebook.sh    /usr/local/bin
 #COPY bin/start-singleuser.sh  /usr/local/bin
 COPY bin/ipynb_conv   /usr/bin

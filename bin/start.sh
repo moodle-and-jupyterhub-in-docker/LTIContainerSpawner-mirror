@@ -70,9 +70,9 @@ if [ $(id -u) == 0 ] ; then
         DROWN=`ls -ld $HOME_DIR/$NB_USER | grep ^d | awk -F" " '{print $3}'`
         if [ "$DROWN" != "$NB_USER" ]; then
             chown $NB_UID:$NB_GID $HOME_DIR/$NB_USER 
-            chown $NB_UID:$NB_GID $HOME_DIR/$NB_USER/*
-            chmod 0700 $HOME_DIR/$NB_USER 
-            chmod 0700 $HOME_DIR/$NB_USER/* 
+            chown $NB_UID:$NB_GID $HOME_DIR/$NB_USER/* || true
+            chmod 0700 $HOME_DIR/$NB_USER
+            chmod 0700 $HOME_DIR/$NB_USER/* || true 
         fi
         #
         rm -rf /home/jovyan || true
