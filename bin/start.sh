@@ -138,7 +138,9 @@ if [ $(id -u) == 0 ] ; then
                     chown $NB_UID:$EGID $FL || true
                     chmod 2775 $NB_UID:$EGID $FL || true
                 fi
-                ln -s $FL $LK 
+                if [ ! -e $LK ] ;then 
+                    ln -s $FL $LK || true
+                fi
             fi
         done
     fi
@@ -153,7 +155,9 @@ if [ $(id -u) == 0 ] ; then
                     chown $NB_UID:$EGID $FL || true
                     chmod 3777 $NB_UID:$EGID $FL || true
                 fi
-                ln -s $FL $LK 
+                if [ ! -e $LK ] ;then 
+                    ln -s $FL $LK || true
+                fi
             fi
         done
     fi
