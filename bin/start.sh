@@ -99,7 +99,7 @@ if [ $(id -u) == 0 ] ; then
         rm -f $LKS || true
     fi
     cd $HOME_DIR/$NB_USER/$PRJCT_DIR
-    if [ ! -e home ] ;then 
+    if [ ! -e home ]; then 
         ln -s .. home || true
     fi
 
@@ -138,7 +138,7 @@ if [ $(id -u) == 0 ] ; then
                     chown $NB_UID:$EGID $FL || true
                     chmod 2775 $NB_UID:$EGID $FL || true
                 fi
-                if [ ! -e $LK ] ;then 
+                if [ ! -e $LK ]; then 
                     ln -s $FL $LK || true
                 fi
             fi
@@ -155,7 +155,7 @@ if [ $(id -u) == 0 ] ; then
                     chown $NB_UID:$EGID $FL || true
                     chmod 3777 $NB_UID:$EGID $FL || true
                 fi
-                if [ ! -e $LK ] ;then 
+                if [ ! -e $LK ]; then 
                     ln -s $FL $LK || true
                 fi
             fi
