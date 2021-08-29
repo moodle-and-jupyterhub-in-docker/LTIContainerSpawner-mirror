@@ -1,8 +1,8 @@
-FROM jupyter/base-notebook
-#FROM jupyter/tensorflow-notebook
+#FROM jupyter/base-notebook
+FROM jupyterhub/singleuser
 #FROM jupyter/datascience-notebook
+#FROM jupyter/tensorflow-notebook
 #FROM jupyter/scipy-notebook
-#FROM jupyterhub/singleuser
 USER root
 COPY bin/start.sh  /usr/local/bin
 COPY bin/commit.sh /usr/local/bin

@@ -370,6 +370,7 @@ c.JupyterHub.hub_port = 8081
 #  
 #  .. versionadded: 1.1.0
 #c.JupyterHub.init_spawners_timeout = 10
+c.JupyterHub.init_spawners_timeout = 30
 
 ## The location to store certificates automatically created by JupyterHub.
 #  
@@ -1169,6 +1170,7 @@ c.Spawner.default_url = '/lab'
 #  Once a server has successfully been spawned, this is the amount of time we
 #  wait before assuming that the server is unable to accept connections.
 #c.Spawner.http_timeout = 30
+c.Spawner.http_timeout = 60
 
 ## The IP address (or hostname) the single-user server should listen on.
 #  
@@ -1309,6 +1311,7 @@ c.Spawner.default_url = '/lab'
 #  takes longer than this. start should return when the server process is started
 #  and its location is known.
 #c.Spawner.start_timeout = 60
+c.Spawner.start_timeout = 120
 
 #------------------------------------------------------------------------------
 # Authenticator(LoggingConfigurable) configuration
