@@ -802,7 +802,7 @@ c.MDLDockerSpawner.teacher_gid = teacher_gid
 
 #
 c.Spawner.environment = {
-    'GRANT_SUDO': 'yes',                # 通常使用では 'no'
+    'GRANT_SUDO': 'no',                # 通常使用では 'no'
     'CHOWN_HOME': 'yes',
     'PRJCT_DIR' : projects_dir,
     'WORK_DIR'  : works_dir,
@@ -972,6 +972,7 @@ c.JupyterHub.ssl_key = '/etc/gitlab/ssl/gitlab.key'
 #  In general, this is most easily achieved with wildcard DNS.
 #  
 #  When using SSL (i.e. always) this also requires a wildcard SSL certificate.
+
 #c.JupyterHub.subdomain_host = ''
 
 ## Paths to search for jinja templates, before using the default templates.
