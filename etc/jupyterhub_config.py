@@ -493,6 +493,8 @@ from traitlets import (
     Unicode,
 )
 
+from urllib.parse import urlparse
+
 import pwd, os, grp, re
 
 
@@ -502,9 +504,11 @@ class MDLDockerSpawner(SystemUserSpawner):
     host_homedir_format_string  = Unicode( "/home/{groupname}/{username}", config = True,)
     image_homedir_format_string = Unicode( "/home/{groupname}/{username}", config = True,)
 
+    host_name   = Unicode('localhost', config = True,)
     courses_dir = Unicode('.courses', config = True,)
     works_dir   = Unicode('works', config = True,)
     teacher_gid = Int(7000, config = True,)
+
     # custom command
     custom_image_cmd    = Unicode('mdl_image',   config = True,)
     custom_suburl_cmd   = Unicode('mdl_suburl',  config = True,)
@@ -517,6 +521,7 @@ class MDLDockerSpawner(SystemUserSpawner):
 
     #
     course_id = ''
+    host_name = ''
     userdata  = {}
     custom_image    = ''
     custom_suburl   = ''
@@ -529,6 +534,7 @@ class MDLDockerSpawner(SystemUserSpawner):
 
     def init_custom_parameters(self):
         self.course_id = '0'
+        self.host_name = 'localhost'
         self.userdara  = {}
         self.custom_image    = ''
         self.custom_suburl   = ''
@@ -589,6 +595,9 @@ class MDLDockerSpawner(SystemUserSpawner):
         for key, value in self.userdata.items():
             
             if key == 'context_id' : self.course_id = value     # Course ID
+
+            elif key == 'lis_outcome_service_url' : 
+                self.host_name = urlparse(value).netloc         # Moodle Hostname
             #
             elif key.startswith('custom_'):                     # Custom Command
                 costom_cmd = key.replace('custom_', '')
@@ -650,7 +659,7 @@ class MDLDockerSpawner(SystemUserSpawner):
                     mnt = True
 
                 if mnt:
-                    dirname = key + '_' + self.course_id
+                    dirname = key + '_' + self.course_id + '_' + self.host_name
                     vols.append(self.courses_dir + '/' + dirname + ':' + disp)
         return vols
 
@@ -670,6 +679,7 @@ class MDLDockerSpawner(SystemUserSpawner):
 
         env.update(NB_THRGROUP = self.custom_grpname)
         env.update(NB_THRGID   = self.teacher_gid)
+        env.update(NB_HOSTNAME = self.host_name)
         if (self.user.name in self.custom_teachers) : 
             env.update(NB_UMASK = '0033')
             env.update(NB_TEACHER  = self.user.name)
@@ -792,7 +802,7 @@ c.MDLDockerSpawner.teacher_gid = teacher_gid
 
 #
 c.Spawner.environment = {
-    'GRANT_SUDO': 'no',                # 通常使用では 'no'
+    'GRANT_SUDO': 'yes',                # 通常使用では 'no'
     'CHOWN_HOME': 'yes',
     'PRJCT_DIR' : projects_dir,
     'WORK_DIR'  : works_dir,
