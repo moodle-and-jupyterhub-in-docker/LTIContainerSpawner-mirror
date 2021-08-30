@@ -504,7 +504,6 @@ class MDLDockerSpawner(SystemUserSpawner):
     host_homedir_format_string  = Unicode( "/home/{groupname}/{username}", config = True,)
     image_homedir_format_string = Unicode( "/home/{groupname}/{username}", config = True,)
 
-    host_name   = Unicode('localhost', config = True,)
     courses_dir = Unicode('.courses', config = True,)
     works_dir   = Unicode('works', config = True,)
     teacher_gid = Int(7000, config = True,)
