@@ -757,10 +757,8 @@ class MDLDockerSpawner(SystemUserSpawner):
 # MDLDockerSpawner Parameters
 #
 
-# Moodle と合わせる
-os.environ['JUPYTERHUB_CRYPT_KEY'] = 'c283a5e73c8f74cdc8c6fef5415f1c97948a5a5450b5dc7524b9939093a2bd1d'
-
 c.MDLDockerSpawner.use_group = True
+
 # Volumes are mounted at /user_home_dir/projects_dir/works_dir/courses_dir
 user_home_dir = '/home/{groupname}/{username}'
 projects_dir  = 'jupyter'
@@ -1392,6 +1390,8 @@ c.Authenticator.admin_users = {'admin'}
 #  New in JupyterHub 0.8
 #c.Authenticator.enable_auth_state = False
 c.Authenticator.enable_auth_state = True
+
+os.environ['JUPYTERHUB_CRYPT_KEY'] = 'c283a5e73c8f74cdc8c6fef5415f1c97948a5a5450b5dc7524b9939093a2bd1d'
 
 ## An optional hook function that you can implement to do some bootstrapping work
 #  during authentication. For example, loading user account details from an
