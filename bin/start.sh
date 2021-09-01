@@ -2,7 +2,7 @@
 # Copyright (c) Jupyter Development Team.
 # Distributed under the terms of the Modified BSD License.
 #
-# This is modified by Fumi.Iseki for MDLDockerSpawner 2021 8/21
+# This is modified by Fumi.Iseki for MDLDockerSpawner 2021 09/01 v0.90
 #
 
 set -e
@@ -122,15 +122,16 @@ if [ $(id -u) == 0 ] ; then
 
     #
     # setup docker volumes
-    NB_COURSES=`echo $NB_COURSES | sed -e "s/[*;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~]//g"`
+    NB_VOLUMES=`echo $NB_VOLUMES | sed -e "s/[*;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~]//g"`
     NB_SUBMITS=`echo $NB_SUBMITS | sed -e "s/[*;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~]//g"`
+    NB_PRSNALS=`echo $NB_PRSNALS | sed -e "s/[*;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~]//g"`
 
     cd $HOME_DIR/$NB_USER/$PRJCT_DIR/$WORK_DIR
 
-    if [ "$NB_COURSES" != "" ]; then
-        for COURSE in $NB_COURSES; do
-            FL=`echo $COURSE | cut -d ':' -f 1`
-            LK=`echo $COURSE | cut -d ':' -f 2`
+    if [ "$NB_VOLUMES" != "" ]; then
+        for VOLUME in $NB_VOLUMES; do
+            FL=`echo $VOLUME | cut -d ':' -f 1`
+            LK=`echo $VOLUME | cut -d ':' -f 2`
             #
             if [[ "$FL" != "" && "$LK" != ""  && -d "$FL" ]]; then
                 FLOWN=`ls -ld $FL | awk -F" " '{print $3}'`
@@ -138,12 +139,21 @@ if [ $(id -u) == 0 ] ; then
                     chown $NB_UID:$EGID $FL || true
                     chmod 2775 $NB_UID:$EGID $FL || true
                 fi
-                if [ ! -e $LK ]; then 
-                    ln -s $FL $LK || true
+                #
+                if [ ! -e "$LK" ]; then
+                    if [ "${LK:0:1}" != "-" ]; then
+                        ln -s $FL $LK || true
+                    else
+                        if [ "$NB_TEACHER" == "$NB_USER" ]; then
+                            ln -s $FL "${LK:1}" || true
+                        fi
+                    fi
                 fi
             fi
         done
     fi
+
+    #
     if [ "$NB_SUBMITS" != "" ]; then
         for SUBMIT in $NB_SUBMITS; do
             FL=`echo $SUBMIT | cut -d ':' -f 1`
@@ -155,8 +165,49 @@ if [ $(id -u) == 0 ] ; then
                     chown $NB_UID:$EGID $FL || true
                     chmod 3777 $NB_UID:$EGID $FL || true
                 fi
-                if [ ! -e $LK ]; then 
-                    ln -s $FL $LK || true
+                #
+                if [ ! -e "$LK" ]; then
+                    if [ "${LK:0:1}" != "-" ]; then
+                        ln -s $FL $LK || true
+                    else
+                        if [ "$NB_TEACHER" == "$NB_USER" ]; then
+                            ln -s $FL "${LK:1}" || true
+                        fi
+                    fi
+                fi
+            fi
+        done
+    fi
+
+    #
+    if [ "$NB_PRSNALS" != "" ]; then
+        for PRSNAL in $NB_PRSNALS; do
+            FL=`echo $PRSNAL | cut -d ':' -f 1`
+            LK=`echo $PRSNAL | cut -d ':' -f 2`
+            #
+            if [ "$FL" != "" ]; then
+                if [ ! -d "$FL" ]; then
+                    mkdir -p $FL || true
+                    chown $NB_UID:$EGID $FL || true
+                    chmod 0700 $NB_UID:$EGID $FL || true
+                fi
+                #
+                if [ "$LK" != "" ]; then
+                    if [ ! -e "$LK" ]; then
+                        if [ "${LK:0:1}" != "-" ]; then
+                            ln -s $FL $LK || true
+                        else
+                            if [ "$NB_TEACHER" == "$NB_USER" ]; then
+                                ln -s $FL "${LK:1}" || true
+                            fi
+                        fi
+                    fi
+                fi
+                #
+                VF=`echo $FL | sed -e "s/\/mdl_prs_/\/mdl_vol_/"`
+                if [[ -d "$VF" && "$VF" != "$FL" ]]; then
+                    cp --no-clobber -R $VF/* $FL || true
+                    chown -R $NB_UID:$EGID $FL || true
                 fi
             fi
         done

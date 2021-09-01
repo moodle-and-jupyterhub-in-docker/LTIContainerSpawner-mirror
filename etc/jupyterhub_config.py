@@ -516,6 +516,7 @@ class MDLDockerSpawner(SystemUserSpawner):
     custom_teachers_cmd = Unicode('mdl_teacher', config = True,)
     custom_volumes_cmd  = Unicode('mdl_vol_',    config = True,)
     custom_submits_cmd  = Unicode('mdl_sub_',    config = True,)
+    custom_prsnals_cmd  = Unicode('mdl_prs_',    config = True,)
     custom_option_cmd   = Unicode('mdl_option',  config = True,)
 
     #
@@ -527,8 +528,9 @@ class MDLDockerSpawner(SystemUserSpawner):
     custom_grpname  = ''
     custom_users    = []
     custom_teachers = []
-    custom_courses  = {}
+    custom_volumes  = {}
     custom_submits  = {}
+    custom_prsnals  = {}
     custom_option   = ''
 
     def init_custom_parameters(self):
@@ -540,8 +542,9 @@ class MDLDockerSpawner(SystemUserSpawner):
         self.custom_grpname  = 'TEACHERS'
         self.custom_users    = []
         self.custom_teachers = []
-        self.custom_courses  = {}
+        self.custom_volumes  = {}
         self.custom_submits  = {}
+        self.custom_prsnals  = {}
         self.custom_option   = ''
         return
 
@@ -623,13 +626,17 @@ class MDLDockerSpawner(SystemUserSpawner):
                 #
                 elif costom_cmd[0:len(self.custom_volumes_cmd)] == self.custom_volumes_cmd:     # Volume Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
-                    self.custom_courses[costom_cmd] = value
+                    self.custom_volumes[costom_cmd] = value
                 #
                 elif costom_cmd[0:len(self.custom_submits_cmd)] == self.custom_submits_cmd:     # Submit Volume Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
                     self.custom_submits[costom_cmd] = value
                 #
-                elif costom_cmd[0:len(self.custom_option_cmd)] == self.custom_option_cmd:        # Option Command
+                elif costom_cmd[0:len(self.custom_prsnals_cmd)] == self.custom_prsnals_cmd:     # Personal Volume Command
+                    value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
+                    self.custom_prsnals[costom_cmd] = value
+                #
+                elif costom_cmd[0:len(self.custom_option_cmd)] == self.custom_option_cmd:       # Option Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
                     self.custom_option = value
         return
@@ -665,7 +672,7 @@ class MDLDockerSpawner(SystemUserSpawner):
 
     #
     # コンテナに渡す環境変数を設定する．
-    # NB_GROUP, NB_UMASK, NB_COURSES, NB_SUBMITS, NB_TEACHER, NB_THRGROUP, NB_THRGID
+    # NB_GROUP, NB_UMASK, NB_VOLUMES, NB_SUBMITS, NB_PRSNAL, NB_TEACHER, NB_THRGROUP, NB_THRGID, ...
     #
     def get_env(self):
         env = super(MDLDockerSpawner, self).get_env()
@@ -677,6 +684,7 @@ class MDLDockerSpawner(SystemUserSpawner):
             env.update(NB_GROUP = '')
 
         env.update(NB_THRGROUP = self.custom_grpname)
+        env.update(NB_OPTION   = self.custom_option)
         env.update(NB_THRGID   = self.teacher_gid)
         env.update(NB_HOSTNAME = self.host_name)
         if (self.user.name in self.custom_teachers) : 
@@ -686,11 +694,14 @@ class MDLDockerSpawner(SystemUserSpawner):
             env.update(NB_TEACHER  = '')
 
         # volumes
-        courses = ' '.join(self.get_volumes_info(self.custom_courses))
-        env.update(NB_COURSES = courses)
+        volumes = ' '.join(self.get_volumes_info(self.custom_volumes))
+        env.update(NB_VOLUMES = volumes)
 
         submits = ' '.join(self.get_volumes_info(self.custom_submits))
         env.update(NB_SUBMITS = submits)
+
+        prsnals = ' '.join(self.get_volumes_info(self.custom_prsnals))
+        env.update(NB_PRSNALS = prsnals)
 
         return env
 
@@ -705,7 +716,7 @@ class MDLDockerSpawner(SystemUserSpawner):
         fullpath_dir = self.notebook_dir + '/' + self.works_dir
         self.volumes['jupyterhub-user-{username}'] = fullpath_dir
 
-        mount_courses = self.get_volumes_info(self.custom_courses)
+        mount_volumes = self.get_volumes_info(self.custom_volumes)
         mount_submits = self.get_volumes_info(self.custom_submits)
 
         if self.custom_image != '':
@@ -714,8 +725,8 @@ class MDLDockerSpawner(SystemUserSpawner):
         if self.custom_suburl != '':
             self.default_url = self.custom_suburl
 
-        for course in mount_courses:
-            mountp  = course.rsplit(':')[0]
+        for volume in mount_volumes:
+            mountp  = volume.rsplit(':')[0]
             dirname = mountp.split('/')[-1]
             self.volumes[dirname] = fullpath_dir + '/' + mountp
 
@@ -747,11 +758,9 @@ class MDLDockerSpawner(SystemUserSpawner):
     #    '''
 
 
-    '''
-    def docker(self, method, *args, **kwargs):
-        #return self.executor.submit(self._docker, method, *args, **kwargs)
-        return super(MDLDockerSpawner, self).docker(method, *args, **kwargs)
-    '''
+    #def docker(self, method, *args, **kwargs):
+    #    #return self.executor.submit(self._docker, method, *args, **kwargs)
+    #    return super(MDLDockerSpawner, self).docker(method, *args, **kwargs)
 
 #
 # MDLDockerSpawner Parameters
@@ -781,20 +790,22 @@ c.MDLDockerSpawner.teacher_gid = teacher_gid
 # LTI custom command: 変更する場合は Moodle のモジュールも変更する必要がある
 #custom_image_cmd    = 'mdl_image'
 #custom_suburl_cmd   = 'mdl_suburl'
-#custom_grpname_cmd  = 'mdl_grpname'
 #custom_users_cmd    = 'mdl_user'
 #custom_teachers_cmd = 'mdl_teacher'
 #custom_volumes_cmd  = 'mdl_vol_'
 #custom_submits_cmd  = 'mdl_sub_'
+#custom_prsnals_cmd  = 'mdl_prs_'
+#custom_grpname_cmd  = 'mdl_grpname'
 #custom_option_cmd   = 'mdl_option'
 #
 #c.MDLDockerSpawner.custom_image_cmd    = custom_image_cmd
 #c.MDLDockerSpawner.custom_suburl_cmd   = custom_suburl_cmd
-#c.MDLDockerSpawner.custom_grpname_cmd  = custom_grpname_cmd
 #c.MDLDockerSpawner.custom_users_cmd    = custom_users_cmd
 #c.MDLDockerSpawner.custom_teachers_cmd = custom_teachers_cmd
 #c.MDLDockerSpawner.custom_volumes_cmd  = custom_volumes_cmd
 #c.MDLDockerSpawner.custom_submits_cmd  = custom_submits_cmd
+#c.MDLDockerSpawner.custom_prsnals_cmd  = custom_prsnals_cmd
+#c.MDLDockerSpawner.custom_grpname_cmd  = custom_grpname_cmd
 #c.MDLDockerSpawner.custom_option_cmd   = custom_option_cmd
 
 #
@@ -969,7 +980,6 @@ c.JupyterHub.ssl_key = '/etc/gitlab/ssl/gitlab.key'
 #  In general, this is most easily achieved with wildcard DNS.
 #  
 #  When using SSL (i.e. always) this also requires a wildcard SSL certificate.
-
 #c.JupyterHub.subdomain_host = ''
 
 ## Paths to search for jinja templates, before using the default templates.
