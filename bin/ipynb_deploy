@@ -20,8 +20,8 @@ if [ "$FLS" != "" ]; then
             FNM=`echo $FL | sed 's/\.[^\.]*$//'`
             #
             if [ "$EXN" == "ipynb" ]; then
-                echo   "配置中...  "$FL $D_DIR/${FNM}_tags.$EXN $N_FAC
-                /usr/bin/ipynb_conv $FL $D_DIR/${FNM}_tags.$EXN $N_FAC
+                echo   "配置中...  "$FL $D_DIR/${FNM}.$EXN $N_FAC
+                /usr/bin/ipynb_conv $FL $D_DIR/${FNM}.$EXN $N_FAC
             fi
         done
     else
