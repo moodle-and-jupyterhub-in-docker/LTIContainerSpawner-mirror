@@ -551,14 +551,11 @@ class MDLDockerSpawner(SystemUserSpawner):
 
     @property
     def host_homedir(self):
-        if (
-            self.host_homedir_format_string is not None
-            and self.host_homedir_format_string != ""
-        ):
+        if (self.host_homedir_format_string is not None and
+            self.host_homedir_format_string != ''):
             homedir = self.host_homedir_format_string.format(username=self.user.name, groupname=self.get_groupname())
         else:
             import pwd
-
             homedir = pwd.getpwnam(self.user.name).pw_dir
         return homedir
 
@@ -761,6 +758,7 @@ class MDLDockerSpawner(SystemUserSpawner):
     #def docker(self, method, *args, **kwargs):
     #    #return self.executor.submit(self._docker, method, *args, **kwargs)
     #    return super(MDLDockerSpawner, self).docker(method, *args, **kwargs)
+
 
 #
 # MDLDockerSpawner Parameters

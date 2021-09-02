@@ -137,10 +137,10 @@ if [ $(id -u) == 0 ] ; then
                 FLOWN=`ls -ld $FL | awk -F" " '{print $3}'`
                 if [[ "$FLOWN" == "root" && "$NB_TEACHER" == "$NB_USER" ]]; then
                     chown $NB_UID:$EGID $FL || true
-                    chmod 2775 $NB_UID:$EGID $FL || true
+                    chmod 2775 $FL || true
                 fi
                 #
-                if [ ! -e "$LK" ]; then
+                if [[ ! -e "$LK" || "$LK" == "." ]]; then
                     if [ "${LK:0:1}" != "-" ]; then
                         ln -s $FL $LK || true
                     else
@@ -163,10 +163,10 @@ if [ $(id -u) == 0 ] ; then
                 FLOWN=`ls -ld $FL | awk -F" " '{print $3}'`
                 if [[ "$FLOWN" == "root" && "$NB_TEACHER" == "$NB_USER" ]]; then
                     chown $NB_UID:$EGID $FL || true
-                    chmod 3777 $NB_UID:$EGID $FL || true
+                    chmod 3777 $FL || true
                 fi
                 #
-                if [ ! -e "$LK" ]; then
+                if [[ ! -e "$LK" || "$LK" == "." ]]; then
                     if [ "${LK:0:1}" != "-" ]; then
                         ln -s $FL $LK || true
                     else
@@ -185,28 +185,26 @@ if [ $(id -u) == 0 ] ; then
             FL=`echo $PRSNAL | cut -d ':' -f 1`
             LK=`echo $PRSNAL | cut -d ':' -f 2`
             #
-            if [ "$FL" != "" ]; then
+            if [[ "$FL" != "" && "$LK" != "" ]]; then
                 if [ ! -d "$FL" ]; then
                     mkdir -p $FL || true
-                    chown $NB_UID:$EGID $FL || true
-                    chmod 0700 $NB_UID:$EGID $FL || true
+                    chown $NB_UID:$NB_GID $FL || true
+                    chmod 0700 $FL || true
                 fi
                 #
-                if [ "$LK" != "" ]; then
-                    if [ ! -e "$LK" ]; then
-                        if [ "${LK:0:1}" != "-" ]; then
-                            ln -s $FL $LK || true
-                        else
-                            if [ "$NB_TEACHER" == "$NB_USER" ]; then
-                                ln -s $FL "${LK:1}" || true
-                            fi
+                if [[ ! -e "$LK" || "$LK" == "." ]]; then
+                    if [ "${LK:0:1}" != "-" ]; then
+                        ln -s $FL $LK || true
+                    else
+                        if [ "$NB_TEACHER" == "$NB_USER" ]; then
+                            ln -s $FL "${LK:1}" || true
                         fi
                     fi
                 fi
                 #
                 VF=`echo $FL | sed -e "s/\/mdl_prs_/\/mdl_vol_/"`
                 if [[ -d "$VF" && "$VF" != "$FL" ]]; then
-                    cp --no-clobber -R $VF/* $FL || true
+                    cp --no-clobber -Rd $VF/* $FL || true
                     chown -R $NB_UID:$EGID $FL || true
                 fi
             fi
