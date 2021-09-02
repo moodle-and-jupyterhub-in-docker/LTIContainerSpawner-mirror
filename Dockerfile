@@ -1,5 +1,5 @@
-FROM jupyter/base-notebook
-#FROM jupyterhub/singleuser
+#FROM jupyter/base-notebook
+FROM jupyterhub/singleuser
 #FROM jupyter/datascience-notebook
 #FROM jupyter/tensorflow-notebook
 #FROM jupyter/scipy-notebook
@@ -21,7 +21,7 @@ COPY etc/passwd /etc/passwd.orig
 COPY etc/group  /etc/group.orig
 RUN  chmod a+rx /usr/local/bin/* \
   && chmod a+rx /usr/bin/ipynb_*
-RUN  /opt/conda/bin/conda install --prefix /opt/conda conda -y \
+RUN  /opt/conda/bin/conda install --prefix /opt/conda conda==4.10.3 -y \
   && /opt/conda/bin/conda install --prefix /opt/conda -c conda-forge jupyterhub -y \
   && /opt/conda/bin/conda install --prefix /opt/conda -c conda-forge jupyterlab -y \
   && /opt/conda/bin/conda update  --prefix /opt/conda --all -y \
