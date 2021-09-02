@@ -1,5 +1,5 @@
 /**  
-    pynb_conv.c : ipnb ファイル 変換 v0.9.2
+    pynb_conv.c : ipnb ファイル 変換 v0.9.3
         filename: と codenum: を metadata の tags の配列に追加 
                                                    
                     by Fumi.Iseki    2021 8/19    BSD License.
@@ -35,7 +35,16 @@ int main(int argc, char** argv)
 
     //
     tJson* pp = json_parse_file(in_file, 999);
+    if (pp==NULL) exit(1);
+    if (pp->state!=JBXL_JSON_PARSED) {
+        del_json(&pp);
+        exit(1);
+    }
     tList* ls = search_all_node_strval_json(pp, (char*)"cell_type", (char*)"code");
+    if (ls==NULL) {
+        del_json(&pp);
+        exit(1);
+    }
     //
     while (ls!=NULL) {
         if (ls->altp!=NULL) {

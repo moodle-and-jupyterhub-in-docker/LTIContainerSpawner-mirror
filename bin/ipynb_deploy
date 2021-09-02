@@ -3,29 +3,28 @@
 
 #
 if [ $# -lt 1 ]; then
-    echo "usage .... "$0"  dest_dir"
+    echo "usage ... "$0" dest_dir [num_fac]"
     exit 1
 fi
 
-S_DIR="."
 D_DIR="$1"
 N_FAC="$2"
 
-FLS=`ls -l $S_DIR |grep ^- | awk -F" " '{print $9}'`
+FLS=`ls -l *.ipynb 2>/dev/null |grep ^- | awk -F" " '{print $9}'`
 
 if [ "$FLS" != "" ]; then
-    if [  -d $D_DIR ]; then
+    if [ -e $D_DIR ]; then
         for FL in $FLS ; do
-            EXN=`echo $FL | sed 's/^.*\.\([^\.]*\)$/\1/'`
-            FNM=`echo $FL | sed 's/\.[^\.]*$//'`
+            EXN=`echo $FL | sed -e 's/^.*\.\([^\.]*\)$/\1/'`
+            FNM=`echo $FL | sed -e 's/\.[^\.]*$//'`
             #
             if [ "$EXN" == "ipynb" ]; then
-                echo   "配置中...  "$FL $D_DIR/${FNM}.$EXN $N_FAC
-                /usr/bin/ipynb_conv $FL $D_DIR/${FNM}.$EXN $N_FAC
+                echo "deploying ... "$FL $D_DIR/${FNM}.$EXN $N_FAC
+                /usr/bin/ipynb_conv  $FL $D_DIR/${FNM}.$EXN $N_FAC
             fi
         done
     else
-        echo "配置先のディレクトリ "$D_DIR" が存在しません．"
+        echo "$D_DIR is not exist."
     fi
 fi
 

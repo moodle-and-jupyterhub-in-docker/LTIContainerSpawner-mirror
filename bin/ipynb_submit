@@ -1,0 +1,32 @@
+#!/bin/bash
+#
+
+WRK_DIR="~/jupyter/works"
+
+#
+if [ $# -lt 1 ]; then
+    echo "usage ... "$0" filename submit_dir"
+    exit 1
+fi
+
+FL="$1"
+if [ "${2:0:1}" == "~" ]; then 
+    D_DIR="$2"
+else
+    D_DIR=${WRK_DIR}/"$2"
+fi
+USR=`whoami`
+
+
+if [ -e $D_DIR ]; then
+    EXN=`echo $FL | sed -e 's/^.*\.\([^\.]*\)$/\1/'`
+    FNM=`echo $FL | sed -e 's/\.[^\.]*$//'`
+    #
+    if [ "$EXN" == "ipynb" ]; then
+        echo "copying ... "$FL $D_DIR/${USR}_${FNM}.$EXN 
+        cp                 $FL $D_DIR/${USR}_${FNM}.$EXN 
+    fi
+else
+    echo "$D_DIR is not exist."
+fi
+

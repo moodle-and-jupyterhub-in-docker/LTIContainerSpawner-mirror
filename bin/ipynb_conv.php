@@ -34,6 +34,7 @@ $contents = fread($fp, filesize($in_file));
 fclose($fp);
 
 $json = json_decode($contents, false);
+if ($json==null) exit(1);
 
 
 /**

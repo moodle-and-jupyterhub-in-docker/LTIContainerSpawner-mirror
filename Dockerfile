@@ -10,6 +10,7 @@ COPY bin/start-notebook.sh   /usr/local/bin
 COPY bin/start-singleuser.sh /usr/local/bin
 COPY bin/ipynb_conv   /usr/bin
 COPY bin/ipynb_deploy /usr/bin
+COPY bin/ipynb_submit /usr/bin
 COPY etc/.bashrc /root
 COPY etc/.bashrc /etc/skel
 COPY etc/.bash_profile /root
