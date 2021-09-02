@@ -4,6 +4,7 @@ COPY bin/start.sh  /usr/local/bin
 COPY bin/commit.sh /usr/local/bin
 COPY bin/ipynb_conv   /usr/bin
 COPY bin/ipynb_deploy /usr/bin
+COPY bin/ipynb_submit /usr/bin
 RUN  chmod a+rx /usr/bin/ipynb_* \
   && chmod a+rx /usr/local/bin/* 
 COPY etc/.bashrc /root
@@ -14,10 +15,11 @@ COPY etc/.vimrc /root
 COPY etc/.vimrc /etc/skel
 COPY etc/passwd /etc/passwd.orig
 COPY etc/group  /etc/group.orig
-RUN  /opt/conda/bin/conda update  --prefix /opt/conda conda -y \
+RUN  /opt/conda/bin/conda install --prefix /opt/conda conda -y \
   && /opt/conda/bin/conda install --prefix /opt/conda -c conda-forge jupyterhub -y \
   && /opt/conda/bin/conda install --prefix /opt/conda -c conda-forge jupyterlab -y \
   && /opt/conda/bin/conda update  --prefix /opt/conda --all -y \
+  && /opt/conda/bin/conda clean   --all -y \
   && true
 RUN  /opt/conda/bin/conda install --prefix /opt/conda -c conda-forge xeus-cling -y \
   && /opt/conda/bin/pip install   --prefix /opt/conda jupyter_c_kernel \

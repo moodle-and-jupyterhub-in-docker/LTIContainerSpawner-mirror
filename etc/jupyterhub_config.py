@@ -99,11 +99,14 @@
 #c.JupyterHub.authenticator_class = 'jupyterhub.auth.PAMAuthenticator'
 #c.PAMAuthenticator.open_sessions = False
 
-# for LTI
+# for LTI v1.2.0
 c.JupyterHub.authenticator_class = 'ltiauthenticator.LTIAuthenticator'
-c.LTIAuthenticator.consumers = {
+
+c.LTI11Authenticator.consumers = {
     "b18e82ec683724743236fade71350720029a29144a585c66f6741d8e9c6e0d83" : "c0fe2924dbb0f4701d898d36aaf9fd89c7a3ed3a7db6f0003d0e825a7eccb41c"
 }
+c.LTI11Authenticator.username_key = 'ext_user_username'
+
 
 # for LDAP
 #c.JupyterHub.authenticator_class = 'ldapauthenticator.LDAPAuthenticator'
@@ -552,7 +555,7 @@ class MDLDockerSpawner(SystemUserSpawner):
     @property
     def host_homedir(self):
         if (self.host_homedir_format_string is not None and
-            self.host_homedir_format_string != ''):
+            self.host_homedir_format_string != ""):
             homedir = self.host_homedir_format_string.format(username=self.user.name, groupname=self.get_groupname())
         else:
             import pwd

@@ -1,8 +1,8 @@
 FROM jupyter/base-notebook
-#FROM jupyter/tensorflow-notebook
-#FROM jupyter/datascience-notebook
-#FROM jupyter/scipy-notebook
 #FROM jupyterhub/singleuser
+#FROM jupyter/datascience-notebook
+#FROM jupyter/tensorflow-notebook
+#FROM jupyter/scipy-notebook
 USER root
 COPY bin/start.sh  /usr/local/bin
 COPY bin/commit.sh /usr/local/bin
@@ -21,10 +21,11 @@ COPY etc/passwd /etc/passwd.orig
 COPY etc/group  /etc/group.orig
 RUN  chmod a+rx /usr/local/bin/* \
   && chmod a+rx /usr/bin/ipynb_*
-RUN  /opt/conda/bin/conda update  --prefix /opt/conda conda -y \
+RUN  /opt/conda/bin/conda install --prefix /opt/conda conda -y \
   && /opt/conda/bin/conda install --prefix /opt/conda -c conda-forge jupyterhub -y \
   && /opt/conda/bin/conda install --prefix /opt/conda -c conda-forge jupyterlab -y \
   && /opt/conda/bin/conda update  --prefix /opt/conda --all -y \
+  && /opt/conda/bin/conda clean   --all -y \
   && true
 RUN  apt-get update \
   && apt-get upgrade -y \
