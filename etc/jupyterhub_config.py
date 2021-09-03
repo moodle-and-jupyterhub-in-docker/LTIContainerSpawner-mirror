@@ -101,7 +101,7 @@
 
 # for LTI v1.2.0
 c.JupyterHub.authenticator_class = 'ltiauthenticator.LTIAuthenticator'
-
+#
 c.LTI11Authenticator.consumers = {
     "b18e82ec683724743236fade71350720029a29144a585c66f6741d8e9c6e0d83" : "c0fe2924dbb0f4701d898d36aaf9fd89c7a3ed3a7db6f0003d0e825a7eccb41c"
 }
@@ -1061,12 +1061,17 @@ c.JupyterHub.ssl_key = '/etc/gitlab/ssl/gitlab.key'
 #  created for each user. If there are 20 JupyterHub users, there will be 20
 #  instances of the subclass.
 
+moodle_url = 'https://el.mml.tuis.ac.jp' 
+frame_ancestors = "frame-ancestors 'self' " + moodle_url
+
 ## Extra arguments to be passed to the single-user server.
 #  
 #  Some spawners allow shell-style expansion here, allowing you to use
 #  environment variables here. Most, including the default, do not. Consult the
 #  documentation for your spawner to verify!
 #c.Spawner.args = []
+c.Spawner.args = ['--NotebookApp.tornado_settings={"headers":{"Content-Security-Policy": "'+ frame_ancestors + '" }}']
+c.JupyterHub.tornado_settings={"headers":{"Content-Security-Policy": frame_ancestors }}
 
 ## An optional hook function that you can implement to pass `auth_state` to the
 #  spawner after it has been initialized but before it starts. The `auth_state`
