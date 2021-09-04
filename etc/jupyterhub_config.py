@@ -504,8 +504,8 @@ import pwd, os, grp, re
 class MDLDockerSpawner(SystemUserSpawner):
 
     use_group = Bool(True, config = True,)
-    host_homedir_format_string  = Unicode( "/home/{groupname}/{username}", config = True,)
-    image_homedir_format_string = Unicode( "/home/{groupname}/{username}", config = True,)
+    host_homedir_format_string  = Unicode("/home/{groupname}/{username}", config = True,)
+    image_homedir_format_string = Unicode("/home/{groupname}/{username}", config = True,)
 
     courses_dir = Unicode('.courses', config = True,)
     works_dir   = Unicode('works', config = True,)
@@ -520,11 +520,13 @@ class MDLDockerSpawner(SystemUserSpawner):
     custom_volumes_cmd  = Unicode('mdl_vol_',    config = True,)
     custom_submits_cmd  = Unicode('mdl_sub_',    config = True,)
     custom_prsnals_cmd  = Unicode('mdl_prs_',    config = True,)
+    custom_iframe_cmd   = Unicode('mdl_iframe',  config = True,)
     custom_option_cmd   = Unicode('mdl_option',  config = True,)
 
     #
     course_id = ''
     host_name = ''
+    host_url  = ''
     userdata  = {}
     custom_image    = ''
     custom_suburl   = ''
@@ -534,11 +536,15 @@ class MDLDockerSpawner(SystemUserSpawner):
     custom_volumes  = {}
     custom_submits  = {}
     custom_prsnals  = {}
+    custom_iframe   = False
     custom_option   = ''
 
+
     def init_custom_parameters(self):
+        #print('=== init_custom_parameters() ===')
         self.course_id = '0'
         self.host_name = 'localhost'
+        self.host_url  = 'http://localhost'
         self.userdara  = {}
         self.custom_image    = ''
         self.custom_suburl   = ''
@@ -548,7 +554,9 @@ class MDLDockerSpawner(SystemUserSpawner):
         self.custom_volumes  = {}
         self.custom_submits  = {}
         self.custom_prsnals  = {}
+        self.custom_iframe   = False
         self.custom_option   = ''
+        #
         return
 
 
@@ -583,25 +591,45 @@ class MDLDockerSpawner(SystemUserSpawner):
 
 
     def get_args(self):
+        #print('=== get_args() ===')
         args = super(MDLDockerSpawner, self).get_args()
+
+        if self.custom_iframe :
+            frame_ancestors = "frame-ancestors 'self' " + self.host_url
+            args.append('--NotebookApp.tornado_settings={"headers":{"Content-Security-Policy": "'+ frame_ancestors + '" }, ' +
+                                                        '"cookie_options": { "SameSite": "None", "Secure": True } }')
+            #get_config().NotebookApp.disable_check_xsrf = True
         return args
 
 
+    #def auth_hook(authenticator, handler, authentication):
+    #    print('=== auth_hook() ===')
+
+
+    #def spawn_hook(self):
+    #    print('=== spawn_hook() ===')
+
+
+    #
     # for custom data
     # Moodle のカスタムパラメータから情報を得る
     #
     def userdata_hook(self, auth_state):
+        #print('=== userdata_hook() ===')
         self.userdata = auth_state              # raw data
         self.init_custom_parameters()
 
         for key, value in self.userdata.items():
             
-            if key == 'context_id' : self.course_id = value     # Course ID
+            if key == 'context_id' : self.course_id = value         # Course ID
 
             elif key == 'lis_outcome_service_url' : 
-                self.host_name = urlparse(value).netloc         # Moodle Hostname
+                parsed = urlparse(value)
+                self.host_name = parsed.netloc                      # Moodle Host Name
+                scheme = parsed.scheme
+                self.host_url  = scheme + '://' + self.host_name    # Moodle Host URL
             #
-            elif key.startswith('custom_'):                     # Custom Command
+            elif key.startswith('custom_'):                         # Custom Command
                 costom_cmd = key.replace('custom_', '')
                 #
                 if costom_cmd == self.custom_image_cmd:                                         # Container Image Command
@@ -639,6 +667,10 @@ class MDLDockerSpawner(SystemUserSpawner):
                 elif costom_cmd[0:len(self.custom_option_cmd)] == self.custom_option_cmd:       # Option Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
                     self.custom_option = value
+                #
+                elif costom_cmd[0:len(self.custom_iframe_cmd)] == self.custom_iframe_cmd:       # iframe Command
+                    if value == '1' :
+                        self.custom_iframe = True
         return
 
 
@@ -646,6 +678,7 @@ class MDLDockerSpawner(SystemUserSpawner):
     # ユーザのアクセス情報をチェックし，マウントする課題ボリュームのパスの配列を返す．
     #
     def get_volumes_info(self, assoc):
+        #print('=== get_volumes_info() ===')
         vols = []
         for key, value in assoc.items():
             usrs = []
@@ -675,6 +708,7 @@ class MDLDockerSpawner(SystemUserSpawner):
     # NB_GROUP, NB_UMASK, NB_VOLUMES, NB_SUBMITS, NB_PRSNAL, NB_TEACHER, NB_THRGROUP, NB_THRGID, ...
     #
     def get_env(self):
+        #print('=== get_env() ===')
         env = super(MDLDockerSpawner, self).get_env()
         if self.use_group and self.group_id >= 0:
             import grp
@@ -706,7 +740,11 @@ class MDLDockerSpawner(SystemUserSpawner):
         return env
 
 
+    #
+    # START MDLDockerSpawner
+    #
     def start(self):
+        #print('=== start() ===')
         name = self.user.name
         user_data = pwd.getpwnam(name)
         user_gid = user_data.pw_gid
@@ -736,8 +774,10 @@ class MDLDockerSpawner(SystemUserSpawner):
             self.volumes[dirname] = fullpath_dir + '/' + mountp
 
         self.remove = True
-        return super(MDLDockerSpawner, self).start()
 
+        c = get_config()
+        #print('=== START MDLDockerSpawner ===')
+        return super(MDLDockerSpawner, self).start()
 
 
     #def stop(self, now=True):
@@ -767,6 +807,8 @@ class MDLDockerSpawner(SystemUserSpawner):
 # MDLDockerSpawner Parameters
 #
 
+host_url = 'https://el.mml.tuis.ac.jp'          # Moodle Host URL for iframe
+
 c.MDLDockerSpawner.use_group = True
 
 # Volumes are mounted at /user_home_dir/projects_dir/works_dir/courses_dir
@@ -775,7 +817,7 @@ projects_dir  = 'jupyter'
 works_dir     = 'works'
 courses_dir   = '.courses'
 #
-teacher_gid   = 7000       # 1000以上で，システムで使用していないGID
+teacher_gid   = 7000                            # 1000以上で，システムで使用していないGID
 
 #
 notebook_dir = user_home_dir + '/' + projects_dir
@@ -797,6 +839,7 @@ c.MDLDockerSpawner.teacher_gid = teacher_gid
 #custom_submits_cmd  = 'mdl_sub_'
 #custom_prsnals_cmd  = 'mdl_prs_'
 #custom_grpname_cmd  = 'mdl_grpname'
+#custom_iframe_cmd   = 'mdl_iframe'
 #custom_option_cmd   = 'mdl_option'
 #
 #c.MDLDockerSpawner.custom_image_cmd    = custom_image_cmd
@@ -807,6 +850,7 @@ c.MDLDockerSpawner.teacher_gid = teacher_gid
 #c.MDLDockerSpawner.custom_submits_cmd  = custom_submits_cmd
 #c.MDLDockerSpawner.custom_prsnals_cmd  = custom_prsnals_cmd
 #c.MDLDockerSpawner.custom_grpname_cmd  = custom_grpname_cmd
+#c.MDLDockerSpawner.custom_iframe_cmd   = custom_iframe_cmd
 #c.MDLDockerSpawner.custom_option_cmd   = custom_option_cmd
 
 #
@@ -847,6 +891,14 @@ c.JupyterHub.services = [
 #c.Exchange.root = '/home/share/nbgrader/exchange'
 c.Exchange.timestamp_format = '%Y%m%d %H:%M:%S %Z'
 c.Exchange.timezone = 'JST-9'
+
+#
+# for iframe
+c.JupyterHub.tornado_settings = {
+    "headers":{ "Content-Security-Policy": "frame-ancestors 'self' " + host_url }, 
+    "cookie_options": {"SameSite": "None", "Secure": True } 
+}
+
 
 #
 ## Interval (in seconds) at which to check connectivity of services with web
@@ -1061,17 +1113,12 @@ c.JupyterHub.ssl_key = '/etc/gitlab/ssl/gitlab.key'
 #  created for each user. If there are 20 JupyterHub users, there will be 20
 #  instances of the subclass.
 
-moodle_url = 'https://el.mml.tuis.ac.jp' 
-frame_ancestors = "frame-ancestors 'self' " + moodle_url
-
 ## Extra arguments to be passed to the single-user server.
 #  
 #  Some spawners allow shell-style expansion here, allowing you to use
 #  environment variables here. Most, including the default, do not. Consult the
 #  documentation for your spawner to verify!
 #c.Spawner.args = []
-c.Spawner.args = ['--NotebookApp.tornado_settings={"headers":{"Content-Security-Policy": "'+ frame_ancestors + '" }}']
-c.JupyterHub.tornado_settings={"headers":{"Content-Security-Policy": frame_ancestors }}
 
 ## An optional hook function that you can implement to pass `auth_state` to the
 #  spawner after it has been initialized but before it starts. The `auth_state`
@@ -1318,6 +1365,7 @@ c.Spawner.http_timeout = 60
 #  
 #      c.Spawner.pre_spawn_hook = my_hook
 #c.Spawner.pre_spawn_hook = None
+#c.Spawner.pre_spawn_hook = MDLDockerSpawner.spawn_hook
 
 ## List of SSL alt names
 #  
@@ -1439,6 +1487,7 @@ os.environ['JUPYTERHUB_CRYPT_KEY'] = 'c283a5e73c8f74cdc8c6fef5415f1c97948a5a5450
 #  
 #      c.Authenticator.post_auth_hook = my_hook
 #c.Authenticator.post_auth_hook = None
+#c.Authenticator.post_auth_hook = MDLDockerSpawner.auth_hook
 
 ## Force refresh of auth prior to spawn.
 #  
