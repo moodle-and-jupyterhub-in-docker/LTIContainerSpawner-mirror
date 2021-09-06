@@ -1,4 +1,4 @@
-FROM vhtec/jupyter-docker
+FROM vhtec/jupyter-notebook
 USER root
 COPY bin/start.sh /usr/local/bin
 COPY bin/start-notebook.sh   /usr/local/bin

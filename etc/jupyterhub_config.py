@@ -604,6 +604,7 @@ class MDLDockerSpawner(SystemUserSpawner):
 
     #def auth_hook(authenticator, handler, authentication):
     #    print('=== auth_hook() ===')
+    #    return authentication
 
 
     #def spawn_hook(self):
@@ -807,8 +808,6 @@ class MDLDockerSpawner(SystemUserSpawner):
 # MDLDockerSpawner Parameters
 #
 
-host_url = 'https://el.mml.tuis.ac.jp'          # Moodle Host URL for iframe
-
 c.MDLDockerSpawner.use_group = True
 
 # Volumes are mounted at /user_home_dir/projects_dir/works_dir/courses_dir
@@ -830,7 +829,7 @@ c.MDLDockerSpawner.teacher_gid = teacher_gid
 #
 # for debug
 # do not change this!
-# LTI custom command: 変更する場合は Moodle のモジュールも変更する必要がある
+# LTI custom command: 変更する場合は Moodle のモジュール(mod_mdlds) も変更する必要がある
 #custom_image_cmd    = 'mdl_image'
 #custom_suburl_cmd   = 'mdl_suburl'
 #custom_users_cmd    = 'mdl_user'
@@ -885,19 +884,23 @@ c.JupyterHub.services = [
     }
 ]
 
+#
+# for iframe
+#
+iframe_url = 'https://*'                          # iframe Host URL
+
+c.JupyterHub.tornado_settings = {
+    "headers":{ "Content-Security-Policy": "frame-ancestors 'self' https://* " + iframe_url }, 
+    "cookie_options": {"SameSite": "None", "Secure": True } 
+}
+
 
 #
 #c.NbGrader.logfile = "/var/log/nbgrader.log"
 #c.Exchange.root = '/home/share/nbgrader/exchange'
+
 c.Exchange.timestamp_format = '%Y%m%d %H:%M:%S %Z'
 c.Exchange.timezone = 'JST-9'
-
-#
-# for iframe
-c.JupyterHub.tornado_settings = {
-    "headers":{ "Content-Security-Policy": "frame-ancestors 'self' " + host_url }, 
-    "cookie_options": {"SameSite": "None", "Secure": True } 
-}
 
 
 #
