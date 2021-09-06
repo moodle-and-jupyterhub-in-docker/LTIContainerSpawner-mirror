@@ -2,7 +2,8 @@
 # Copyright (c) Jupyter Development Team.
 # Distributed under the terms of the Modified BSD License.
 #
-# This is modified by Fumi.Iseki for MDLDockerSpawner 2021 09/01 v0.90
+# This is modified by Fumi.Iseki for MDLDockerSpawner 2021 09/01 v0.91
+#                                Go! Go! Go! Don't stop script!!
 #
 
 set -e
@@ -44,7 +45,8 @@ run-hooks /usr/local/bin/start-notebook.d
 # Handle special flags if we're root
 if [ $(id -u) == 0 ] ; then
     
-    ##
+    #
+    # make home base directory
     HOME_DIR="/home"
     if [ "$NB_GROUP" != "" ]; then
         HOME_DIR="$HOME_DIR/$NB_GROUP"
@@ -54,9 +56,14 @@ if [ $(id -u) == 0 ] ; then
     fi
 
     #
-    # change the jovyan username if it exists
+    # create user account
     if id jovyan &> /dev/null ; then
         usermod -d $HOME_DIR/$NB_USER -l $NB_USER jovyan
+    fi
+    #
+    groupadd -f -g $NB_GID $NB_GROUP || true
+    if [ ! $(id -u $NB_USER 2>/dev/null) ]; then
+        useradd --home $HOME_DIR/$NB_USER -u $NB_UID -g $NB_GID -l $NB_USER || true
     fi
 
     #
@@ -108,11 +115,11 @@ if [ $(id -u) == 0 ] ; then
     EGID=$NB_GID
     if [ "$NB_TEACHER" == "$NB_USER" ]; then
         if [ "$NB_THRGID" != "" ]; then
-            groupadd -f -g $NB_THRGID $NB_THRGROUP 
+            groupadd -f -g $NB_THRGID $NB_THRGROUP || true
         else
             groupadd $NB_THRGROUP 
         fi
-        usermod -aG $NB_THRGROUP $NB_USER
+        usermod -aG $NB_THRGROUP $NB_USER || true
         
         EGID=`grep $NB_THRGROUP /etc/group | awk -F":" '{print $3}'`
         if [ "$EGID" == "" ]; then
@@ -227,18 +234,16 @@ if [ $(id -u) == 0 ] ; then
     #
     # Enable sudo if requested
     if [[ "$GRANT_SUDO" == "1" || "$GRANT_SUDO" == 'yes' ]]; then
-        echo "Granting $NB_USER sudo access and appending $CONDA_DIR/bin to sudo PATH"
-        echo "$NB_USER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/notebook
-        chmod 4111 /usr/bin/sudo
+        echo "$NB_USER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/notebook  || true
+        chmod 4111 /usr/bin/sudo || true
     fi
     # Add $CONDA_DIR/bin to sudo secure_path
-    sed -r "s#Defaults\s+secure_path\s*=\s*\"?([^\"]+)\"?#Defaults secure_path=\"\1:$CONDA_DIR/bin\"#" /etc/sudoers | grep secure_path > /etc/sudoers.d/path
+    sed -r "s#Defaults\s+secure_path\s*=\s*\"?([^\"]+)\"?#Defaults secure_path=\"\1:$CONDA_DIR/bin\"#" /etc/sudoers | grep secure_path > /etc/sudoers.d/path || true
 
     # Exec the command as NB_USER with the PATH and the rest of
     # the environment preserved
     run-hooks /usr/local/bin/before-notebook.d
-    echo "Executing the command: ${cmd[@]}"
-    exec sudo -E -H -u $NB_USER PATH=$PATH XDG_CACHE_HOME=$HOME_DIR/$NB_USER/.cache PYTHONPATH=${PYTHONPATH:-} "${cmd[@]}"
+    exec sudo -E -H -u $NB_USER PATH=$PATH XDG_CACHE_HOME=$HOME_DIR/$NB_USER/.cache PYTHONPATH=${PYTHONPATH:-} "${cmd[@]}" 
 else
     if [[ "$NB_UID" == "$(id -u jovyan 2>/dev/null)" && "$NB_GID" == "$(id -g jovyan 2>/dev/null)" ]]; then
         # User is not attempting to override user/group via environment
