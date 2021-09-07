@@ -13,7 +13,6 @@ if [ "$TERM" = "linux" ]; then
     LANG=C
 fi
 
-
 # addpath $HOME/bin
 BASH_ENV=$HOME/.bashrc
 PKG_CONFIG_PATH=/usr/lib/pkgconfig/
