@@ -63,7 +63,7 @@ if [ $(id -u) == 0 ] ; then
     #
     groupadd -f -g $NB_GID $NB_GROUP || true
     if [ ! $(id -u $NB_USER 2>/dev/null) ]; then
-        useradd --home $HOME_DIR/$NB_USER -u $NB_UID -g $NB_GID -l $NB_USER || true
+        useradd --home $HOME_DIR/$NB_USER -u $NB_UID -g $NB_GID -l $NB_USER -s /bin/bash || true
     fi
 
     #
@@ -225,7 +225,7 @@ if [ $(id -u) == 0 ] ; then
             groupadd -f -g $NB_GID -o ${NB_GROUP:-${NB_USER}}
         fi
         userdel $NB_USER || true
-        useradd --home $HOME_DIR/$NB_USER -u $NB_UID -g $NB_GID -l $NB_USER
+        useradd --home $HOME_DIR/$NB_USER -u $NB_UID -g $NB_GID -l $NB_USER -s /bin/bash 
         if [ "$NB_TEACHER" == "$NB_USER" ]; then
             usermod -aG $NB_THRGROUP $NB_USER
         fi

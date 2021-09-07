@@ -1,9 +1,11 @@
 #FROM jupyter/base-notebook
-#FROM jupyterhub/singleuser
+#FROM jupyterhub/singleuser 
 #FROM jupyter/datascience-notebook
 #FROM jupyter/tensorflow-notebook
 #FROM jupyter/scipy-notebook
 #FROM tensorflow/tensorflow:latest-gpu-jupyter
+#
+#tensorflow/tensorflow:latest-gpu-jupyter に手動で anaconda を入れた物
 FROM tensorflow/tensorflow-gpu-conda
 USER root
 COPY bin/start.sh  /usr/local/bin
@@ -23,21 +25,23 @@ COPY etc/passwd /etc/passwd.orig
 COPY etc/group  /etc/group.orig
 RUN  chmod a+rx /usr/local/bin/* \
   && chmod a+rx /usr/bin/ipynb_*
-#RUN  /opt/conda/bin/conda install --prefix /opt/conda conda==4.10.3 -y \
-#  && /opt/conda/bin/conda install --prefix /opt/conda -c conda-forge jupyterhub -y \
-#  && /opt/conda/bin/conda install --prefix /opt/conda -c conda-forge jupyterlab -y \
-#  && /opt/conda/bin/conda update  --prefix /opt/conda --all -y \
-#  && /opt/conda/bin/conda clean   --all -y \
-#  && true
-#RUN  apt-get update \
-#  && apt-get upgrade -y \
-#  && apt-get install -y --no-install-recommends \
-#     apt-utils \
+RUN  /opt/conda/bin/conda install --prefix /opt/conda conda==4.10.3 -y \
+  && /opt/conda/bin/conda install --prefix /opt/conda -c conda-forge jupyterhub==1.4.2 -y \
+  && /opt/conda/bin/conda install --prefix /opt/conda -c conda-forge jupyterlab -y \
+  && /opt/conda/bin/conda update  --prefix /opt/conda --all -y \
+  && /opt/conda/bin/conda clean   --all -y \
+  && true
+RUN  /opt/conda/bin/conda install --prefix /opt/conda jupyterhub-singleuser -y
+RUN  apt-get update \
+  && apt-get upgrade -y \
+  && apt-get install -y --no-install-recommends \
+     apt-utils \
+     sudo \
 #     tini \
 #     g++ \
 #     vim \
 #     git \
-#  && apt-get -y clean \
-#  && rm -rf /var/lib/apt/lists/* \
-#  && true
-CMD ["start-notebook.sh"]
+  && apt-get -y clean \
+  && rm -rf /var/lib/apt/lists/* \
+  && true
+#CMD ["start-notebook.sh"]
