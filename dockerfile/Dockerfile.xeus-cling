@@ -27,8 +27,8 @@ RUN  /opt/conda/bin/conda install --prefix /opt/conda -c conda-forge xeus-cling 
   && true
 RUN  apt-get update \
   && apt-get install -y --no-install-recommends \
-    apt-utils \
-    g++ \
+     apt-utils \
+     g++ \
   && apt-get upgrade -y \
   && apt-get -y clean \
   && rm -rf /var/lib/apt/lists/* \
