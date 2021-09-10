@@ -523,7 +523,7 @@ class MDLDockerSpawner(SystemUserSpawner):
     custom_submits_cmd  = 'mdl_sub_'
     custom_prsnals_cmd  = 'mdl_prs_'
     custom_iframe_cmd   = 'mdl_iframe'
-    custom_option_cmd   = 'mdl_option'
+    custom_options_cmd  = 'mdl_options'
 
     #
     course_id = ''
@@ -648,7 +648,7 @@ class MDLDockerSpawner(SystemUserSpawner):
                     self.custom_cpulimit = value
                 #
                 elif costom_cmd[0:len(self.custom_memlimit_cmd)] == self.custom_memlimit_cmd:   # Memory Limit Command
-                    value = re.sub('[^0-9KMGTP]', '', value)
+                    value = re.sub('[^0-9]', '', value)
                     self.custom_memlimit = value
                 #
                 elif costom_cmd == self.custom_defurl_cmd:                                      # Default URL Command
@@ -679,9 +679,9 @@ class MDLDockerSpawner(SystemUserSpawner):
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
                     self.custom_prsnals[costom_cmd] = value
                 #
-                elif costom_cmd[0:len(self.custom_option_cmd)] == self.custom_option_cmd:       # Option Command
-                    value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
-                    self.custom_option = value
+                #elif costom_cmd[0:len(self.custom_options_cmd)] == self.custom_options_cmd:     # Option Command
+                #    value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
+                #    self.custom_option = value
                 #
                 elif costom_cmd[0:len(self.custom_iframe_cmd)] == self.custom_iframe_cmd:       # iframe Command
                     if value == '1' :
@@ -1238,7 +1238,7 @@ c.Spawner.default_url = '/lab'
 #  Once a server has successfully been spawned, this is the amount of time we
 #  wait before assuming that the server is unable to accept connections.
 #c.Spawner.http_timeout = 30
-c.Spawner.http_timeout = 90
+c.Spawner.http_timeout = 60
 
 ## The IP address (or hostname) the single-user server should listen on.
 #  
@@ -1380,7 +1380,7 @@ c.Spawner.http_timeout = 90
 #  takes longer than this. start should return when the server process is started
 #  and its location is known.
 #c.Spawner.start_timeout = 60
-c.Spawner.start_timeout = 180
+c.Spawner.start_timeout = 120
 
 #------------------------------------------------------------------------------
 # Authenticator(LoggingConfigurable) configuration
