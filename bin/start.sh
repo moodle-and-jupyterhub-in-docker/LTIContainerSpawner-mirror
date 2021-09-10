@@ -2,8 +2,8 @@
 # Copyright (c) Jupyter Development Team.
 # Distributed under the terms of the Modified BSD License.
 #
-# This is modified by Fumi.Iseki for MDLDockerSpawner 2021 09/01 v0.91
-#                                Go! Go! Go! Don't stop script!!
+# This is modified by Fumi.Iseki for MDLDockerSpawner 2021 09/10 v0.92
+#                                       Don't stop! Go! Go! Go!!
 #
 
 set -e
