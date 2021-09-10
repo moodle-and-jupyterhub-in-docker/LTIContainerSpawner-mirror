@@ -512,16 +512,18 @@ class MDLDockerSpawner(SystemUserSpawner):
     teacher_gid = Int(7000, config = True,)
 
     # custom command
-    custom_image_cmd    = Unicode('mdl_image',   config = True,)
-    custom_suburl_cmd   = Unicode('mdl_suburl',  config = True,)
-    custom_grpname_cmd  = Unicode('mdl_grpname', config = True,)
-    custom_users_cmd    = Unicode('mdl_user',    config = True,)
-    custom_teachers_cmd = Unicode('mdl_teacher', config = True,)
-    custom_volumes_cmd  = Unicode('mdl_vol_',    config = True,)
-    custom_submits_cmd  = Unicode('mdl_sub_',    config = True,)
-    custom_prsnals_cmd  = Unicode('mdl_prs_',    config = True,)
-    custom_iframe_cmd   = Unicode('mdl_iframe',  config = True,)
-    custom_option_cmd   = Unicode('mdl_option',  config = True,)
+    custom_image_cmd    = 'mdl_image'
+    custom_cpulimit_cmd = 'mdl_cpulimit'
+    custom_memlimit_cmd = 'mdl_memlimit'
+    custom_defurl_cmd   = 'mdl_defurl'
+    custom_grpname_cmd  = 'mdl_grpname'
+    custom_users_cmd    = 'mdl_users'
+    custom_teachers_cmd = 'mdl_teachers'
+    custom_volumes_cmd  = 'mdl_vol_'
+    custom_submits_cmd  = 'mdl_sub_'
+    custom_prsnals_cmd  = 'mdl_prs_'
+    custom_iframe_cmd   = 'mdl_iframe'
+    custom_option_cmd   = 'mdl_option'
 
     #
     course_id = ''
@@ -529,7 +531,9 @@ class MDLDockerSpawner(SystemUserSpawner):
     host_url  = ''
     userdata  = {}
     custom_image    = ''
-    custom_suburl   = ''
+    custom_cpulimit = '0.0'
+    custom_memlimit = '0'
+    custom_defurl   = ''
     custom_grpname  = ''
     custom_users    = []
     custom_teachers = []
@@ -547,7 +551,9 @@ class MDLDockerSpawner(SystemUserSpawner):
         self.host_url  = 'http://localhost'
         self.userdara  = {}
         self.custom_image    = ''
-        self.custom_suburl   = ''
+        self.custom_cpulimit = '0.0'
+        self.custom_memlimit = '0'
+        self.custom_defurl   = ''
         self.custom_grpname  = 'TEACHERS'
         self.custom_users    = []
         self.custom_teachers = []
@@ -637,11 +643,19 @@ class MDLDockerSpawner(SystemUserSpawner):
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~ ]', '', value)
                     self.custom_image = value
                 #
-                elif costom_cmd == self.custom_suburl_cmd:                                      # Container URL Command
-                    value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~ ]', '', value)
-                    self.custom_suburl = value
+                elif costom_cmd[0:len(self.custom_cpulimit_cmd)] == self.custom_cpulimit_cmd:   # CPU Limit Command
+                    value = re.sub('[^0-9\.]', '', value)
+                    self.custom_cpulimit = value
                 #
-                elif costom_cmd[0:len(self.custom_teachers_cmd)] == self.custom_teachers_cmd:   # Teacher Command
+                elif costom_cmd[0:len(self.custom_memlimit_cmd)] == self.custom_memlimit_cmd:   # Memory Limit Command
+                    value = re.sub('[^0-9KMGTP]', '', value)
+                    self.custom_memlimit = value
+                #
+                elif costom_cmd == self.custom_defurl_cmd:                                      # Default URL Command
+                    value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~ ]', '', value)
+                    self.custom_defurl = value
+                #
+                elif costom_cmd[0:len(self.custom_teachers_cmd)] == self.custom_teachers_cmd:   # Teachers Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
                     self.custom_teachers = value.replace(',',' ').split()
                 #
@@ -649,19 +663,19 @@ class MDLDockerSpawner(SystemUserSpawner):
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
                     self.custom_grpname = value
                 #
-                elif costom_cmd == self.custom_users_cmd:                                       # User Command
+                elif costom_cmd == self.custom_users_cmd:                                       # Users Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
                     self.custom_users = value.replace(',',' ').split()
                 #
-                elif costom_cmd[0:len(self.custom_volumes_cmd)] == self.custom_volumes_cmd:     # Volume Command
+                elif costom_cmd[0:len(self.custom_volumes_cmd)] == self.custom_volumes_cmd:     # Volumes Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
                     self.custom_volumes[costom_cmd] = value
                 #
-                elif costom_cmd[0:len(self.custom_submits_cmd)] == self.custom_submits_cmd:     # Submit Volume Command
+                elif costom_cmd[0:len(self.custom_submits_cmd)] == self.custom_submits_cmd:     # Submits Volume Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
                     self.custom_submits[costom_cmd] = value
                 #
-                elif costom_cmd[0:len(self.custom_prsnals_cmd)] == self.custom_prsnals_cmd:     # Personal Volume Command
+                elif costom_cmd[0:len(self.custom_prsnals_cmd)] == self.custom_prsnals_cmd:     # Personals Volume Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
                     self.custom_prsnals[costom_cmd] = value
                 #
@@ -758,11 +772,16 @@ class MDLDockerSpawner(SystemUserSpawner):
         mount_volumes = self.get_volumes_info(self.custom_volumes)
         mount_submits = self.get_volumes_info(self.custom_submits)
 
+        if self.custom_cpulimit != '':
+            self.cpu_limit = float(self.custom_cpulimit)
+        if self.custom_memlimit != '':
+            self.mem_limit = int(self.custom_memlimit)
+
         if self.custom_image != '':
             self.image = self.custom_image
 
-        if self.custom_suburl != '':
-            self.default_url = self.custom_suburl
+        if self.custom_defurl != '':
+            self.default_url = self.custom_defurl
 
         for volume in mount_volumes:
             mountp  = volume.rsplit(':')[0]
@@ -827,31 +846,6 @@ c.MDLDockerSpawner.works_dir   = works_dir
 c.MDLDockerSpawner.teacher_gid = teacher_gid
 
 #
-# for debug
-# do not change this!
-# LTI custom command: 変更する場合は Moodle のモジュール(mod_mdlds) も変更する必要がある
-#custom_image_cmd    = 'mdl_image'
-#custom_suburl_cmd   = 'mdl_suburl'
-#custom_users_cmd    = 'mdl_user'
-#custom_teachers_cmd = 'mdl_teacher'
-#custom_volumes_cmd  = 'mdl_vol_'
-#custom_submits_cmd  = 'mdl_sub_'
-#custom_prsnals_cmd  = 'mdl_prs_'
-#custom_grpname_cmd  = 'mdl_grpname'
-#custom_iframe_cmd   = 'mdl_iframe'
-#custom_option_cmd   = 'mdl_option'
-#
-#c.MDLDockerSpawner.custom_image_cmd    = custom_image_cmd
-#c.MDLDockerSpawner.custom_suburl_cmd   = custom_suburl_cmd
-#c.MDLDockerSpawner.custom_users_cmd    = custom_users_cmd
-#c.MDLDockerSpawner.custom_teachers_cmd = custom_teachers_cmd
-#c.MDLDockerSpawner.custom_volumes_cmd  = custom_volumes_cmd
-#c.MDLDockerSpawner.custom_submits_cmd  = custom_submits_cmd
-#c.MDLDockerSpawner.custom_prsnals_cmd  = custom_prsnals_cmd
-#c.MDLDockerSpawner.custom_grpname_cmd  = custom_grpname_cmd
-#c.MDLDockerSpawner.custom_iframe_cmd   = custom_iframe_cmd
-#c.MDLDockerSpawner.custom_option_cmd   = custom_option_cmd
-
 #
 c.Spawner.environment = {
     'GRANT_SUDO': 'no',                # 通常使用では 'no'
@@ -1244,7 +1238,7 @@ c.Spawner.default_url = '/lab'
 #  Once a server has successfully been spawned, this is the amount of time we
 #  wait before assuming that the server is unable to accept connections.
 #c.Spawner.http_timeout = 30
-c.Spawner.http_timeout = 60
+c.Spawner.http_timeout = 90
 
 ## The IP address (or hostname) the single-user server should listen on.
 #  
@@ -1386,7 +1380,7 @@ c.Spawner.http_timeout = 60
 #  takes longer than this. start should return when the server process is started
 #  and its location is known.
 #c.Spawner.start_timeout = 60
-c.Spawner.start_timeout = 120
+c.Spawner.start_timeout = 180
 
 #------------------------------------------------------------------------------
 # Authenticator(LoggingConfigurable) configuration
