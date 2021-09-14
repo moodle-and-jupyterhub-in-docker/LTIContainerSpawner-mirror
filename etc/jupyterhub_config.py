@@ -481,7 +481,7 @@ c.ConfigurableHTTPProxy.pid_file = '/var/lib/jupyterhub/jupyterhub-proxy.pid'
 
 
 #
-# MDLDockerSpawner v0.9.0 for Moodle/LTI by Fumi.Iseki
+# MDLDockerSpawner v0.9.2 for Moodle/LTI by Fumi.Iseki
 #
 #                                      BSD License.
 #
@@ -773,9 +773,11 @@ class MDLDockerSpawner(SystemUserSpawner):
         mount_submits = self.get_volumes_info(self.custom_submits)
 
         if self.custom_cpulimit != '':
-            self.cpu_limit = float(self.custom_cpulimit)
+            self.cpu_limit     = float(self.custom_cpulimit)
+            #self.cpu_guarantee = float(self.custom_cpulimit)
         if self.custom_memlimit != '':
-            self.mem_limit = int(self.custom_memlimit)
+            self.mem_limit     = int(self.custom_memlimit)
+            #self.mem_guarantee = int(self.custom_memlimit)
 
         if self.custom_image != '':
             self.image = self.custom_image
@@ -846,7 +848,6 @@ c.MDLDockerSpawner.works_dir   = works_dir
 c.MDLDockerSpawner.teacher_gid = teacher_gid
 
 #
-#
 c.Spawner.environment = {
     'GRANT_SUDO': 'no',                # 通常使用では 'no'
     'CHOWN_HOME': 'yes',
@@ -884,18 +885,18 @@ c.JupyterHub.services = [
 iframe_url = 'https://*'                          # iframe Host URL
 
 c.JupyterHub.tornado_settings = {
-    "headers":{ "Content-Security-Policy": "frame-ancestors 'self' https://* " + iframe_url }, 
+    "headers":{ "Content-Security-Policy": "frame-ancestors 'self' " + iframe_url }, 
     "cookie_options": {"SameSite": "None", "Secure": True } 
 }
+
+#
+c.Exchange.timestamp_format = '%Y%m%d %H:%M:%S %Z'
+c.Exchange.timezone = 'JST-9'
 
 
 #
 #c.NbGrader.logfile = "/var/log/nbgrader.log"
 #c.Exchange.root = '/home/share/nbgrader/exchange'
-
-c.Exchange.timestamp_format = '%Y%m%d %H:%M:%S %Z'
-c.Exchange.timezone = 'JST-9'
-
 
 #
 ## Interval (in seconds) at which to check connectivity of services with web
