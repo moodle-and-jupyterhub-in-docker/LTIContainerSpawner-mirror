@@ -606,7 +606,7 @@ class MDLDockerSpawner(SystemUserSpawner):
             #                                         + ', "cookie_options": { "SameSite": "None", "Secure": True }'
                                                      + '}'
             )
-            #get_config().NotebookApp.disable_check_xsrf = True
+        #get_config().NotebookApp.disable_check_xsrf = True
         return args
 
 
