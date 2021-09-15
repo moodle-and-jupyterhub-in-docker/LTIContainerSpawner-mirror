@@ -155,8 +155,8 @@ c.LDAPAuthenticator.user_attribute = 'sAMAccountName'
 
 ##
 # My IP Address
-#my_ip_addr = '172.22.1.75'
-my_ip_addr = '202.26.150.55'
+my_ip_addr = '172.22.1.75'
+#my_ip_addr = '202.26.150.55'
 
 ## The public facing URL of the whole JupyterHub application.
 #  
@@ -602,8 +602,10 @@ class MDLDockerSpawner(SystemUserSpawner):
 
         if self.custom_iframe :
             frame_ancestors = "frame-ancestors 'self' " + self.host_url
-            args.append('--NotebookApp.tornado_settings={"headers":{"Content-Security-Policy": "'+ frame_ancestors + '" }, ' +
-                                                        '"cookie_options": { "SameSite": "None", "Secure": True } }')
+            args.append('--NotebookApp.tornado_settings={ "headers":{"Content-Security-Policy": "'+ frame_ancestors + '" }'
+            #                                         + ', "cookie_options": { "SameSite": "None", "Secure": True }'
+                                                     + '}'
+            )
             #get_config().NotebookApp.disable_check_xsrf = True
         return args
 
@@ -762,8 +764,8 @@ class MDLDockerSpawner(SystemUserSpawner):
         #print('=== start() ===')
         name = self.user.name
         user_data = pwd.getpwnam(name)
-        user_gid = user_data.pw_gid
-        gid_list = os.getgrouplist(name, user_gid)
+        user_gid  = user_data.pw_gid
+        gid_list  = os.getgrouplist(name, user_gid)
         self.volumes = {}
 
         fullpath_dir = self.notebook_dir + '/' + self.works_dir
@@ -797,7 +799,7 @@ class MDLDockerSpawner(SystemUserSpawner):
 
         self.remove = True
 
-        c = get_config()
+        #c = get_config()
         #print('=== START MDLDockerSpawner ===')
         return super(MDLDockerSpawner, self).start()
 
@@ -849,7 +851,7 @@ c.MDLDockerSpawner.teacher_gid = teacher_gid
 
 #
 c.Spawner.environment = {
-    'GRANT_SUDO': 'no',                # 通常使用では 'no'
+    'GRANT_SUDO': 'yes',                # 通常使用では 'no'
     'CHOWN_HOME': 'yes',
     'PRJCT_DIR' : projects_dir,
     'WORK_DIR'  : works_dir,
@@ -886,7 +888,7 @@ iframe_url = 'https://*'                          # iframe Host URL
 
 c.JupyterHub.tornado_settings = {
     "headers":{ "Content-Security-Policy": "frame-ancestors 'self' " + iframe_url }, 
-    "cookie_options": {"SameSite": "None", "Secure": True } 
+#    "cookie_options": {"SameSite": "None", "Secure": True } 
 }
 
 #
@@ -999,14 +1001,14 @@ c.DockerSpawner.notebook_dir = notebook_dir
 ## Path to SSL certificate file for the public facing interface of the proxy
 #  
 #  When setting this, you should also set ssl_key
-#c.JupyterHub.ssl_cert = '/etc/pki/tls/certs/postfix.pem'
-c.JupyterHub.ssl_cert = '/etc/gitlab/ssl/gitlab.crt'
+c.JupyterHub.ssl_cert = '/etc/pki/tls/certs/postfix.pem'
+#c.JupyterHub.ssl_cert = '/etc/gitlab/ssl/gitlab.crt'
 
 ## Path to SSL key file for the public facing interface of the proxy
 #  
 #  When setting this, you should also set ssl_cert
-#c.JupyterHub.ssl_key = '/etc/pki/tls/private/postfix.key'
-c.JupyterHub.ssl_key = '/etc/gitlab/ssl/gitlab.key'
+c.JupyterHub.ssl_key = '/etc/pki/tls/private/postfix.key'
+#c.JupyterHub.ssl_key = '/etc/gitlab/ssl/gitlab.key'
 
 ## Host to send statsd metrics to. An empty string (the default) disables sending
 #  metrics.
