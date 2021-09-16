@@ -155,8 +155,8 @@ c.LDAPAuthenticator.user_attribute = 'sAMAccountName'
 
 ##
 # My IP Address
-my_ip_addr = '172.22.1.75'
-#my_ip_addr = '202.26.150.55'
+#my_ip_addr = '172.22.1.75'
+my_ip_addr = '202.26.150.118'
 
 ## The public facing URL of the whole JupyterHub application.
 #  
@@ -801,7 +801,67 @@ class MDLDockerSpawner(SystemUserSpawner):
 
         #c = get_config()
         #print('=== START MDLDockerSpawner ===')
+
+
+        hosthome = user_data.pw_dir
+
+        podman_base_cmd = [
+                "podman", "run", "-d",
+                # https://www.redhat.com/sysadmin/rootless-podman
+                #"--storage-opt", "ignore_chown_errors",
+                # "--rm",
+                # "-u", "{}:{}".format(uid, gid),
+                # "-p", "{hostport}:{port}".format(
+                #         hostport=self.port, port=self.standard_jupyter_port
+                #         ),
+                "--net", "host",
+                "-v", "{}:{}".format(hosthome, hosthome),
+                ]
+
+        podman_base_cmd += ["-w", hosthome]
+        # append flags for the JUPYTER*** environment in the container
+        jupyter_env = self.get_env()
+        podman_base_cmd_jupyter_env = []
+        for k, v in jupyter_env.items():
+            podman_base_cmd_jupyter_env.append("--env")
+            podman_base_cmd_jupyter_env.append("{k}={v}".format(k=k,v=v))
+        podman_base_cmd += podman_base_cmd_jupyter_env
+
+        start_cmd = 'start-notebook.sh' 
+        port_already_set = False
+        jupyter_base_cmd = [self.image, start_cmd]
+
+        podman_cmd = podman_base_cmd #+ self.podman_additional_cmds
+        jupyter_cmd = jupyter_base_cmd #+ self.jupyter_additional_cmds
+
+        from subprocess import Popen, PIPE
+
+        print("--------------------------------------------------------")
+
+        import shlex
+        cmd = shlex.split(" ".join(podman_cmd+jupyter_cmd))
+        #env = self.user_env({})
+
+        print("--------------------------------------------------------")
+        popen_kwargs = dict(
+        #    #preexec_fn=preexec_fn,
+            stdout=PIPE, stderr=PIPE,
+            start_new_session=True,  # don't forward signals
+        )
+        #popen_kwargs.update(self.popen_kwargs)
+        # don't let user config override env
+        #popen_kwargs['env'] = env
+
+
+        print(cmd)
+        proc = Popen(cmd, **popen_kwargs)
+
+        print(proc.returncode)
+
+        print("--------------------------------------------------------")
+        return ('127.0.0.1', 0)
         return super(MDLDockerSpawner, self).start()
+
 
 
     #def stop(self, now=True):
