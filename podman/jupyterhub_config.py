@@ -481,7 +481,7 @@ c.ConfigurableHTTPProxy.pid_file = '/var/lib/jupyterhub/jupyterhub-proxy.pid'
 
 
 #
-# MDLDockerSpawner v0.9.2 for Moodle/LTI by Fumi.Iseki
+# LTIDockerSpawner v0.9.2 for LTI by Fumi.Iseki
 #
 #                                      BSD License.
 #
@@ -501,7 +501,7 @@ from urllib.parse import urlparse
 import pwd, os, grp, re
 
 
-class MDLDockerSpawner(SystemUserSpawner):
+class LTIDockerSpawner(SystemUserSpawner):
 
     use_group = Bool(True, config = True,)
     host_homedir_format_string  = Unicode("/home/{groupname}/{username}", config = True,)
@@ -583,7 +583,7 @@ class MDLDockerSpawner(SystemUserSpawner):
 
 
     def template_namespace(self):
-        d = super(MDLDockerSpawner, self).template_namespace()
+        d = super(LTIDockerSpawner, self).template_namespace()
         if self.use_group and self.group_id >= 0:
             d['groupname'] = self.get_groupname()
         return d
@@ -598,7 +598,7 @@ class MDLDockerSpawner(SystemUserSpawner):
 
     def get_args(self):
         #print('=== get_args() ===')
-        args = super(MDLDockerSpawner, self).get_args()
+        args = super(LTIDockerSpawner, self).get_args()
 
         if self.custom_iframe :
             frame_ancestors = "frame-ancestors 'self' " + self.host_url
@@ -621,7 +621,7 @@ class MDLDockerSpawner(SystemUserSpawner):
 
     #
     # for custom data
-    # Moodle のカスタムパラメータから情報を得る
+    # カスタムパラメータから情報を得る
     #
     def userdata_hook(self, auth_state):
         #print('=== userdata_hook() ===')
@@ -634,9 +634,9 @@ class MDLDockerSpawner(SystemUserSpawner):
 
             elif key == 'lis_outcome_service_url' : 
                 parsed = urlparse(value)
-                self.host_name = parsed.netloc                      # Moodle Host Name
+                self.host_name = parsed.netloc                      # Host Name
                 scheme = parsed.scheme
-                self.host_url  = scheme + '://' + self.host_name    # Moodle Host URL
+                self.host_url  = scheme + '://' + self.host_name    # Host URL
             #
             elif key.startswith('custom_'):                         # Custom Command
                 costom_cmd = key.replace('custom_', '')
@@ -726,7 +726,7 @@ class MDLDockerSpawner(SystemUserSpawner):
     #
     def get_env(self):
         #print('=== get_env() ===')
-        env = super(MDLDockerSpawner, self).get_env()
+        env = super(LTIDockerSpawner, self).get_env()
         if self.use_group and self.group_id >= 0:
             import grp
             gname = self.get_groupname()
@@ -758,7 +758,7 @@ class MDLDockerSpawner(SystemUserSpawner):
 
 
     #
-    # START MDLDockerSpawner
+    # START LTIDockerSpawner
     #
     def start(self):
         #print('=== start() ===')
@@ -800,7 +800,7 @@ class MDLDockerSpawner(SystemUserSpawner):
         self.remove = True
 
         #c = get_config()
-        #print('=== START MDLDockerSpawner ===')
+        #print('=== START LTIDockerSpawner ===')
 
 
         hosthome = user_data.pw_dir
@@ -860,16 +860,16 @@ class MDLDockerSpawner(SystemUserSpawner):
 
         print("--------------------------------------------------------")
         return ('127.0.0.1', 0)
-        return super(MDLDockerSpawner, self).start()
+        return super(LTIDockerSpawner, self).start()
 
 
 
     #def stop(self, now=True):
-    #    return super(MDLDockerSpawner, self).stop(now)
+    #    return super(LTIDockerSpawner, self).stop(now)
 
 
     #def get_cmdmand(self):
-    #    cmd = super(MDLDockerSpawner, self).get_cmdmand()
+    #    cmd = super(LTIDockerSpawner, self).get_cmdmand()
     #    return cmd
     #
     #    '''
@@ -884,14 +884,14 @@ class MDLDockerSpawner(SystemUserSpawner):
 
     #def docker(self, method, *args, **kwargs):
     #    #return self.executor.submit(self._docker, method, *args, **kwargs)
-    #    return super(MDLDockerSpawner, self).docker(method, *args, **kwargs)
+    #    return super(LTIDockerSpawner, self).docker(method, *args, **kwargs)
 
 
 #
-# MDLDockerSpawner Parameters
+# LTIDockerSpawner Parameters
 #
 
-c.MDLDockerSpawner.use_group = True
+c.LTIDockerSpawner.use_group = True
 
 # Volumes are mounted at /user_home_dir/projects_dir/works_dir/courses_dir
 user_home_dir = '/home/{groupname}/{username}'
@@ -903,11 +903,11 @@ teacher_gid   = 7000                            # 1000以上で，システム�
 
 #
 notebook_dir = user_home_dir + '/' + projects_dir
-c.MDLDockerSpawner.host_homedir_format_string  = user_home_dir
-c.MDLDockerSpawner.image_homedir_format_string = user_home_dir
-c.MDLDockerSpawner.courses_dir = courses_dir
-c.MDLDockerSpawner.works_dir   = works_dir
-c.MDLDockerSpawner.teacher_gid = teacher_gid
+c.LTIDockerSpawner.host_homedir_format_string  = user_home_dir
+c.LTIDockerSpawner.image_homedir_format_string = user_home_dir
+c.LTIDockerSpawner.courses_dir = courses_dir
+c.LTIDockerSpawner.works_dir   = works_dir
+c.LTIDockerSpawner.teacher_gid = teacher_gid
 
 #
 c.Spawner.environment = {
@@ -1015,7 +1015,7 @@ c.JupyterHub.shutdown_on_logout = True
 #c.JupyterHub.spawner_class = 'dockerspawner.DockerSpawner'
 #c.JupyterHub.spawner_class = 'dockerspawner.SwarmSpawner'
 #c.JupyterHub.spawner_class = 'dockerspawner.SystemUserSpawner'
-c.JupyterHub.spawner_class = MDLDockerSpawner
+c.JupyterHub.spawner_class = LTIDockerSpawner
 
 #c.DockerSpawner.image = 'niicloudoperation/jupyterhub-singleuser'
 #c.DockerSpawner.image = 'niicloudoperation/notebook'
@@ -1192,7 +1192,7 @@ c.JupyterHub.ssl_key = '/etc/pki/tls/private/postfix.key'
 #  
 #      c.Spawner.auth_state_hook = userdata_hook
 #c.Spawner.auth_state_hook = None
-c.Spawner.auth_state_hook = MDLDockerSpawner.userdata_hook
+c.Spawner.auth_state_hook = LTIDockerSpawner.userdata_hook
 
 ## The command used for starting the single-user server.
 #  
@@ -1425,7 +1425,7 @@ c.Spawner.http_timeout = 60
 #  
 #      c.Spawner.pre_spawn_hook = my_hook
 #c.Spawner.pre_spawn_hook = None
-#c.Spawner.pre_spawn_hook = MDLDockerSpawner.spawn_hook
+#c.Spawner.pre_spawn_hook = LTIDockerSpawner.spawn_hook
 
 ## List of SSL alt names
 #  
@@ -1547,7 +1547,7 @@ os.environ['JUPYTERHUB_CRYPT_KEY'] = 'c283a5e73c8f74cdc8c6fef5415f1c97948a5a5450
 #  
 #      c.Authenticator.post_auth_hook = my_hook
 #c.Authenticator.post_auth_hook = None
-#c.Authenticator.post_auth_hook = MDLDockerSpawner.auth_hook
+#c.Authenticator.post_auth_hook = LTIDockerSpawner.auth_hook
 
 ## Force refresh of auth prior to spawn.
 #  

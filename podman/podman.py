@@ -482,7 +482,7 @@ c.ConfigurableHTTPProxy.pid_file = '/var/lib/jupyterhub/jupyterhub-proxy.pid'
 
 
 #
-# MDLDockerSpawner v0.9.2 for Moodle/LTI by Fumi.Iseki
+# LTIDockerSpawner v0.9.2 for LTI by Fumi.Iseki
 #
 #                                      BSD License.
 #
@@ -578,7 +578,7 @@ c.JupyterHub.shutdown_on_logout = True
 #c.JupyterHub.spawner_class = 'dockerspawner.DockerSpawner'
 #c.JupyterHub.spawner_class = 'dockerspawner.SwarmSpawner'
 #c.JupyterHub.spawner_class = 'dockerspawner.SystemUserSpawner'
-#c.JupyterHub.spawner_class = MDLDockerSpawner
+#c.JupyterHub.spawner_class = LTIDockerSpawner
 
 c.JupyterHub.spawner_class = 'wrapspawner.ProfilesSpawner'
 
@@ -781,7 +781,7 @@ c.JupyterHub.ssl_key = '/etc/pki/tls/private/postfix.key'
 #  
 #      c.Spawner.auth_state_hook = userdata_hook
 #c.Spawner.auth_state_hook = None
-#c.Spawner.auth_state_hook = MDLDockerSpawner.userdata_hook
+#c.Spawner.auth_state_hook = LTIDockerSpawner.userdata_hook
 
 ## The command used for starting the single-user server.
 #  
@@ -1014,7 +1014,7 @@ c.Spawner.http_timeout = 60
 #  
 #      c.Spawner.pre_spawn_hook = my_hook
 #c.Spawner.pre_spawn_hook = None
-#c.Spawner.pre_spawn_hook = MDLDockerSpawner.spawn_hook
+#c.Spawner.pre_spawn_hook = LTIDockerSpawner.spawn_hook
 
 ## List of SSL alt names
 #  
@@ -1136,7 +1136,7 @@ c.Authenticator.admin_users = {'admin'}
 #  
 #      c.Authenticator.post_auth_hook = my_hook
 #c.Authenticator.post_auth_hook = None
-#c.Authenticator.post_auth_hook = MDLDockerSpawner.auth_hook
+#c.Authenticator.post_auth_hook = LTIDockerSpawner.auth_hook
 
 ## Force refresh of auth prior to spawn.
 #  

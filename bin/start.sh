@@ -3,7 +3,7 @@
 # Distributed under the terms of the Modified BSD License.
 #
 # /usr/local/bin/start.sh   2021 09/12 v0.95
-#       This is modified by Fumi.Iseki for MDLDockerSpawner 
+#       This is modified by Fumi.Iseki for LTIDockerSpawner 
 #
 
 PRG_NAME="start.sh"
