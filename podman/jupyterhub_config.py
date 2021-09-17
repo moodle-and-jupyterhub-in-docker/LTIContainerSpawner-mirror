@@ -512,18 +512,18 @@ class LTIDockerSpawner(SystemUserSpawner):
     teacher_gid = Int(7000, config = True,)
 
     # custom command
-    custom_image_cmd    = 'mdl_image'
-    custom_cpulimit_cmd = 'mdl_cpulimit'
-    custom_memlimit_cmd = 'mdl_memlimit'
-    custom_defurl_cmd   = 'mdl_defurl'
-    custom_grpname_cmd  = 'mdl_grpname'
-    custom_users_cmd    = 'mdl_users'
-    custom_teachers_cmd = 'mdl_teachers'
-    custom_volumes_cmd  = 'mdl_vol_'
-    custom_submits_cmd  = 'mdl_sub_'
-    custom_prsnals_cmd  = 'mdl_prs_'
-    custom_iframe_cmd   = 'mdl_iframe'
-    custom_options_cmd  = 'mdl_options'
+    custom_image_cmd    = 'lms_image'
+    custom_cpulimit_cmd = 'lms_cpulimit'
+    custom_memlimit_cmd = 'lms_memlimit'
+    custom_defurl_cmd   = 'lms_defurl'
+    custom_grpname_cmd  = 'lms_grpname'
+    custom_users_cmd    = 'lms_users'
+    custom_teachers_cmd = 'lms_teachers'
+    custom_volumes_cmd  = 'lms_vol_'
+    custom_submits_cmd  = 'lms_sub_'
+    custom_prsnals_cmd  = 'lms_prs_'
+    custom_iframe_cmd   = 'lms_iframe'
+    custom_options_cmd  = 'lms_options'
 
     #
     course_id = ''
@@ -1021,7 +1021,7 @@ c.JupyterHub.spawner_class = LTIDockerSpawner
 #c.DockerSpawner.image = 'niicloudoperation/notebook'
 #c.DockerSpawner.image = 'jupyter/datascience-notebook'
 #c.DockerSpawner.image = 'jupyterhub/singleuser'
-c.DockerSpawner.image = 'jupyterhub/singleuser-mdl'
+c.DockerSpawner.image = 'jupyterhub/singleuser-lti'
 
 #c.DockerSpawner.image_whitelist = {
 #    "deepdetect-gpu (Tensorflow+PyTorch)": "jolibrain/jupyter-dd-notebook-gpu",
