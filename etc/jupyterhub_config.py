@@ -799,7 +799,6 @@ class LTIDockerSpawner(SystemUserSpawner):
 
         self.remove = True
 
-        #c = get_config()
         #print('=== START LTIDockerSpawner ===')
         return super(LTIDockerSpawner, self).start()
 
@@ -961,7 +960,7 @@ c.JupyterHub.spawner_class = LTIDockerSpawner
 #c.DockerSpawner.image = 'niicloudoperation/notebook'
 #c.DockerSpawner.image = 'jupyter/datascience-notebook'
 #c.DockerSpawner.image = 'jupyterhub/singleuser'
-c.DockerSpawner.image = 'jupyterhub/singleuser-lti'
+c.DockerSpawner.image = 'jupyterhub/singleuser-ltids'
 
 #c.DockerSpawner.image_whitelist = {
 #    "deepdetect-gpu (Tensorflow+PyTorch)": "jolibrain/jupyter-dd-notebook-gpu",
