@@ -156,7 +156,6 @@ c.LDAPAuthenticator.user_attribute = 'sAMAccountName'
 ##
 # My IP Address
 #my_ip_addr = '172.22.1.75'
-#my_ip_addr = '202.26.150.55'
 my_ip_addr = '202.26.150.118'
 
 ## The public facing URL of the whole JupyterHub application.
@@ -480,14 +479,25 @@ c.ConfigurableHTTPProxy.pid_file = '/var/lib/jupyterhub/jupyterhub-proxy.pid'
 ## Purge and reset the database.
 #c.JupyterHub.reset_db = False
 
+#
+# Copyright (c) Jupyter Development Team.
+# Distributed under the terms of the Modified BSD License.
 
+# copied from the jupyterhub.spawner.LocalProcessSpawner
+
+# copied and modified from Mr. niklas netter's the podmanspawner
+#   thanks very much for him and his works!!
+#                      https://github.com/gatoniel/podmanspawner
 #
-# LTIDockerSpawner v0.9.2 for LTI by Fumi.Iseki
-#
-#                                      BSD License.
+# LTIDockerSpawner v0.0.0 (popen version) for LTI by Fumi.Iseki
 #
 
-from dockerspawner import SystemUserSpawner
+from subprocess import Popen, PIPE
+
+import jupyterhub
+from   jupyterhub.spawner import LocalProcessSpawner, Spawner
+from   jupyterhub.spawner import set_user_setuid
+from   jupyterhub.utils   import random_port
 
 from traitlets import (
     Bool,
@@ -499,23 +509,49 @@ from traitlets import (
 
 from urllib.parse import urlparse
 
-import pwd, os, grp, re
+import pwd, grp, os, re
+import shutil, json, shlex
 
 
-class LTIDockerSpawner(SystemUserSpawner):
+class LTIPodmanSpawner(Spawner):
 
-    use_group = Bool(True, config = True,)
-    host_homedir_format_string  = Unicode("/home/{groupname}/{username}", config = True,)
-    image_homedir_format_string = Unicode("/home/{groupname}/{username}", config = True,)
+    popen_kwargs = Dict(config = True)
+    cid = Unicode(allow_none = True)
+    image = Unicode("docker.io/jupyterhub/singleuser", config = True)
+    pull_image_first = Bool(False)
+    pull_image = Unicode(allow_none = True)
 
-    courses_dir = Unicode('.courses', config = True,)
-    works_dir   = Unicode('works', config = True,)
-    teacher_gid = Int(7000, config = True,)
+    start_cmd = Unicode("start-notebook.sh")
+    standard_jupyter_port = Int(8888)
+    https_proxy = Unicode(allow_none = True, config = True)
+
+    podman_additional_cmds  = List( default_value=[], config = True)
+    jupyter_additional_cmds = List( default_value=[], config = True)
+
+    enable_lab = Bool(True)
+
+    env_keep = List([])
+    # here we would need traitlets callable type...
+    preexec_fn_set = Bool(False)
+    conthome = Unicode("/home/jovyan/home")
+    startatconthome = Bool(False)
+
+
+    #
+    use_group = Bool(True, config = True)
+    host_homedir_format_string  = Unicode("/home/{groupname}/{username}", config = True)
+    image_homedir_format_string = Unicode("/home/{groupname}/{username}", config = True)
+
+    courses_dir = Unicode('.courses', config = True)
+    works_dir   = Unicode('works', config = True)
+    teacher_gid = Int(7000, config = True)
 
     # custom command
     custom_image_cmd    = 'lms_image'
     custom_cpulimit_cmd = 'lms_cpulimit'
     custom_memlimit_cmd = 'lms_memlimit'
+    custom_cpugrnt_cmd  = 'lms_cpugrnt'
+    custom_memgrnt_cmd  = 'lms_memgrnt'
     custom_defurl_cmd   = 'lms_defurl'
     custom_grpname_cmd  = 'lms_grpname'
     custom_users_cmd    = 'lms_users'
@@ -527,6 +563,7 @@ class LTIDockerSpawner(SystemUserSpawner):
     custom_options_cmd  = 'lms_options'
 
     #
+    group_id  = -1
     course_id = ''
     host_name = ''
     host_url  = ''
@@ -534,6 +571,8 @@ class LTIDockerSpawner(SystemUserSpawner):
     custom_image    = ''
     custom_cpulimit = '0.0'
     custom_memlimit = '0'
+    custom_cpugrnt  = '0.0'
+    custom_memgrnt  = '0'
     custom_defurl   = ''
     custom_grpname  = ''
     custom_users    = []
@@ -544,9 +583,9 @@ class LTIDockerSpawner(SystemUserSpawner):
     custom_iframe   = False
     custom_option   = ''
 
-
     def init_custom_parameters(self):
         #print('=== init_custom_parameters() ===')
+        self.group_id  = -1
         self.course_id = '0'
         self.host_name = 'localhost'
         self.host_url  = 'http://localhost'
@@ -554,7 +593,9 @@ class LTIDockerSpawner(SystemUserSpawner):
         self.custom_image    = ''
         self.custom_cpulimit = '0.0'
         self.custom_memlimit = '0'
-        self.custom_defurl   = ''
+        self.custom_cpugrnt  = '0.0'
+        self.custom_memgrnt  = '0'
+        self.custom_defurl   = '/lab'
         self.custom_grpname  = 'TEACHERS'
         self.custom_users    = []
         self.custom_teachers = []
@@ -565,17 +606,6 @@ class LTIDockerSpawner(SystemUserSpawner):
         self.custom_option   = ''
         #
         return
-
-
-    @property
-    def host_homedir(self):
-        if (self.host_homedir_format_string is not None and
-            self.host_homedir_format_string != ""):
-            homedir = self.host_homedir_format_string.format(username=self.user.name, groupname=self.get_groupname())
-        else:
-            import pwd
-            homedir = pwd.getpwnam(self.user.name).pw_dir
-        return homedir
 
 
     @property
@@ -603,10 +633,39 @@ class LTIDockerSpawner(SystemUserSpawner):
 
         if self.custom_iframe :
             frame_ancestors = "frame-ancestors 'self' " + self.host_url
-            #args.append('--NotebookApp.tornado_settings={"headers":{"Content-Security-Policy": "'+ frame_ancestors + '" }, ' +
-            #                                            '"cookie_options": { "SameSite": "None", "Secure": True } }')
-            #get_config().NotebookApp.disable_check_xsrf = True
+            args.append('--NotebookApp.tornado_settings={ "headers":{"Content-Security-Policy": "'+ frame_ancestors + '" }'
+            #                                         + ', "cookie_options": { "SameSite": "None", "Secure": True }'
+                                                     + '}'
+            )
+        #get_config().NotebookApp.disable_check_xsrf = True
         return args
+
+
+    def make_preexec_fn(self, name):
+        return set_user_setuid(name)
+
+
+    def set_preexec_fn(self, fn):
+        self.preexec_fn = fn
+        self.preexec_fn_set = True
+
+
+    def load_state(self, state):
+        super(LTIPodmanSpawner, self).load_state(state)
+        if 'cid' in state:
+            self.cid = state['cid']
+
+
+    def get_state(self):
+        state = super(LTIPodmanSpawner, self).get_state()
+        if self.cid:
+            state['cid'] = self.cid
+        return state
+
+
+    def clear_state(self):
+        super(LTIPodmanSpawner, self).clear_state()
+        self.cid = None
 
 
     #def auth_hook(authenticator, handler, authentication):
@@ -628,10 +687,10 @@ class LTIDockerSpawner(SystemUserSpawner):
         self.init_custom_parameters()
 
         for key, value in self.userdata.items():
-            
+
             if key == 'context_id' : self.course_id = value         # Course ID
 
-            elif key == 'lis_outcome_service_url' : 
+            elif key == 'lis_outcome_service_url' :
                 parsed = urlparse(value)
                 self.host_name = parsed.netloc                      # Host Name
                 scheme = parsed.scheme
@@ -708,7 +767,7 @@ class LTIDockerSpawner(SystemUserSpawner):
             if disp != '' :
                 mnt = False
                 if len(usrs) != 0 :                                                         # : によるアクセス制限の指定あり
-                    if ('*' in usrs) or (self.user.name in usrs) : 
+                    if ('*' in usrs) or (self.user.name in usrs) :
                         mnt = True
                 elif ('*' in self.custom_users) or (self.user.name in self.custom_users) :  # : によるアクセス制限の指定なし
                     mnt = True
@@ -719,29 +778,48 @@ class LTIDockerSpawner(SystemUserSpawner):
         return vols
 
 
+
+    def user_env(self, env):
+        env['USER'] = self.user.name
+        pw     = pwd.getpwnam(self.user.name)
+        home   = pw.pw_dir
+        shell  = pw.pw_shell
+        pw_uid = pw.pw_uid
+        #
+        if home:
+            env['HOME'] = home
+        if shell:
+            env['SHELL'] = shell
+        # Podman saves its tmp files in XDG_RUNTIME_DIR...
+        env['XDG_RUNTIME_DIR'] = "/run/user/{}".format(pw_uid)
+        # Otherwise podman won´t work correctly...
+        env['PATH'] = "{home}/.local/bin:{home}/bin:/usr/local/cuda-10.2/bin:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin".format(home=home)
+
+        if self.https_proxy:
+            env['https_proxy'] = self.https_proxy
+        return env
+
+
     #
     # コンテナに渡す環境変数を設定する．
-    # NB_GROUP, NB_UMASK, NB_VOLUMES, NB_SUBMITS, NB_PRSNAL, NB_TEACHER, NB_THRGROUP, NB_THRGID, ...
+    # NB_USER, NB_GROUP, NB_UMASK, NB_VOLUMES, NB_SUBMITS, NB_PRSNAL, NB_TEACHER, NB_THRGROUP, NB_THRGID, ...
     #
     def get_env(self):
         #print('=== get_env() ===')
-        env = super(LTIDockerSpawner, self).get_env()
-        if self.use_group and self.group_id >= 0:
-            import grp
-            gname = self.get_groupname()
-            env.update(NB_GROUP = gname)
-        else:
-            env.update(NB_GROUP = '')
+        env = super(LTIPodmanSpawner, self).get_env()
+        #
+        env.update(NB_USER      = self.user.name)
+        env.update(NB_GROUP     = self.get_groupname())
 
-        env.update(NB_THRGROUP = self.custom_grpname)
-        env.update(NB_OPTION   = self.custom_option)
-        env.update(NB_THRGID   = self.teacher_gid)
-        env.update(NB_HOSTNAME = self.host_name)
-        if (self.user.name in self.custom_teachers) : 
+        env.update(NB_THRGROUP  = self.custom_grpname)
+        env.update(NB_OPTION    = self.custom_option)
+        env.update(NB_THRGID    = self.teacher_gid)
+        env.update(NB_HOSTNAME  = self.host_name)
+        if (self.user.name in self.custom_teachers) :
             env.update(NB_UMASK = '0033')
-            env.update(NB_TEACHER  = self.user.name)
+            env.update(NB_TEACHER = self.user.name)
         else:
-            env.update(NB_TEACHER  = '')
+            env.update(NB_TEACHER = '')
 
         # volumes
         volumes = ' '.join(self.get_volumes_info(self.custom_volumes))
@@ -753,32 +831,35 @@ class LTIDockerSpawner(SystemUserSpawner):
         prsnals = ' '.join(self.get_volumes_info(self.custom_prsnals))
         env.update(NB_PRSNALS = prsnals)
 
+        #
+        if self.enable_lab:
+            env['JUPYTER_ENABLE_LAB'] = "yes"
+        env["JUPYTER_IMAGE_SPEC"] = self.image
+
         return env
 
 
-    #
-    # START LTIDockerSpawner
-    #
-    def start(self):
+    async def start(self):
         #print('=== start() ===')
-        name = self.user.name
-        user_data = pwd.getpwnam(name)
+        username  = self.user.name
+        groupbane = self.get_groupname()
+        user_data = pwd.getpwnam(username)
         user_gid  = user_data.pw_gid
-        gid_list  = os.getgrouplist(name, user_gid)
+        gid_list  = os.getgrouplist(username, user_gid)
         self.volumes = {}
 
         fullpath_dir = self.notebook_dir + '/' + self.works_dir
-        self.volumes['jupyterhub-user-{username}'] = fullpath_dir
+        self.volumes[f'jupyterhub-user-{username}'] = fullpath_dir
 
         mount_volumes = self.get_volumes_info(self.custom_volumes)
         mount_submits = self.get_volumes_info(self.custom_submits)
 
         if self.custom_cpulimit != '':
             self.cpu_limit     = float(self.custom_cpulimit)
-            #self.cpu_guarantee = float(self.custom_cpulimit)
+            #self.cpu_guarantee = float(self.custom_cpugrant)
         if self.custom_memlimit != '':
             self.mem_limit     = int(self.custom_memlimit)
-            #self.mem_guarantee = int(self.custom_memlimit)
+            #self.mem_guarantee = int(self.custom_memgrnt)
 
         if self.custom_image != '':
             self.image = self.custom_image
@@ -798,38 +879,136 @@ class LTIDockerSpawner(SystemUserSpawner):
 
         self.remove = True
 
-        #c = get_config()
-        #print('=== START LTIDockerSpawner ===')
-        return super(LTIDockerSpawner, self).start()
+        #
+        user = pwd.getpwnam(self.user.name)
+        hosthome = user.pw_dir
+        conthome = self.conthome.replace("USERNAME", self.user.name)
+
+        self.port = random_port()
+
+        podman_base_cmd = [
+                "podman", "run", "-d",
+                # https://www.redhat.com/sysadmin/rootless-podman
+                #"--storage-opt", "ignore_chown_errors",
+                # "--rm",
+                # "-u", "{}:{}".format(uid, gid),
+                # "-p", "{hostport}:{port}".format(
+                #         hostport=self.port, port=self.standard_jupyter_port
+                #         ),
+                "--net", "host",
+                "-v", "{}:{}".format(hosthome, conthome),
+                ]
+        if self.startatconthome:
+            podman_base_cmd += ["-w", conthome]
+        # append flags for the JUPYTER*** environment in the container
+        jupyter_env = self.get_env()
+        podman_base_cmd_jupyter_env = []
+        for k, v in jupyter_env.items():
+            podman_base_cmd_jupyter_env.append("--env")
+            podman_base_cmd_jupyter_env.append("{k}={v}".format(k=k,v=v))
+        podman_base_cmd += podman_base_cmd_jupyter_env
+
+        start_cmd = self.start_cmd
+        port_already_set = False
+        if "PORT" in self.start_cmd:
+            start_cmd = self.start_cmd.replace("PORT", str(self.port))
+            port_already_set = True
+        jupyter_base_cmd = [self.image, start_cmd]
+
+        if not port_already_set:
+            jupyter_base_cmd.append("--NotebookApp.port={}".format(self.port))
+
+        podman_cmd = podman_base_cmd+self.podman_additional_cmds
+        jupyter_cmd = jupyter_base_cmd+self.jupyter_additional_cmds
+
+        cmd = shlex.split(" ".join(podman_cmd+jupyter_cmd))
+
+        env = self.user_env({})
+
+        self.log.info("Spawning via Podman command: %s", ' '.join(s for s in cmd))
+
+        # test whether a preexec_fn was set externally or not
+        if self.preexec_fn_set == False:
+            preexec_fn = self.make_preexec_fn(self.user.name)
+        else:
+            preexec_fn = self.preexec_fn
+        #
+        popen_kwargs = dict(
+            preexec_fn=preexec_fn,
+            stdout=PIPE, stderr=PIPE,
+            start_new_session=True,  # don't forward signals
+        )
+        popen_kwargs.update(self.popen_kwargs)
+        # don't let user config override env
+        popen_kwargs['env'] = env
+
+        # https://stackoverflow.com/questions/2502833/store-output-of-subprocess-popen-call-in-a-string
+
+        if self.pull_image_first:
+            pull_cmd = ["podman", "pull", self.pull_image]
+            pull_proc = Popen(pull_cmd, **popen_kwargs)
+            output, err = pull_proc.communicate()
+            if pull_proc.returncode == 0:
+                pass
+            else:
+                self.log.error("LTIPodmanSpawner.start pull error: {}".format(err))
+                raise RuntimeError(err)
+
+        proc = Popen(cmd, **popen_kwargs)
+        output, err = proc.communicate()
+        if proc.returncode == 0:
+            self.cid = output[:-2]
+        else:
+            self.log.error("LTIPodmanSpawner.start error: {}".format(err))
+            raise RuntimeError(err)
+        return ('127.0.0.1', self.port)
 
 
-    #def stop(self, now=True):
-    #    return super(LTIDockerSpawner, self).stop(now)
+    async def poll(self):
+        output, err, returncode = self.podman("inspect")
+        if returncode == 0:
+            state = json.loads(output)[0]["State"]
+            if state["Running"]:
+                return None
+            else:
+                return state["ExitCode"]
+        else:
+            self.log.error("LTIPodmanSpawner.poll error: {}".format(err))
+            raise RuntimeError(err)
 
 
-    #def get_cmdmand(self):
-    #    cmd = super(LTIDockerSpawner, self).get_cmdmand()
-    #    return cmd
-    #
-    #    '''
-    #    if self._user_set_cmd:
-    #        cmd = self.cmd
-    #    else:
-    #        image_info = yield self.docker("inspect_image", self.image)
-    #        cmd = image_info["Config"]["Cmd"]
-    #    return cmd + self.get_args()
-    #    '''
+    async def stop(self, now=False):
+        output, err, returncode = self.podman("stop")
+        if returncode == 0:
+            output, err, returncode = self.podman("rm")
+            if not returncode == 0:
+                self.log.warn("LTIPodmanSpawner.stop warn: {}".format(err))
+            return
+        else:
+            self.log.error("LTIPodmanSpawner.stop error: {}".format(err))
+            raise RuntimeError(err)
 
 
-    #def docker(self, method, *args, **kwargs):
-    #    #return self.executor.submit(self._docker, method, *args, **kwargs)
-    #    return super(LTIDockerSpawner, self).docker(method, *args, **kwargs)
+    def podman(self, command):
+        cmd = "podman container {command} {cid}".format(command=command, cid=self.cid)
+        popen_kwargs = dict(
+                # we will just switch uid/gid but not start a new PAM session
+                preexec_fn=self.make_preexec_fn(self.user.name),
+                stdout=PIPE, stderr=PIPE,
+                start_new_session=True,  # don't forward signals
+                env=self.user_env({})
+        )
+        proc = Popen(shlex.split(cmd), **popen_kwargs)
+        output, err = proc.communicate()
+        return output, err, proc.returncode
+
+
 
 #
-# LTIDockerSpawner Parameters
+# LTIPodmanSpawner Parameters
 #
 
-c.LTIDockerSpawner.use_group = True
+c.LTIPodmanSpawner.use_group = True
 
 # Volumes are mounted at /user_home_dir/projects_dir/works_dir/courses_dir
 user_home_dir = '/home/{groupname}/{username}'
@@ -841,15 +1020,15 @@ teacher_gid   = 7000                            # 1000以上で，システム�
 
 #
 notebook_dir = user_home_dir + '/' + projects_dir
-c.LTIDockerSpawner.host_homedir_format_string  = user_home_dir
-c.LTIDockerSpawner.image_homedir_format_string = user_home_dir
-c.LTIDockerSpawner.courses_dir = courses_dir
-c.LTIDockerSpawner.works_dir   = works_dir
-c.LTIDockerSpawner.teacher_gid = teacher_gid
+c.LTIPodmanSpawner.host_homedir_format_string  = user_home_dir
+c.LTIPodmanSpawner.image_homedir_format_string = user_home_dir
+c.LTIPodmanSpawner.courses_dir = courses_dir
+c.LTIPodmanSpawner.works_dir   = works_dir
+c.LTIPodmanSpawner.teacher_gid = teacher_gid
 
 #
 c.Spawner.environment = {
-    'GRANT_SUDO': 'no',                # 通常使用では 'no'
+    'GRANT_SUDO': 'yes',                # 通常使用では 'no'
     'CHOWN_HOME': 'yes',
     'PRJCT_DIR' : projects_dir,
     'WORK_DIR'  : works_dir,
@@ -882,12 +1061,12 @@ c.JupyterHub.services = [
 #
 # for iframe
 #
-#iframe_url = 'https://*'                          # iframe Host URL
-#
-#c.JupyterHub.tornado_settings = {
-#    "headers":{ "Content-Security-Policy": "frame-ancestors 'self' " + iframe_url }, 
+iframe_url = 'https://*'                          # iframe Host URL
+
+c.JupyterHub.tornado_settings = {
+    "headers":{ "Content-Security-Policy": "frame-ancestors 'self' " + iframe_url }, 
 #    "cookie_options": {"SameSite": "None", "Secure": True } 
-#}
+}
 
 #
 c.Exchange.timestamp_format = '%Y%m%d %H:%M:%S %Z'
@@ -953,41 +1132,15 @@ c.JupyterHub.shutdown_on_logout = True
 #c.JupyterHub.spawner_class = 'dockerspawner.DockerSpawner'
 #c.JupyterHub.spawner_class = 'dockerspawner.SwarmSpawner'
 #c.JupyterHub.spawner_class = 'dockerspawner.SystemUserSpawner'
-#c.JupyterHub.spawner_class = LTIDockerSpawner
+c.JupyterHub.spawner_class = LTIPodmanSpawner
 
-c.JupyterHub.spawner_class = 'wrapspawner.ProfilesSpawner'
+#c.LTIPodmanSpawner.image = 'niicloudoperation/jupyterhub-singleuser'
+#c.LTIPodmanSpawner.image = 'niicloudoperation/notebook'
+#c.LTIPodmanSpawner.image = 'jupyter/datascience-notebook'
+c.LTIPodmanSpawner.image = 'jupyterhub/singleuser'
+#c.LTIPodmanSpawner.image = 'jupyterhub/singleuser-ltids'
 
-c.ProfilesSpawner.profiles = [
-        ('Host process / basic python', 'local', 'jupyterhub.spawner.LocalProcessSpawner', {}),
-        ('Podman Python 3', 'podman-std', 'podmanspawner.PodmanSpawner', dict(
-                #podman_additional_cmds=["-v", "/mnt/datahdd:/exdata"],
-                #podman_additional_cmds=["-v", "/mnt/datahdd:/home/jovyan/datahdd"],
-                #https_proxy="http://www-proxy1.hrz.uni-marburg.de:3128",
-                enable_lab=True,
-                )),
-        ('Podman Stardist', 'podman-stardist', 'podmanspawner.PodmanSpawner', dict(
-                podman_additional_cmds=[
-                        #"-v", "/mnt/datahdd:/extdata",
-                        #"--hooks-dir", "/usr/share/containers/oci/hooks.d/",
-                        "-e", "NVIDIA_VISIBLE_DEVICES=all"
-                        ],
-                jupyter_additional_cmds=["--allow-root", "--ip=0.0.0.0"],
-                enable_lab=True,
-                #image="dir:/mnt/datahdd/share/podman_images/stardist",
-                start_cmd="jupyterhub-singleuser",
-                conthome="/home/USERNAME/",
-                startatconthome=True,
-                )),
-        ]
-#
-
-#c.DockerSpawner.image = 'niicloudoperation/jupyterhub-singleuser'
-#c.DockerSpawner.image = 'niicloudoperation/notebook'
-#c.DockerSpawner.image = 'jupyter/datascience-notebook'
-c.DockerSpawner.image = 'jupyterhub/singleuser'
-#c.DockerSpawner.image = 'jupyterhub/singleuser-lti'
-
-#c.DockerSpawner.image_whitelist = {
+#c.LTIPodmanSpawner.image_whitelist = {
 #    "deepdetect-gpu (Tensorflow+PyTorch)": "jolibrain/jupyter-dd-notebook-gpu",
 #    "tensorflow-2-gpu (Tensorflow 2.0)": "d4n1el/tensorflow-2-notebook-gpu",
 #    "datascience-gpu (Python+Julia+R)": "d4n1el/datascience-notebook-gpu",
@@ -996,30 +1149,29 @@ c.DockerSpawner.image = 'jupyterhub/singleuser'
 #    "TEST" : "jupyterhub-test"
 #}
 
-c.DockerSpawner.remove = True
-c.DockerSpawner.extra_create_kwargs = {'user': 'root'}
-#c.DockerSpawner.extra_host_config = {'runtime': 'nvidia'}
+c.LTIPodmanSpawner.remove = True
+c.LTIPodmanSpawner.extra_create_kwargs = {'user': 'root'}
+#c.LTIPodmanSpawner.extra_host_config = {'runtime': 'nvidia'}
 #notebook_dir = '/home/jovyan/work'
 #notebook_dir = '/home/{username}/work'
 
-c.DockerSpawner.notebook_dir = notebook_dir
-#c.DockerSpawner.volumes = { 'jupyterhub-user-{username}': notebook_dir }
+c.LTIPodmanSpawner.notebook_dir = notebook_dir
+#c.LTIPodmanSpawner.volumes = { 'jupyterhub-user-{username}': notebook_dir }
 
 #from jupyter_client.localinterfaces import public_ips
 #c.JupyterHub.hub_ip = public_ips()[0]
 
-#c.DockerSpawner.args = ['--username={username}']
+#c.LTIPodmanSpawner.args = ['--username={username}']
 #c.SystemUserSpawner.args = ['--user-name={username}', '--test']
 
-
 ##
-#c.DockerSpawner.image = 'jupyterhub/singleuser'
-#c.DockerSpawner.remove = True
-#c.DockerSpawner.extra_create_kwargs = {'user': 'root'}
+#c.LTIPodmanSpawner.image = 'jupyterhub/singleuser'
+#c.LTIPodmanSpawner.remove = True
+#c.LTIPodmanSpawner.extra_create_kwargs = {'user': 'root'}
 #c.Spawner.environment = {'GRANT_SUDO': 'yes'}
 #notebook_dir = '/home/jovyan/work'
-#c.DockerSpawner.notebook_dir = notebook_dir
-#c.DockerSpawner.volumes = { 'jupyterhub-user-{username}': notebook_dir }
+#c.LTIPodmanSpawner.notebook_dir = notebook_dir
+#c.LTIPodmanSpawner.volumes = { 'jupyterhub-user-{username}': notebook_dir }
 
 #from jupyter_client.localinterfaces import public_ips
 
@@ -1157,7 +1309,7 @@ c.JupyterHub.ssl_key = '/etc/pki/tls/private/postfix.key'
 #  
 #      c.Spawner.auth_state_hook = userdata_hook
 #c.Spawner.auth_state_hook = None
-c.Spawner.auth_state_hook = LTIDockerSpawner.userdata_hook
+c.Spawner.auth_state_hook = LTIPodmanSpawner.userdata_hook
 
 ## The command used for starting the single-user server.
 #  
@@ -1390,7 +1542,7 @@ c.Spawner.http_timeout = 60
 #  
 #      c.Spawner.pre_spawn_hook = my_hook
 #c.Spawner.pre_spawn_hook = None
-#c.Spawner.pre_spawn_hook = LTIDockerSpawner.spawn_hook
+#c.Spawner.pre_spawn_hook = LTIPodmanSpawner.spawn_hook
 
 ## List of SSL alt names
 #  
@@ -1512,7 +1664,7 @@ os.environ['JUPYTERHUB_CRYPT_KEY'] = 'c283a5e73c8f74cdc8c6fef5415f1c97948a5a5450
 #  
 #      c.Authenticator.post_auth_hook = my_hook
 #c.Authenticator.post_auth_hook = None
-#c.Authenticator.post_auth_hook = LTIDockerSpawner.auth_hook
+#c.Authenticator.post_auth_hook = LTIPodmanSpawner.auth_hook
 
 ## Force refresh of auth prior to spawn.
 #  
@@ -1561,3 +1713,4 @@ os.environ['JUPYTERHUB_CRYPT_KEY'] = 'c283a5e73c8f74cdc8c6fef5415f1c97948a5a5450
 
 ## The number of threads to allocate for encryption
 #c.CryptKeeper.n_threads = 16
+

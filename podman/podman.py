@@ -585,24 +585,26 @@ c.JupyterHub.spawner_class = 'wrapspawner.ProfilesSpawner'
 c.ProfilesSpawner.profiles = [
         ('Host process / basic python', 'local', 'jupyterhub.spawner.LocalProcessSpawner', {}),
         ('Podman Python 3', 'podman-std', 'podmanspawner.PodmanSpawner', dict(
-                podman_additional_cmds=["-v", "/mnt/datahdd:/home/jovyan/datahdd"],
-                https_proxy="http://www-proxy1.hrz.uni-marburg.de:3128",
+                #podman_additional_cmds=["-v", "/mnt/datahdd:/exdata"],
+                #podman_additional_cmds=["-v", "/mnt/datahdd:/home/jovyan/datahdd"],
+                #https_proxy="http://www-proxy1.hrz.uni-marburg.de:3128",
                 enable_lab=True,
                 )),
         ('Podman Stardist', 'podman-stardist', 'podmanspawner.PodmanSpawner', dict(
                 podman_additional_cmds=[
-                        "-v", "/mnt/datahdd:/extdata",
-                        "--hooks-dir", "/usr/share/containers/oci/hooks.d/",
+                        #"-v", "/mnt/datahdd:/extdata",
+                        #"--hooks-dir", "/usr/share/containers/oci/hooks.d/",
                         "-e", "NVIDIA_VISIBLE_DEVICES=all"
                         ],
-                jupyter_additional_cmds=["--allow-root"],
+                jupyter_additional_cmds=["--allow-root", "--ip=0.0.0.0"],
                 enable_lab=True,
-                image="dir:/mnt/datahdd/share/podman_images/stardist",
+                #image="dir:/mnt/datahdd/share/podman_images/stardist",
                 start_cmd="jupyterhub-singleuser",
                 conthome="/home/USERNAME/",
                 startatconthome=True,
                 )),
         ]
+
 #
 
 #c.DockerSpawner.image = 'niicloudoperation/jupyterhub-singleuser'

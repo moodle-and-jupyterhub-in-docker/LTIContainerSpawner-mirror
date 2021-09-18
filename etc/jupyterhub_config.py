@@ -498,23 +498,25 @@ from traitlets import (
 
 from urllib.parse import urlparse
 
-import pwd, os, grp, re
+import pwd, grp, os, re
 
 
 class LTIDockerSpawner(SystemUserSpawner):
 
-    use_group = Bool(True, config = True,)
-    host_homedir_format_string  = Unicode("/home/{groupname}/{username}", config = True,)
-    image_homedir_format_string = Unicode("/home/{groupname}/{username}", config = True,)
+    use_group = Bool(True, config = True)
+    host_homedir_format_string  = Unicode("/home/{groupname}/{username}", config = True)
+    image_homedir_format_string = Unicode("/home/{groupname}/{username}", config = True)
 
-    courses_dir = Unicode('.courses', config = True,)
-    works_dir   = Unicode('works', config = True,)
-    teacher_gid = Int(7000, config = True,)
+    courses_dir = Unicode('.courses', config = True)
+    works_dir   = Unicode('works', config = True)
+    teacher_gid = Int(7000, config = True)
 
     # custom command
     custom_image_cmd    = 'lms_image'
     custom_cpulimit_cmd = 'lms_cpulimit'
     custom_memlimit_cmd = 'lms_memlimit'
+    custom_cpugrnt_cmd  = 'lms_cpugrnt'
+    custom_memgrnt_cmd  = 'lms_memgrnt'
     custom_defurl_cmd   = 'lms_defurl'
     custom_grpname_cmd  = 'lms_grpname'
     custom_users_cmd    = 'lms_users'
@@ -533,7 +535,9 @@ class LTIDockerSpawner(SystemUserSpawner):
     custom_image    = ''
     custom_cpulimit = '0.0'
     custom_memlimit = '0'
-    custom_defurl   = ''
+    custom_cpugrnt  = '0.0'
+    custom_memgrnt  = '0'
+    custom_defurl   = '/lab'
     custom_grpname  = ''
     custom_users    = []
     custom_teachers = []
@@ -553,6 +557,8 @@ class LTIDockerSpawner(SystemUserSpawner):
         self.custom_image    = ''
         self.custom_cpulimit = '0.0'
         self.custom_memlimit = '0'
+        self.custom_cpugrnt  = '0.0'
+        self.custom_memgrnt  = '0'
         self.custom_defurl   = ''
         self.custom_grpname  = 'TEACHERS'
         self.custom_users    = []
@@ -569,10 +575,9 @@ class LTIDockerSpawner(SystemUserSpawner):
     @property
     def host_homedir(self):
         if (self.host_homedir_format_string is not None and
-            self.host_homedir_format_string != ""):
+            self.host_homedir_format_string != ''):
             homedir = self.host_homedir_format_string.format(username=self.user.name, groupname=self.get_groupname())
         else:
-            import pwd
             homedir = pwd.getpwnam(self.user.name).pw_dir
         return homedir
 
@@ -722,27 +727,24 @@ class LTIDockerSpawner(SystemUserSpawner):
 
     #
     # コンテナに渡す環境変数を設定する．
-    # NB_GROUP, NB_UMASK, NB_VOLUMES, NB_SUBMITS, NB_PRSNAL, NB_TEACHER, NB_THRGROUP, NB_THRGID, ...
+    # NB_USER, NB_GROUP, NB_UMASK, NB_VOLUMES, NB_SUBMITS, NB_PRSNAL, NB_TEACHER, NB_THRGROUP, NB_THRGID, ...
     #
     def get_env(self):
         #print('=== get_env() ===')
         env = super(LTIDockerSpawner, self).get_env()
-        if self.use_group and self.group_id >= 0:
-            import grp
-            gname = self.get_groupname()
-            env.update(NB_GROUP = gname)
-        else:
-            env.update(NB_GROUP = '')
 
-        env.update(NB_THRGROUP = self.custom_grpname)
-        env.update(NB_OPTION   = self.custom_option)
-        env.update(NB_THRGID   = self.teacher_gid)
-        env.update(NB_HOSTNAME = self.host_name)
+        env.update(NB_USER      = self.user.name)
+        env.update(NB_GROUP     = self.get_groupname())
+
+        env.update(NB_THRGROUP  = self.custom_grpname)
+        env.update(NB_OPTION    = self.custom_option)
+        env.update(NB_THRGID    = self.teacher_gid)
+        env.update(NB_HOSTNAME  = self.host_name)
         if (self.user.name in self.custom_teachers) : 
             env.update(NB_UMASK = '0033')
-            env.update(NB_TEACHER  = self.user.name)
+            env.update(NB_TEACHER = self.user.name)
         else:
-            env.update(NB_TEACHER  = '')
+            env.update(NB_TEACHER = '')
 
         # volumes
         volumes = ' '.join(self.get_volumes_info(self.custom_volumes))
@@ -777,10 +779,10 @@ class LTIDockerSpawner(SystemUserSpawner):
 
         if self.custom_cpulimit != '':
             self.cpu_limit     = float(self.custom_cpulimit)
-            #self.cpu_guarantee = float(self.custom_cpulimit)
+            #self.cpu_guarantee = float(self.custom_cpugrnt)
         if self.custom_memlimit != '':
             self.mem_limit     = int(self.custom_memlimit)
-            #self.mem_guarantee = int(self.custom_memlimit)
+            #self.mem_guarantee = int(self.custom_memgrnt)
 
         if self.custom_image != '':
             self.image = self.custom_image
