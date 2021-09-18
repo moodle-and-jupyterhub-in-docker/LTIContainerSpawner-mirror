@@ -762,14 +762,15 @@ class LTIDockerSpawner(SystemUserSpawner):
     #
     def start(self):
         #print('=== start() ===')
-        name = self.user.name
-        user_data = pwd.getpwnam(name)
+        username  = self.user.name
+        groupname = self.get_groupname()
+        user_data = pwd.getpwnam(username)
         user_gid  = user_data.pw_gid
-        gid_list  = os.getgrouplist(name, user_gid)
+        gid_list  = os.getgrouplist(username, user_gid)
         self.volumes = {}
 
         fullpath_dir = self.notebook_dir + '/' + self.works_dir
-        self.volumes['jupyterhub-user-{username}'] = fullpath_dir
+        self.volumes[f'jupyterhub-user-{username}'] = fullpath_dir
 
         mount_volumes = self.get_volumes_info(self.custom_volumes)
         mount_submits = self.get_volumes_info(self.custom_submits)
