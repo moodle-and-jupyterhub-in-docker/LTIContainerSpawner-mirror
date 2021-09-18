@@ -6,6 +6,8 @@
 #       This is modified by Fumi.Iseki for LTIDockerSpawner 
 #
 
+echo SSSSSSSSSSSSSSSSSSSSSSSSS > /home/teacher/iseki/Z
+ 
 PRG_NAME="start.sh"
 
 set -e
