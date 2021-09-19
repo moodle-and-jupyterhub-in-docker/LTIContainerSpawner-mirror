@@ -373,7 +373,7 @@ c.JupyterHub.hub_port = 8081
 #  
 #  .. versionadded: 1.1.0
 #c.JupyterHub.init_spawners_timeout = 10
-c.JupyterHub.init_spawners_timeout = 30
+c.JupyterHub.init_spawners_timeout = 120
 
 ## The location to store certificates automatically created by JupyterHub.
 #  
@@ -517,11 +517,11 @@ class LTIPodmanSpawner(Spawner):
 
     popen_kwargs = Dict(config = True)
     cid = Unicode(allow_none = True)
-    image = Unicode("docker.io/jupyterhub/singleuser", config = True)
+    image = Unicode('docker.io/jupyterhub/singleuser', config = True)
     pull_image_first = Bool(False)
     pull_image = Unicode(allow_none = True)
 
-    start_cmd = Unicode("start-notebook.sh")
+    start_cmd = Unicode('start-notebook.sh')
     standard_jupyter_port = Int(8888)
     https_proxy = Unicode(allow_none = True, config = True)
 
@@ -533,18 +533,20 @@ class LTIPodmanSpawner(Spawner):
     env_keep = List([])
     # here we would need traitlets callable type...
     preexec_fn_set = Bool(False)
-    conthome = Unicode("/home/jovyan/home")
-    startatconthome = Bool(False)
+    conthome = Unicode('/home')
+    #conthome = Unicode("/home/jovyan/home")
+    #startatconthome = Bool(False)
 
 
     #
     use_group = Bool(True, config = True)
-    host_homedir_format_string  = Unicode("/home/{groupname}/{username}", config = True)
-    image_homedir_format_string = Unicode("/home/{groupname}/{username}", config = True)
+    host_homedir_format_string  = Unicode('/home/{groupname}/{username}', config = True)
+    image_homedir_format_string = Unicode('/home/{groupname}/{username}', config = True)
 
-    courses_dir = Unicode('.courses', config = True)
-    works_dir   = Unicode('works', config = True)
-    teacher_gid = Int(7000, config = True)
+    projects_dir = Unicode('jupyter', config = True)
+    works_dir    = Unicode('works', config = True)
+    courses_dir  = Unicode('.courses', config = True)
+    teacher_gid  = Int(7000, config = True)
 
     # custom command
     custom_image_cmd    = 'lms_image'
@@ -615,6 +617,8 @@ class LTIPodmanSpawner(Spawner):
 
     def template_namespace(self):
         d = super(LTIDockerSpawner, self).template_namespace()
+        if self.group_id < 0:
+            self.group_id = pwd.getpwnam(self.user.name).pw_gid
         if self.use_group and self.group_id >= 0:
             d['groupname'] = self.get_groupname()
         return d
@@ -622,6 +626,8 @@ class LTIPodmanSpawner(Spawner):
 
     def get_groupname(self):
         gname = ''
+        if self.group_id < 0:
+            self.group_id = pwd.getpwnam(self.user.name).pw_gid
         if self.use_group and self.group_id >= 0:
             gname = grp.getgrgid(self.group_id).gr_name
         return gname
@@ -651,12 +657,14 @@ class LTIPodmanSpawner(Spawner):
 
 
     def load_state(self, state):
+        print('=== load_state() ===')
         super(LTIPodmanSpawner, self).load_state(state)
         if 'cid' in state:
             self.cid = state['cid']
 
 
     def get_state(self):
+        print('=== get_state() ===')
         state = super(LTIPodmanSpawner, self).get_state()
         if self.cid:
             state['cid'] = self.cid
@@ -664,15 +672,24 @@ class LTIPodmanSpawner(Spawner):
 
 
     def clear_state(self):
+        print('=== clear_state() ===')
         super(LTIPodmanSpawner, self).clear_state()
         self.cid = None
 
 
+    def create_dir(self, directory, uid, gid, mode) :
+        if not os.path.isdir(directory) :
+            os.makedirs(directory)
+            os.chown(directory, uid, gid)
+            os.chmod(directory, mode)
+
+    
     #def auth_hook(authenticator, handler, authentication):
     #    print('=== auth_hook() ===')
     #    return authentication
 
 
+    
     #def spawn_hook(self):
     #    print('=== spawn_hook() ===')
 
@@ -781,19 +798,20 @@ class LTIPodmanSpawner(Spawner):
 
     def user_env(self, env):
         env['USER'] = self.user.name
-        pw     = pwd.getpwnam(self.user.name)
-        home   = pw.pw_dir
-        shell  = pw.pw_shell
-        pw_uid = pw.pw_uid
+        user_data = pwd.getpwnam(self.user.name)
+        home      = user_data.pw_dir
+        shell     = user_data.pw_shell
+        pw_uid    = user_data.pw_uid
         #
         if home:
             env['HOME'] = home
         if shell:
             env['SHELL'] = shell
         # Podman saves its tmp files in XDG_RUNTIME_DIR...
-        env['XDG_RUNTIME_DIR'] = "/run/user/{}".format(pw_uid)
+        env['XDG_RUNTIME_DIR'] = '/run/user/{}'.format(pw_uid)
         # Otherwise podman won´t work correctly...
-        env['PATH'] = "{home}/.local/bin:{home}/bin:/usr/local/cuda-10.2/bin:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin".format(home=home)
+        env['PATH'] = f'{home}/.local/bin:{home}/bin:/usr/local/cuda-10.2/bin:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin'
+        env['PYTHONPATH'] = '/opt/conda/bin/python'
 
         if self.https_proxy:
             env['https_proxy'] = self.https_proxy
@@ -811,6 +829,7 @@ class LTIPodmanSpawner(Spawner):
         env.update(NB_USER      = self.user.name)
         env.update(NB_GROUP     = self.get_groupname())
 
+        #env.update(PYTHONPATH   = '/opt/conda/bin/python')
         env.update(NB_THRGROUP  = self.custom_grpname)
         env.update(NB_OPTION    = self.custom_option)
         env.update(NB_THRGID    = self.teacher_gid)
@@ -838,17 +857,18 @@ class LTIPodmanSpawner(Spawner):
 
         return env
 
-
+    #
     async def start(self):
         #print('=== start() ===')
         username  = self.user.name
-        groupbane = self.get_groupname()
-        user_data = pwd.getpwnam(username)
-        user_gid  = user_data.pw_gid
+        groupname = self.get_groupname()    # get self.group_id, too
+        #user_data = pwd.getpwnam(username)
+        #user_gid  = user_data.pw_gid
+        user_gid  = self.group_id
         gid_list  = os.getgrouplist(username, user_gid)
         self.volumes = {}
 
-        fullpath_dir = self.notebook_dir + '/' + self.works_dir
+        fullpath_dir = self.notebook_dir.format(username=username, groupname=groupname)  + '/' + self.works_dir
         self.volumes[f'jupyterhub-user-{username}'] = fullpath_dir
 
         mount_volumes = self.get_volumes_info(self.custom_volumes)
@@ -879,15 +899,31 @@ class LTIPodmanSpawner(Spawner):
 
         self.remove = True
 
-        #
-        user = pwd.getpwnam(self.user.name)
-        hosthome = user.pw_dir
-        conthome = self.conthome.replace("USERNAME", self.user.name)
+        return self.podman_start()
 
-        self.port = random_port()
+
+    def podman_start(self):
+        print('=== podman_start() ===')
+        username  = self.user.name
+        user_data = pwd.getpwnam(username)
+        hosthome  = user_data.pw_dir
+        groupname = self.get_groupname()    # get self.group_id, too
+        conthome  = self.conthome + '/' + groupname + '/' + self.user.name
+        works_dir = self.notebook_dir.format(username=username, groupname=groupname) + '/' + self.works_dir
+
+        self.create_dir(hosthome, int(user_data.pw_uid), int(user_data.pw_gid), 0o0700)
+        self.create_dir(hosthome + '/' + self.projects_dir, int(user_data.pw_uid), int(user_data.pw_gid), 0o0700)
+        self.create_dir(hosthome + '/' + self.projects_dir + '/' + self.works_dir, int(user_data.pw_uid), int(user_data.pw_gid), 0o0700)
+        self.create_dir('/run/user/' + str(user_data.pw_uid), int(user_data.pw_uid), int(user_data.pw_gid), 0o0700)
+
+        import subprocess
+        rslt = subprocess.getoutput(f'grep {username} /etc/subuid')
+        if rslt=='' : subprocess.run(['usermod', '--add-subuids', '200000-210000', username])
+        rslt = subprocess.getoutput(f'grep {username} /etc/subgid')
+        if rslt=='' : subprocess.run(['usermod', '--add-subgids', '200000-210000', username])
 
         podman_base_cmd = [
-                "podman", "run", "-d",
+                'podman', 'run', '-d', '--privileged', '--rm', 
                 # https://www.redhat.com/sysadmin/rootless-podman
                 #"--storage-opt", "ignore_chown_errors",
                 # "--rm",
@@ -895,37 +931,48 @@ class LTIPodmanSpawner(Spawner):
                 # "-p", "{hostport}:{port}".format(
                 #         hostport=self.port, port=self.standard_jupyter_port
                 #         ),
-                "--net", "host",
-                "-v", "{}:{}".format(hosthome, conthome),
+                '--name', f'jupyterhub-{username}',
+                '--net', 'host',
+                '-w', works_dir,
+                #'-v', '{}:{}'.format(hosthome, conthome),
                 ]
-        if self.startatconthome:
-            podman_base_cmd += ["-w", conthome]
+
+        for k, v in self.volumes.items():
+            print(k + ' ++++> '+ v)
+            podman_base_cmd.append('-v')
+            podman_base_cmd.append(f'/var/lib/containers/storage/volumes/{k}:{v}')
+            cmd = f'podman volume create {k}'
+            Popen(shlex.split(cmd))
+
         # append flags for the JUPYTER*** environment in the container
-        jupyter_env = self.get_env()
         podman_base_cmd_jupyter_env = []
+        jupyter_env = self.get_env()
         for k, v in jupyter_env.items():
-            podman_base_cmd_jupyter_env.append("--env")
-            podman_base_cmd_jupyter_env.append("{k}={v}".format(k=k,v=v))
+            #os.environ[k] = str(v)
+            podman_base_cmd_jupyter_env.append('--env')
+            podman_base_cmd_jupyter_env.append(f'{k}="{v}"')
         podman_base_cmd += podman_base_cmd_jupyter_env
 
+        # set port number
+        self.port = random_port()
         start_cmd = self.start_cmd
         port_already_set = False
-        if "PORT" in self.start_cmd:
-            start_cmd = self.start_cmd.replace("PORT", str(self.port))
+        if 'PORT' in self.start_cmd:
+            start_cmd = self.start_cmd.replace('PORT', str(self.port))
             port_already_set = True
         jupyter_base_cmd = [self.image, start_cmd]
 
         if not port_already_set:
-            jupyter_base_cmd.append("--NotebookApp.port={}".format(self.port))
+            jupyter_base_cmd.append('--NotebookApp.port={}'.format(self.port))
+        #
+        if self.default_url!='':
+            jupyter_base_cmd.append('--SingleUserNotebookApp.default_url={}'.format(self.default_url))
 
-        podman_cmd = podman_base_cmd+self.podman_additional_cmds
-        jupyter_cmd = jupyter_base_cmd+self.jupyter_additional_cmds
+        podman_cmd  = podman_base_cmd  + self.podman_additional_cmds
+        jupyter_cmd = jupyter_base_cmd + self.jupyter_additional_cmds
 
-        cmd = shlex.split(" ".join(podman_cmd+jupyter_cmd))
-
-        env = self.user_env({})
-
-        self.log.info("Spawning via Podman command: %s", ' '.join(s for s in cmd))
+        cmd = shlex.split(' '.join(podman_cmd + jupyter_cmd))
+        self.log.info('Spawning via Podman command: %s', ' '.join(s for s in cmd))
 
         # test whether a preexec_fn was set externally or not
         if self.preexec_fn_set == False:
@@ -939,32 +986,43 @@ class LTIPodmanSpawner(Spawner):
             start_new_session=True,  # don't forward signals
         )
         popen_kwargs.update(self.popen_kwargs)
+
         # don't let user config override env
-        popen_kwargs['env'] = env
+        popen_kwargs['env'] = self.user_env({})
 
         # https://stackoverflow.com/questions/2502833/store-output-of-subprocess-popen-call-in-a-string
 
         if self.pull_image_first:
-            pull_cmd = ["podman", "pull", self.pull_image]
+            print('=== pull image ===')
+            pull_cmd = ['podman', 'pull', self.pull_image, '--tls-verify=false']
             pull_proc = Popen(pull_cmd, **popen_kwargs)
             output, err = pull_proc.communicate()
             if pull_proc.returncode == 0:
                 pass
             else:
-                self.log.error("LTIPodmanSpawner.start pull error: {}".format(err))
+                self.log.error("LTIPodmanSpawner.podman_start pull error: code = {} : {}".format(pull_proc.returncode, err))
                 raise RuntimeError(err)
-
+        #
         proc = Popen(cmd, **popen_kwargs)
         output, err = proc.communicate()
         if proc.returncode == 0:
             self.cid = output[:-2]
         else:
-            self.log.error("LTIPodmanSpawner.start error: {}".format(err))
+            self.log.error("LTIPodmanSpawner.podman_start error: code = {} : {}".format(proc.returncode, err))
             raise RuntimeError(err)
+        #
         return ('127.0.0.1', self.port)
 
 
     async def poll(self):
+        print('=== poll() ===')
+
+        if self.cid == None : 
+            state = self.get_state()
+            if self.cid == None : 
+                return None
+                #return state["ExitCode"]
+
         output, err, returncode = self.podman("inspect")
         if returncode == 0:
             state = json.loads(output)[0]["State"]
@@ -973,11 +1031,12 @@ class LTIPodmanSpawner(Spawner):
             else:
                 return state["ExitCode"]
         else:
-            self.log.error("LTIPodmanSpawner.poll error: {}".format(err))
+            self.log.error("LTIPodmanSpawner.poll error: code = {} : {}".format(returncode, err))
             raise RuntimeError(err)
 
 
     async def stop(self, now=False):
+        print('=== stop() ===')
         output, err, returncode = self.podman("stop")
         if returncode == 0:
             output, err, returncode = self.podman("rm")
@@ -985,11 +1044,12 @@ class LTIPodmanSpawner(Spawner):
                 self.log.warn("LTIPodmanSpawner.stop warn: {}".format(err))
             return
         else:
-            self.log.error("LTIPodmanSpawner.stop error: {}".format(err))
+            self.log.error("LTIPodmanSpawner.stop error: code = {} : {}".format(returncode, err))
             raise RuntimeError(err)
 
 
     def podman(self, command):
+        print('=== podman() ===')
         cmd = "podman container {command} {cid}".format(command=command, cid=self.cid)
         popen_kwargs = dict(
                 # we will just switch uid/gid but not start a new PAM session
@@ -998,6 +1058,7 @@ class LTIPodmanSpawner(Spawner):
                 start_new_session=True,  # don't forward signals
                 env=self.user_env({})
         )
+        print(cmd)
         proc = Popen(shlex.split(cmd), **popen_kwargs)
         output, err = proc.communicate()
         return output, err, proc.returncode
@@ -1022,9 +1083,10 @@ teacher_gid   = 7000                            # 1000以上で，システム�
 notebook_dir = user_home_dir + '/' + projects_dir
 c.LTIPodmanSpawner.host_homedir_format_string  = user_home_dir
 c.LTIPodmanSpawner.image_homedir_format_string = user_home_dir
-c.LTIPodmanSpawner.courses_dir = courses_dir
-c.LTIPodmanSpawner.works_dir   = works_dir
-c.LTIPodmanSpawner.teacher_gid = teacher_gid
+c.LTIPodmanSpawner.projects_dir = projects_dir
+c.LTIPodmanSpawner.works_dir    = works_dir
+c.LTIPodmanSpawner.courses_dir  = courses_dir
+c.LTIPodmanSpawner.teacher_gid  = teacher_gid
 
 #
 c.Spawner.environment = {
@@ -1137,8 +1199,10 @@ c.JupyterHub.spawner_class = LTIPodmanSpawner
 #c.LTIPodmanSpawner.image = 'niicloudoperation/jupyterhub-singleuser'
 #c.LTIPodmanSpawner.image = 'niicloudoperation/notebook'
 #c.LTIPodmanSpawner.image = 'jupyter/datascience-notebook'
-c.LTIPodmanSpawner.image = 'jupyterhub/singleuser'
-#c.LTIPodmanSpawner.image = 'jupyterhub/singleuser-ltids'
+#c.LTIPodmanSpawner.image = 'jupyterhub/singleuser'
+#c.LTIPodmanSpawner.image = 'docker.io/jupyterhub/singleuser'
+c.LTIPodmanSpawner.image = 'localhost:5000/jupyterhub/singleuser-ltids'
+#c.LTIPodmanSpawner.image = 'localhost:5000/vvv'
 
 #c.LTIPodmanSpawner.image_whitelist = {
 #    "deepdetect-gpu (Tensorflow+PyTorch)": "jolibrain/jupyter-dd-notebook-gpu",
@@ -1418,8 +1482,9 @@ c.Spawner.default_url = '/lab'
 #  Once a server has successfully been spawned, this is the amount of time we
 #  wait before assuming that the server is unable to accept connections.
 #c.Spawner.http_timeout = 30
-c.Spawner.http_timeout = 60
+c.Spawner.http_timeout = 150
 
+c.Spawner.slow_spawn_timeout = 120
 ## The IP address (or hostname) the single-user server should listen on.
 #  
 #  The JupyterHub proxy implementation should be able to send packets to this
@@ -1560,7 +1625,7 @@ c.Spawner.http_timeout = 60
 #  takes longer than this. start should return when the server process is started
 #  and its location is known.
 #c.Spawner.start_timeout = 60
-c.Spawner.start_timeout = 120
+c.Spawner.start_timeout = 300
 
 #------------------------------------------------------------------------------
 # Authenticator(LoggingConfigurable) configuration
