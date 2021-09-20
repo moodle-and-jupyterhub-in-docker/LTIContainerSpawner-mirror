@@ -114,10 +114,10 @@ if [ $(id -u) == 0 ] ; then
     if [ "$LKS" != "" ]; then
         rm -f $LKS || true
     fi
-    cd $HOME_DIR/$NB_USER/$PRJCT_DIR
-    if [ ! -e home ]; then 
-        ln -s .. home || true
-    fi
+    #cd $HOME_DIR/$NB_USER/$PRJCT_DIR
+    #if [ ! -e home ]; then 
+    #    ln -s .. home || true
+    #fi
     echo "$PRG_NAME: cleaned up and path to home directory"
 
     #
@@ -277,6 +277,9 @@ if [ $(id -u) == 0 ] ; then
                         grep secure_path > /etc/sudoers.d/path 
         fi
     fi
+    
+    #
+    cd $HOME_DIR/$NB_USER
 
     # Exec the command as NB_USER with the PATH and the rest of
     # the environment preserved
