@@ -768,7 +768,6 @@ class LTIDockerSpawner(SystemUserSpawner):
         groupname = self.get_groupname()
         user_data = pwd.getpwnam(username)
         user_gid  = user_data.pw_gid
-        gid_list  = os.getgrouplist(username, user_gid)
         self.volumes = {}
 
         fullpath_dir = self.notebook_dir + '/' + self.works_dir
