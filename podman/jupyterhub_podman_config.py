@@ -509,7 +509,7 @@ from traitlets import (
 
 from urllib.parse import urlparse
 
-import pwd, grp, os, re
+import pwd, grp, os, sys, re
 import shutil, json, shlex
 
 
@@ -639,11 +639,13 @@ class LTIPodmanSpawner(Spawner):
 
         if self.custom_iframe :
             frame_ancestors = "frame-ancestors 'self' " + self.host_url
-            args.append('--NotebookApp.tornado_settings={ "headers":{"Content-Security-Policy": "'+ frame_ancestors + '" }'
-            #                                         + ', "cookie_options": { "SameSite": "None", "Secure": True }'
-                                                     + '}'
-            )
-        #get_config().NotebookApp.disable_check_xsrf = True
+            if sys.version_info >= (3, 8) : cookie_options = ', "cookie_options": { "SameSite": "None", "Secure": True }'
+            else:                           cookie_options = ''
+            #
+            args.append('--NotebookApp.tornado_settings = { "headers":{"Content-Security-Policy": "'+ frame_ancestors + '" }'
+                                                            + cookie_options + '}'
+                )
+            #get_config().NotebookApp.disable_check_xsrf = True
         return args
 
 
@@ -719,6 +721,14 @@ class LTIPodmanSpawner(Spawner):
                 if costom_cmd == self.custom_image_cmd:                                         # Container Image Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~ ]', '', value)
                     self.custom_image = value
+                #
+                elif costom_cmd[0:len(self.custom_cpugrnt_cmd)] == self.custom_cpugrnt_cmd:     # CPU Limit Guarantee Command
+                    value = re.sub('[^0-9\.]', '', value)
+                    self.custom_cpugrnt = value
+                #
+                elif costom_cmd[0:len(self.custom_memgrnt_cmd)] == self.custom_memgrnt_cmd:     # Memory Guarantee Command
+                    value = re.sub('[^0-9]', '', value)
+                    self.custom_memgrnt = value
                 #
                 elif costom_cmd[0:len(self.custom_cpulimit_cmd)] == self.custom_cpulimit_cmd:   # CPU Limit Command
                     value = re.sub('[^0-9\.]', '', value)
@@ -867,12 +877,15 @@ class LTIPodmanSpawner(Spawner):
         mount_volumes = self.get_volumes_info(self.custom_volumes)
         mount_submits = self.get_volumes_info(self.custom_submits)
 
+        if self.custom_cpugrnt != '':
+            self.cpu_guarantee = float(self.custom_cpugrnt)
+        if self.custom_memgrnt != '':
+            self.mem_guarantee = int(self.custom_memgrnt)
+
         if self.custom_cpulimit != '':
             self.cpu_limit     = float(self.custom_cpulimit)
-            #self.cpu_guarantee = float(self.custom_cpugrant)
         if self.custom_memlimit != '':
             self.mem_limit     = int(self.custom_memlimit)
-            #self.mem_guarantee = int(self.custom_memgrnt)
 
         if self.custom_image != '':
             self.image = self.custom_image
@@ -1101,8 +1114,6 @@ c.Spawner.environment = {
 #
 # culler
 #
-import sys
-
 c.JupyterHub.services = [
     {
         'name': 'idle-culler',
@@ -1120,10 +1131,10 @@ c.JupyterHub.services = [
 #
 iframe_url = 'https://*'                          # iframe Host URL
 
-c.JupyterHub.tornado_settings = {
-    "headers":{ "Content-Security-Policy": "frame-ancestors 'self' " + iframe_url }, 
-#    "cookie_options": {"SameSite": "None", "Secure": True } 
-}
+c.JupyterHub.tornado_settings = { "headers":{ "Content-Security-Policy": "frame-ancestors 'self' " + iframe_url } }
+if sys.version_info >= (3, 8) : 
+    c.JupyterHub.tornado_settings["cookie_options"] = { "SameSite": "None", "Secure": True }
+
 
 #
 c.Exchange.timestamp_format = '%Y%m%d %H:%M:%S %Z'

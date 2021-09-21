@@ -606,15 +606,14 @@ class LTIDockerSpawner(SystemUserSpawner):
         args = super(LTIDockerSpawner, self).get_args()
 
         if self.custom_iframe :
-            if sys.version_info >= (3, 8) : cookie_options = '"SameSite": "None", "Secure": True'
-            else:                           cookie_options = '"Secure": True'
-
             frame_ancestors = "frame-ancestors 'self' " + self.host_url
-            args.append('--NotebookApp.tornado_settings={ "headers":{"Content-Security-Policy": "'+ frame_ancestors + '" }'
-                                                     + ', "cookie_options": { ' + cookie_options + ' }'
-                                                     + '}'
-            )
-        #get_config().NotebookApp.disable_check_xsrf = True
+            if sys.version_info >= (3, 8) : cookie_options = ', "cookie_options": { "SameSite": "None", "Secure": True }'
+            else:                           cookie_options = ''
+            #
+            args.append('--NotebookApp.tornado_settings = { "headers":{"Content-Security-Policy": "'+ frame_ancestors + '" }'
+                                                            + cookie_options + '}'
+                )
+            #get_config().NotebookApp.disable_check_xsrf = True
         return args
 
 
@@ -899,12 +898,10 @@ c.JupyterHub.services = [
 # for iframe
 #
 iframe_url = 'https://*'                          # iframe Host URL
-
-if sys.version_info >= (3, 8) : cookie_options = { "SameSite": "None", "Secure": True }
-else:                           cookie_options = { "Secure": True }
 #
 c.JupyterHub.tornado_settings = { "headers":{ "Content-Security-Policy": "frame-ancestors 'self' " + iframe_url } }
-c.JupyterHub.tornado_settings["cookie_options"] = cookie_options
+if sys.version_info >= (3, 8) :
+    c.JupyterHub.tornado_settings["cookie_options"] = { "SameSite": "None", "Secure": True }
 
 
 #
