@@ -504,7 +504,7 @@ import pwd, grp, os, sys, re
 class LTIDockerSpawner(SystemUserSpawner):
 
     use_group = Bool(True, config = True)
-    host_homedir_format_string  = Unicode("/home/{groupname}/{username}", config = True)
+    host_homedir_format_string  = Unicode('/home/{groupname}/{username}', config = True)
     image_homedir_format_string = Unicode("/home/{groupname}/{username}", config = True)
 
     courses_dir = Unicode('.courses', config = True)
@@ -638,7 +638,7 @@ class LTIDockerSpawner(SystemUserSpawner):
             
             if key == 'context_id' : self.course_id = value         # Course ID
 
-            elif key == 'lis_outcome_service_url' : 
+            elif key == 'lis_outcome_service_url' :
                 parsed = urlparse(value)
                 self.host_name = parsed.netloc                      # Host Name
                 scheme = parsed.scheme
@@ -723,7 +723,7 @@ class LTIDockerSpawner(SystemUserSpawner):
             if disp != '' :
                 mnt = False
                 if len(usrs) != 0 :                                                         # : によるアクセス制限の指定あり
-                    if ('*' in usrs) or (self.user.name in usrs) : 
+                    if ('*' in usrs) or (self.user.name in usrs) :
                         mnt = True
                 elif ('*' in self.custom_users) or (self.user.name in self.custom_users) :  # : によるアクセス制限の指定なし
                     mnt = True
@@ -749,7 +749,7 @@ class LTIDockerSpawner(SystemUserSpawner):
         env.update(NB_OPTION    = self.custom_option)
         env.update(NB_THRGID    = self.teacher_gid)
         env.update(NB_HOSTNAME  = self.host_name)
-        if (self.user.name in self.custom_teachers) : 
+        if (self.user.name in self.custom_teachers) :
             env.update(NB_UMASK = '0033')
             env.update(NB_TEACHER = self.user.name)
         else:
@@ -899,7 +899,7 @@ c.JupyterHub.services = [
 iframe_url = 'https://*'                          # iframe Host URL
 
 c.JupyterHub.tornado_settings = { "headers":{ "Content-Security-Policy": "frame-ancestors 'self' " + iframe_url } }
-if sys.version_info >= (3, 8) : 
+if sys.version_info >= (3, 8) :
     cookie_options = { "SameSite": "None", "Secure": True }
     c.JupyterHub.tornado_settings["cookie_options"] = cookie_options
 
