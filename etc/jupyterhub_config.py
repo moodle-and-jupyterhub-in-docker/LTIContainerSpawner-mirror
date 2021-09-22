@@ -111,18 +111,19 @@ c.LTI11Authenticator.username_key = 'ext_user_username'
 # for LDAP
 #c.JupyterHub.authenticator_class = 'ldapauthenticator.LDAPAuthenticator'
 #c.LDAPAuthenticator.server_address = '202.26.150.51'
-c.LDAPAuthenticator.server_address = '202.26.144.11'
-c.LDAPAuthenticator.use_ssl = True
+#c.LDAPAuthenticator.server_address = '202.26.144.11'
+#c.LDAPAuthenticator.use_ssl = True
 
 ## 大学の AD template 付き
-c.LDAPAuthenticator.lookup_dn = False
-c.LDAPAuthenticator.bind_dn_template = [
-    'cn={username},ou=教員,ou=ユーザー,dc=edutuis,dc=local',
-    'cn={username},ou=学生,ou=ユーザー,dc=edutuis,dc=local'
-]
-c.LDAPAuthenticator.user_search_base = 'dc=edutuis,dc=local'
-c.LDAPAuthenticator.user_attribute = 'sAMAccountName'
+#c.LDAPAuthenticator.lookup_dn = False
+#c.LDAPAuthenticator.bind_dn_template = [
+#    'cn={username},ou=教員,ou=ユーザー,dc=edutuis,dc=local',
+#    'cn={username},ou=学生,ou=ユーザー,dc=edutuis,dc=local'
+#]
+#c.LDAPAuthenticator.user_search_base = 'dc=edutuis,dc=local'
+#c.LDAPAuthenticator.user_attribute = 'sAMAccountName'
 
+#
 ## 大学の AD template なし
 #c.LDAPAuthenticator.lookup_dn = True
 #c.LDAPAuthenticator.user_search_base = 'dc=edutuis,dc=local'
@@ -427,7 +428,6 @@ c.JupyterHub.init_spawners_timeout = 30
 ## File to write PID Useful for daemonizing JupyterHub.
 c.JupyterHub.pid_file = '/var/lib/jupyterhub/jupyterhub.pid'
 c.ConfigurableHTTPProxy.pid_file = '/var/lib/jupyterhub/jupyterhub-proxy.pid'
-#c.ConfigurableHTTPProxy.pid_file = Unicode('/var/lib/jupyterhub/jupyterhub-proxy.pid')
 
 ## The public facing port of the proxy.
 #  
@@ -481,7 +481,7 @@ c.ConfigurableHTTPProxy.pid_file = '/var/lib/jupyterhub/jupyterhub-proxy.pid'
 
 
 #
-# LTIDockerSpawner v0.9.2 for LTI by Fumi.Iseki
+# LTIDockerSpawner v0.9.3 for LTI by Fumi.Iseki
 #
 #                                      BSD License.
 #
@@ -1261,6 +1261,7 @@ c.Spawner.default_url = '/lab'
 #  wait before assuming that the server is unable to accept connections.
 #c.Spawner.http_timeout = 30
 c.Spawner.http_timeout = 60
+c.Spawner.slow_spawn_timeout = 120
 
 ## The IP address (or hostname) the single-user server should listen on.
 #  
@@ -1555,3 +1556,4 @@ os.environ['JUPYTERHUB_CRYPT_KEY'] = 'c283a5e73c8f74cdc8c6fef5415f1c97948a5a5450
 
 ## The number of threads to allocate for encryption
 #c.CryptKeeper.n_threads = 16
+

@@ -2,7 +2,7 @@
 # Copyright (c) Jupyter Development Team.
 # Distributed under the terms of the Modified BSD License.
 #
-# /usr/local/bin/start.sh   2021 09/12 v0.95
+# /usr/local/bin/start.sh   2021 09/22 v0.9.7
 #       This is modified by Fumi.Iseki for LTIDockerSpawner 
 #
 
@@ -59,10 +59,7 @@ if [ $(id -u) == 0 ] ; then
     echo "$PRG_NAME: setup home directory to $HOME_DIR"
 
     #
-    # create user account
-    if id jovyan &> /dev/null ; then
-        usermod -d $HOME_DIR/$NB_USER -l $NB_USER jovyan
-    fi
+    # create new user account
     groupadd -f -g $NB_GID $NB_GROUP || true
     if [ ! $(id -u $NB_USER 2>/dev/null) ]; then
         useradd --home $HOME_DIR/$NB_USER -u $NB_UID -g $NB_GID -l $NB_USER -s /bin/bash || true

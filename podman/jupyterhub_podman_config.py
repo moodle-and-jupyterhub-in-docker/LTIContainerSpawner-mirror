@@ -108,42 +108,6 @@ c.LTI11Authenticator.consumers = {
 c.LTI11Authenticator.username_key = 'ext_user_username'
 
 
-# for LDAP
-#c.JupyterHub.authenticator_class = 'ldapauthenticator.LDAPAuthenticator'
-#c.LDAPAuthenticator.server_address = '202.26.150.51'
-c.LDAPAuthenticator.server_address = '202.26.144.11'
-c.LDAPAuthenticator.use_ssl = True
-
-## 大学の AD template 付き
-c.LDAPAuthenticator.lookup_dn = False
-c.LDAPAuthenticator.bind_dn_template = [
-    'cn={username},ou=教員,ou=ユーザー,dc=edutuis,dc=local',
-    'cn={username},ou=学生,ou=ユーザー,dc=edutuis,dc=local'
-]
-c.LDAPAuthenticator.user_search_base = 'dc=edutuis,dc=local'
-c.LDAPAuthenticator.user_attribute = 'sAMAccountName'
-
-## 大学の AD template なし
-#c.LDAPAuthenticator.lookup_dn = True
-#c.LDAPAuthenticator.user_search_base = 'dc=edutuis,dc=local'
-#c.LDAPAuthenticator.user_attribute = 'sAMAccountName'
-#c.LDAPAuthenticator.lookup_dn_search_user = 'cn=ldapauth,cn=users,dc=edutuis,dc=local'
-#c.LDAPAuthenticator.lookup_dn_search_password = '*****'
-#c.LDAPAuthenticator.lookup_dn_user_dn_attribute = 'cn'
-
-## NSL: username から dn が探せる場合
-#c.LDAPAuthenticator.lookup_dn = False
-#c.LDAPAuthenticator.bind_dn_template = 'cn={username},ou=user,dc=nsl,dc=tuis,dc=ac,dc=jp'
-
-## NSL: ツリーを検索する場合
-#c.LDAPAuthenticator.lookup_dn = True
-#c.LDAPAuthenticator.user_search_base = 'ou=user,dc=nsl,dc=tuis,dc=ac,dc=jp'
-#c.LDAPAuthenticator.user_attribute = 'uid'
-#c.LDAPAuthenticator.lookup_dn_search_user = 'cn=Manager'
-#c.LDAPAuthenticator.lookup_dn_search_password = '*******'
-#c.LDAPAuthenticator.lookup_dn_user_dn_attribute = 'cn'
-
-
 ## The base URL of the entire application.
 #  
 #  Add this to the beginning of all JupyterHub URLs. Use base_url to run
@@ -427,7 +391,6 @@ c.JupyterHub.init_spawners_timeout = 30
 ## File to write PID Useful for daemonizing JupyterHub.
 c.JupyterHub.pid_file = '/var/lib/jupyterhub/jupyterhub.pid'
 c.ConfigurableHTTPProxy.pid_file = '/var/lib/jupyterhub/jupyterhub-proxy.pid'
-#c.ConfigurableHTTPProxy.pid_file = Unicode('/var/lib/jupyterhub/jupyterhub-proxy.pid')
 
 ## The public facing port of the proxy.
 #  
@@ -534,15 +497,10 @@ class LTIPodmanSpawner(Spawner):
     # here we would need traitlets callable type...
     preexec_fn_set = Bool(False)
     conthome = Unicode('/home')
-    #conthome = Unicode("/home/jovyan/home")
-    #startatconthome = Bool(False)
 
 
     #
-    use_group = Bool(True, config = True)
-    host_homedir_format_string  = Unicode('/home/{groupname}/{username}', config = True)
-    image_homedir_format_string = Unicode('/home/{groupname}/{username}', config = True)
-
+    use_group    = Bool(True, config = True)
     projects_dir = Unicode('jupyter', config = True)
     works_dir    = Unicode('works', config = True)
     courses_dir  = Unicode('.courses', config = True)
@@ -805,8 +763,7 @@ class LTIPodmanSpawner(Spawner):
 
 
     def user_env(self, env):
-        #env['USER'] = self.user.name
-        #user_data = pwd.getpwnam(self.user.name)
+        # for rootfull execution
         env['USER'] = 'root'
         user_data = pwd.getpwnam('root')
         home      = user_data.pw_dir
@@ -832,7 +789,10 @@ class LTIPodmanSpawner(Spawner):
     def get_env(self):
         #print('=== get_env() ===')
         env = super(LTIPodmanSpawner, self).get_env()
+        user_data = pwd.getpwnam(self.user.name)
         #
+        env.update(NB_UID       = user_data.pw_uid)
+        env.update(NB_GID       = user_data.pw_gid)
         env.update(NB_USER      = self.user.name)
         env.update(NB_GROUP     = self.get_groupname())
         env.update(NB_THRGROUP  = self.custom_grpname)
@@ -869,7 +829,6 @@ class LTIPodmanSpawner(Spawner):
         self.volumes = {}
 
         fullpath_dir = self.notebook_dir.format(username=username, groupname=groupname)  + '/' + self.works_dir
-        #self.volumes[f'jupyterhub-user-{username}'] = fullpath_dir
         self.volumes[f'jupyterhub-user-{username}'] = self.notebook_dir.format(username=username, groupname=groupname)
 
         mount_volumes = self.get_volumes_info(self.custom_volumes)
@@ -877,28 +836,16 @@ class LTIPodmanSpawner(Spawner):
 
         # cpu and memory
         if self.custom_cpugrnt != '':
-            if self.custom_cpugrnt == '0.0' :
-                self.cpu_guarantee = None
-            else:
-                self.cpu_guarantee = float(self.custom_cpugrnt)
+            self.cpu_guarantee = float(self.custom_cpugrnt)
         #
         if self.custom_memgrnt != '':
-            if self.custom_memgrnt == '0'
-                self.mem_guarantee = None
-            else:
-                self.mem_guarantee = int(self.custom_memgrnt)
+            self.mem_guarantee = int(self.custom_memgrnt)
         #
         if self.custom_cpulimit != '':
-            if self.custom_cpulimit == '0.0' :
-                self.cpu_limit = None
-            else:
-                self.cpu_limit = float(self.custom_cpulimit)
+            self.cpu_limit     = float(self.custom_cpulimit)
         #
         if self.custom_memlimit != '':
-            if self.custom_memlimit _= '0':
-                self.mem_limit = None
-            else:
-                self.mem_limit = int(self.custom_memlimit)
+            self.mem_limit     = int(self.custom_memlimit)
 
         # image
         if self.custom_image != '':
@@ -937,17 +884,17 @@ class LTIPodmanSpawner(Spawner):
         self.create_dir(hosthome, int(user_data.pw_uid), int(user_data.pw_gid), 0o0700)
         self.create_dir(hosthome + '/' + self.projects_dir,  int(user_data.pw_uid), int(user_data.pw_gid), 0o0700)
         self.create_dir(hosthome + '/' + self.projects_dir + '/' + self.works_dir,  int(user_data.pw_uid), int(user_data.pw_gid), 0o0700)
-        self.create_dir('/run/user/0', 0, 0, 0o0700)
 
         import subprocess
+        self.create_dir('/run/user/0', 0, 0, 0o0700)
         rslt = subprocess.getoutput('grep {username} /etc/subuid'.format(username = 'root'))
         if rslt=='' : subprocess.run(['usermod', '--add-subuids', '200000-210000',  'root'])
         rslt = subprocess.getoutput('grep {username} /etc/subgid'.format(username = 'root'))
         if rslt=='' : subprocess.run(['usermod', '--add-subgids', '200000-210000',  'root'])
 
         podman_base_cmd = [
-                'podman', 'run', '-d', '--privileged', '--rm', 
-                #'podman', 'run', '-d', '--rm', 
+                'podman', 'run', '-d', '--privileged', 
+                #'podman', 'run', '-d', 
                 # https://www.redhat.com/sysadmin/rootless-podman
                 #"--storage-opt", "ignore_chown_errors",
                 # "--rm",
@@ -955,12 +902,26 @@ class LTIPodmanSpawner(Spawner):
                 # "-p", "{hostport}:{port}".format(
                 #         hostport=self.port, port=self.standard_jupyter_port
                 #         ),
+                #
                 '--name', f'jupyterhub-{username}',
                 '--net', 'host',
                 '-w', notebkdir,
-                #'-v', '{}:{}'.format(hosthome, conthome),
+                #'-v', '{}:{}/home'.format(hosthome, conthome),
+                '-v', '{}:{}'.format(hosthome, conthome),
+                #'--mount', 'type=bind,source={},destination=={}'.format(hosthome, conthome),
             ]
 
+        #
+        if self.cpu_limit != None :
+            podman_base_cmd.append('--cpus=' + str(self.cpu_limit))
+
+        if self.mem_limit != None :
+            podman_base_cmd.append('--memory=' + str(self.mem_limit))
+
+        if self.remove :
+            podman_base_cmd.append('--rm')
+    
+        # volumes
         for k, v in self.volumes.items():
             #print(k + ' ----> '+ v)
             podman_base_cmd.append('-v')
@@ -999,7 +960,6 @@ class LTIPodmanSpawner(Spawner):
 
         # test whether a preexec_fn was set externally or not
         if self.preexec_fn_set == False:
-            #preexec_fn = self.make_preexec_fn(self.user.name)
             preexec_fn = self.make_preexec_fn('root')
         else:
             preexec_fn = self.preexec_fn
@@ -1041,12 +1001,6 @@ class LTIPodmanSpawner(Spawner):
 
     async def poll(self):
         #print('=== poll() ===')
-
-        #if self.cid == None : 
-        #    state = self.get_state()
-        #    if self.cid == None : 
-        #        return None
-        #        #return state["ExitCode"]
 
         output, err, returncode = self.podman("inspect")
         if returncode == 0:
@@ -1106,8 +1060,6 @@ teacher_gid   = 7000                            # 1000以上で，システム�
 
 #
 notebook_dir = user_home_dir + '/' + projects_dir
-c.LTIPodmanSpawner.host_homedir_format_string  = user_home_dir
-c.LTIPodmanSpawner.image_homedir_format_string = user_home_dir
 c.LTIPodmanSpawner.projects_dir = projects_dir
 c.LTIPodmanSpawner.works_dir    = works_dir
 c.LTIPodmanSpawner.courses_dir  = courses_dir
@@ -1226,7 +1178,7 @@ c.JupyterHub.spawner_class = LTIPodmanSpawner
 #c.LTIPodmanSpawner.image = 'jupyterhub/singleuser'
 #c.LTIPodmanSpawner.image = 'docker.io/jupyterhub/singleuser'
 #c.LTIPodmanSpawner.image = 'localhost:5000/jupyterhub/singleuser-ltids'
-c.LTIPodmanSpawner.image = 'localhost/jupyterhub/single-ltida:21092012'
+c.LTIPodmanSpawner.image = 'jupyterhub/singleuser-ltids'
 
 #c.LTIPodmanSpawner.image_whitelist = {
 #    "deepdetect-gpu (Tensorflow+PyTorch)": "jolibrain/jupyter-dd-notebook-gpu",
@@ -1238,7 +1190,7 @@ c.LTIPodmanSpawner.image = 'localhost/jupyterhub/single-ltida:21092012'
 #}
 
 c.LTIPodmanSpawner.remove = True
-c.LTIPodmanSpawner.extra_create_kwargs = {'user': 'root'}
+#c.LTIPodmanSpawner.extra_create_kwargs = {'user': 'root'}
 #c.LTIPodmanSpawner.extra_host_config = {'runtime': 'nvidia'}
 #notebook_dir = '/home/jovyan/work'
 #notebook_dir = '/home/{username}/work'
@@ -1507,8 +1459,8 @@ c.Spawner.default_url = '/lab'
 #  wait before assuming that the server is unable to accept connections.
 #c.Spawner.http_timeout = 30
 c.Spawner.http_timeout = 60
-
 c.Spawner.slow_spawn_timeout = 120
+
 ## The IP address (or hostname) the single-user server should listen on.
 #  
 #  The JupyterHub proxy implementation should be able to send packets to this
