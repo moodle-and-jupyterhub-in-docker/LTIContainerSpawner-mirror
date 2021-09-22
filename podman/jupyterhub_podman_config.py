@@ -855,11 +855,11 @@ class LTIPodmanSpawner(Spawner):
         prsnals = ' '.join(self.get_volumes_info(self.custom_prsnals))
         env.update(NB_PRSNALS = prsnals)
 
-        #
-        #env["JUPYTER_IMAGE_SPEC"] = self.image
-
         return env
 
+
+    #
+    # START LTIPodmanSpawner by Popen
     #
     async def start(self):
         #print('=== start() ===')
@@ -875,22 +875,40 @@ class LTIPodmanSpawner(Spawner):
         mount_volumes = self.get_volumes_info(self.custom_volumes)
         mount_submits = self.get_volumes_info(self.custom_submits)
 
+        # cpu and memory
         if self.custom_cpugrnt != '':
-            self.cpu_guarantee = float(self.custom_cpugrnt)
+            if self.custom_cpugrnt == '0.0' :
+                self.cpu_guarantee = None
+            else:
+                self.cpu_guarantee = float(self.custom_cpugrnt)
+        #
         if self.custom_memgrnt != '':
-            self.mem_guarantee = int(self.custom_memgrnt)
-
+            if self.custom_memgrnt == '0'
+                self.mem_guarantee = None
+            else:
+                self.mem_guarantee = int(self.custom_memgrnt)
+        #
         if self.custom_cpulimit != '':
-            self.cpu_limit     = float(self.custom_cpulimit)
+            if self.custom_cpulimit == '0.0' :
+                self.cpu_limit = None
+            else:
+                self.cpu_limit = float(self.custom_cpulimit)
+        #
         if self.custom_memlimit != '':
-            self.mem_limit     = int(self.custom_memlimit)
+            if self.custom_memlimit _= '0':
+                self.mem_limit = None
+            else:
+                self.mem_limit = int(self.custom_memlimit)
 
+        # image
         if self.custom_image != '':
             self.image = self.custom_image
 
+        # default url
         if self.custom_defurl != '':
             self.default_url = self.custom_defurl
 
+        # volume
         for volume in mount_volumes:
             mountp  = volume.rsplit(':')[0]
             dirname = mountp.split('/')[-1]
@@ -906,6 +924,7 @@ class LTIPodmanSpawner(Spawner):
         return self.podman_start()
 
 
+    #
     def podman_start(self):
         #print('=== podman_start() ===')
         username  = self.user.name

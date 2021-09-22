@@ -785,22 +785,28 @@ class LTIDockerSpawner(SystemUserSpawner):
         mount_volumes = self.get_volumes_info(self.custom_volumes)
         mount_submits = self.get_volumes_info(self.custom_submits)
 
+        # cpu and memory
         if self.custom_cpugrnt != '':
             self.cpu_guarantee = float(self.custom_cpugrnt)
+        #
         if self.custom_memgrnt != '':
             self.mem_guarantee = int(self.custom_memgrnt)
-
+        #
         if self.custom_cpulimit != '':
             self.cpu_limit     = float(self.custom_cpulimit)
+        #
         if self.custom_memlimit != '':
             self.mem_limit     = int(self.custom_memlimit)
 
+        # image
         if self.custom_image != '':
             self.image = self.custom_image
 
+        # default url
         if self.custom_defurl != '':
             self.default_url = self.custom_defurl
 
+        # volume
         for volume in mount_volumes:
             mountp  = volume.rsplit(':')[0]
             dirname = mountp.split('/')[-1]
@@ -986,7 +992,7 @@ c.DockerSpawner.image = 'jupyterhub/singleuser-ltids'
 #}
 
 c.DockerSpawner.remove = True
-c.DockerSpawner.extra_create_kwargs = {'user': 'root'}
+#c.DockerSpawner.extra_create_kwargs = {'user': 'root'}
 #c.DockerSpawner.extra_host_config = {'runtime': 'nvidia'}
 #notebook_dir = '/home/jovyan/work'
 #notebook_dir = '/home/{username}/work'
