@@ -784,7 +784,8 @@ class LTIPodmanSpawner(Spawner):
 
     #
     # コンテナに渡す環境変数を設定する．
-    # NB_USER, NB_GROUP, NB_UMASK, NB_VOLUMES, NB_SUBMITS, NB_PRSNAL, NB_TEACHER, NB_THRGROUP, NB_THRGID, ...
+    # NB_UID, NB_GID, NB_USER, NB_GROUP, NB_UMASK, NB_VOLUMES, NB_SUBMITS, NB_PRSNAL, 
+    # NB_TEACHER, NB_THRGROUP, NB_THRGID, ...
     #
     def get_env(self):
         #print('=== get_env() ===')
@@ -894,7 +895,6 @@ class LTIPodmanSpawner(Spawner):
 
         podman_base_cmd = [
                 'podman', 'run', '-d', '--privileged', 
-                #'podman', 'run', '-d', 
                 # https://www.redhat.com/sysadmin/rootless-podman
                 #"--storage-opt", "ignore_chown_errors",
                 # "--rm",
@@ -906,9 +906,7 @@ class LTIPodmanSpawner(Spawner):
                 '--name', f'jupyterhub-{username}',
                 '--net', 'host',
                 '-w', notebkdir,
-                #'-v', '{}:{}/home'.format(hosthome, conthome),
                 '-v', '{}:{}'.format(hosthome, conthome),
-                #'--mount', 'type=bind,source={},destination=={}'.format(hosthome, conthome),
             ]
 
         #
