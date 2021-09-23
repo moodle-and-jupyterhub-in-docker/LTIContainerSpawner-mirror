@@ -763,7 +763,7 @@ class LTIPodmanSpawner(Spawner):
 
 
     def user_env(self, env):
-        # for rootfull execution
+        # for root mode execution
         env['USER'] = 'root'
         user_data = pwd.getpwnam('root')
         home      = user_data.pw_dir
