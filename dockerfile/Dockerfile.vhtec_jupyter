@@ -1,14 +1,27 @@
 FROM vhtec/jupyter-notebook
 USER root
-COPY bin/start.sh /usr/local/bin
-COPY bin/start-notebook.sh   /usr/local/bin
-COPY bin/start-singleuser.sh /usr/local/bin
-COPY bin/commit.sh /usr/local/bin
-COPY bin/ipynb_conv   /usr/bin
-COPY bin/ipynb_deploy /usr/bin
-COPY bin/ipynb_submit /usr/bin
-RUN  chmod a+rx /usr/bin/ipynb_* \
-  && chmod a+rx /usr/local/bin/* 
+ADD  bin/start.sh \
+     bin/commit.sh \
+     bin/start-notebook.sh \
+     bin/start-singleuser.sh \
+     /usr/local/bin/
+ADD  bin/ipynb_conv \
+     bin/ipynb_deploy \
+     bin/ipynb_submit \
+     /usr/bin/
+ADD  etc/.bashrc \
+     etc/.bash_profile \
+     etc/.vimrc \
+     /root/
+ADD  etc/.bash_profile \
+     etc/.bashrc \
+     etc/.vimrc \
+     /etc/skel/
+ADD  etc/passwd.orig \
+     etc/group.orig \
+     /etc/
+RUN  chmod a+rx /usr/local/bin/* \
+  && chmod a+rx /usr/bin/ipynb_*
 COPY etc/.bashrc /root
 COPY etc/.bashrc /etc/skel
 COPY etc/.bash_profile /root
