@@ -22,14 +22,6 @@ ADD  etc/passwd.orig \
      /etc/
 RUN  chmod a+rx /usr/local/bin/* \
   && chmod a+rx /usr/bin/ipynb_*
-COPY etc/.bashrc /root
-COPY etc/.bashrc /etc/skel
-COPY etc/.bash_profile /root
-COPY etc/.bash_profile /etc/skel
-COPY etc/.vimrc /root
-COPY etc/.vimrc /etc/skel
-COPY etc/passwd /etc/passwd.orig
-COPY etc/group  /etc/group.orig
 RUN  /opt/conda/bin/conda install --prefix /opt/conda conda==4.10.3 -y \
   && /opt/conda/bin/conda install --prefix /opt/conda -c conda-forge jupyterhub==1.4.2 -y \
   && /opt/conda/bin/conda install --prefix /opt/conda -c conda-forge jupyterlab -y \
