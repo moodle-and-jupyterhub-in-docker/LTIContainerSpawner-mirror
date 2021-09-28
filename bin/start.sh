@@ -271,8 +271,13 @@ if [ $(id -u) == 0 ] ; then
         fi
     fi
     
-    # home directory
-    cd $HOME_DIR/$NB_USER
+    #
+    # notebook directory
+    if [ "$NB_DIR" != "" ]; then
+        cd $NB_DIR
+    else
+        cd $HOME_DIR/$NB_USER
+    fi
 
     # Exec the command as NB_USER with the PATH and the rest of
     # the environment preserved

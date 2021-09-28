@@ -1,5 +1,5 @@
-#FROM jupyter/base-notebook
-FROM jupyterhub/singleuser
+FROM jupyter/base-notebook
+#FROM jupyterhub/singleuser
 #FROM jupyter/datascience-notebook
 #FROM jupyter/tensorflow-notebook
 #FROM jupyter/scipy-notebook

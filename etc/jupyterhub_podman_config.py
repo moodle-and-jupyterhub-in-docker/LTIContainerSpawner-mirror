@@ -829,8 +829,8 @@ class LTIPodmanSpawner(Spawner):
         user_gid  = self.group_id
         self.volumes = {}
 
-        fullpath_dir = self.notebook_dir.format(username=username, groupname=groupname)  + '/' + self.works_dir
-        self.volumes[f'jupyterhub-user-{username}'] = self.notebook_dir.format(username=username, groupname=groupname)
+        fullpath_dir = self.notebook_dir.format(username=username, groupname=groupname)  + '/' + projects_dir + '/' + self.works_dir
+        self.volumes[f'jupyterhub-user-{username}'] = self.notebook_dir.format(username=username, groupname=groupname) + '/' + projects_dir
 
         mount_volumes = self.get_volumes_info(self.custom_volumes)
         mount_submits = self.get_volumes_info(self.custom_submits)
@@ -880,7 +880,7 @@ class LTIPodmanSpawner(Spawner):
         hosthome  = user_data.pw_dir
         groupname = self.get_groupname()    # get self.group_id, too
         conthome  = self.conthome + '/' + groupname + '/' + self.user.name
-        notebkdir = self.notebook_dir.format(username=username, groupname=groupname) 
+        prjectdir = self.notebook_dir.format(username=username, groupname=groupname) + '/' + projects_dir
 
         self.create_dir(hosthome, int(user_data.pw_uid), int(user_data.pw_gid), 0o0700)
         self.create_dir(hosthome + '/' + self.projects_dir,  int(user_data.pw_uid), int(user_data.pw_gid), 0o0700)
@@ -905,7 +905,7 @@ class LTIPodmanSpawner(Spawner):
                 #
                 '--name', f'jupyterhub-{username}',
                 '--net', 'host',
-                '-w', notebkdir,
+                '-w', prjectdir,
                 '-v', '{}:{}'.format(hosthome, conthome),
             ]
 
@@ -1057,7 +1057,7 @@ courses_dir   = '.courses'
 teacher_gid   = 7000                            # 1000以上で，システムで使用していないGID
 
 #
-notebook_dir = user_home_dir + '/' + projects_dir
+notebook_dir = user_home_dir
 c.LTIPodmanSpawner.projects_dir = projects_dir
 c.LTIPodmanSpawner.works_dir    = works_dir
 c.LTIPodmanSpawner.courses_dir  = courses_dir
@@ -1070,6 +1070,7 @@ c.Spawner.environment = {
     'PRJCT_DIR' : projects_dir,
     'WORK_DIR'  : works_dir,
     'COURSE_DIR': courses_dir,
+    'NB_DIR'    : notebook_dir,
     'NB_UMASK'  : '0037',
     'CONDA_DIR' : '/opt/conda',
     'TZ'        : 'JST-9',

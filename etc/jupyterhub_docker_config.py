@@ -156,8 +156,8 @@ c.LTI11Authenticator.username_key = 'ext_user_username'
 
 ##
 # My IP Address
-my_ip_addr = '172.22.1.75'
-#my_ip_addr = '202.26.150.55'
+#my_ip_addr = '172.22.1.75'
+my_ip_addr = '202.26.150.55'
 
 ## The public facing URL of the whole JupyterHub application.
 #  
@@ -779,7 +779,7 @@ class LTIDockerSpawner(SystemUserSpawner):
         user_gid  = user_data.pw_gid
         self.volumes = {}
 
-        fullpath_dir = self.notebook_dir + '/' + self.works_dir
+        fullpath_dir = self.notebook_dir + '/' + projects_dir + '/' + self.works_dir
         self.volumes[f'jupyterhub-user-{username}'] = fullpath_dir
 
         mount_volumes = self.get_volumes_info(self.custom_volumes)
@@ -861,7 +861,7 @@ courses_dir   = '.courses'
 teacher_gid   = 7000                            # 1000以上で，システムで使用していないGID
 
 #
-notebook_dir = user_home_dir + '/' + projects_dir
+notebook_dir = user_home_dir
 c.LTIDockerSpawner.host_homedir_format_string  = user_home_dir
 c.LTIDockerSpawner.image_homedir_format_string = user_home_dir
 c.LTIDockerSpawner.courses_dir = courses_dir
@@ -870,11 +870,12 @@ c.LTIDockerSpawner.teacher_gid = teacher_gid
 
 #
 c.Spawner.environment = {
-    'GRANT_SUDO': 'yes',                # 通常使用では 'no'
+    'GRANT_SUDO': 'no',                # 通常使用では 'no'
     'CHOWN_HOME': 'yes',
     'PRJCT_DIR' : projects_dir,
     'WORK_DIR'  : works_dir,
     'COURSE_DIR': courses_dir,
+    'NB_DIR'    : notebook_dir,
     'NB_UMASK'  : '0037',
     'CONDA_DIR' : '/opt/conda',
     'TZ'        : 'JST-9',
@@ -1020,16 +1021,16 @@ c.DockerSpawner.notebook_dir = notebook_dir
 ## Path to SSL certificate file for the public facing interface of the proxy
 #  
 #  When setting this, you should also set ssl_key
-#c.JupyterHub.ssl_cert = '/etc/gitlab/ssl/gitlab.crt'
+c.JupyterHub.ssl_cert = '/etc/gitlab/ssl/gitlab.crt'
 #c.JupyterHub.ssl_cert = '/etc/letsencrypt/live/gitlab.nsl.tuis.ac.jp/fullchain.pem'
-c.JupyterHub.ssl_cert = '/etc/pki/tls/certs/server.pem'
+#c.JupyterHub.ssl_cert = '/etc/pki/tls/certs/server.pem'
 
 ## Path to SSL key file for the public facing interface of the proxy
 #  
 #  When setting this, you should also set ssl_cert
-#c.JupyterHub.ssl_key = '/etc/gitlab/ssl/gitlab.key'
+c.JupyterHub.ssl_key = '/etc/gitlab/ssl/gitlab.key'
 #c.JupyterHub.ssl_key = '/etc/letsencrypt/live/gitlab.nsl.tuis.ac.jp/privkey.pem'
-c.JupyterHub.ssl_key = '/etc/pki/tls/private/key.pem' 
+#c.JupyterHub.ssl_key = '/etc/pki/tls/private/key.pem' 
 
 ## Host to send statsd metrics to. An empty string (the default) disables sending
 #  metrics.
