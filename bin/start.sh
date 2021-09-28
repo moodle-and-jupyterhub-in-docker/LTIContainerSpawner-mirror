@@ -2,7 +2,7 @@
 # Copyright (c) Jupyter Development Team.
 # Distributed under the terms of the Modified BSD License.
 #
-# /usr/local/bin/start.sh   2021 09/22 v0.9.9
+# /usr/local/bin/start.sh   2021 09/28 v0.9.10
 #       This is modified by Fumi.Iseki for LTIDockerSpawner 
 #
 
@@ -44,6 +44,7 @@ run-hooks () {
 
 run-hooks /usr/local/bin/start-notebook.d
 
+#
 # Handle special flags if we're root
 if [ $(id -u) == 0 ] ; then
     #
@@ -275,6 +276,8 @@ if [ $(id -u) == 0 ] ; then
         if [[ "$GRANT_SUDO" == "1" || "$GRANT_SUDO" == 'yes' ]]; then
             echo "$NB_USER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/notebook 
         fi
+    else
+        echo "$PRG_NAME: /usr/bin/sudo command is not available!!"
     fi
     
     #
