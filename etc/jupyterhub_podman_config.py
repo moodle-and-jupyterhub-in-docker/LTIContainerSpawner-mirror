@@ -790,12 +790,17 @@ class LTIPodmanSpawner(Spawner):
     def get_env(self):
         #print('=== get_env() ===')
         env = super(LTIPodmanSpawner, self).get_env()
-        user_data = pwd.getpwnam(self.user.name)
+        #
+        username  = self.user.name
+        user_data = pwd.getpwnam(username)
+        groupname = self.get_groupname()
         #
         env.update(NB_UID       = user_data.pw_uid)
         env.update(NB_GID       = user_data.pw_gid)
-        env.update(NB_USER      = self.user.name)
-        env.update(NB_GROUP     = self.get_groupname())
+        env.update(NB_USER      = username)
+        env.update(NB_GROUP     = groupname)
+        env.update(NB_DIR       = self.notebook_dir.format(username=username, groupname=groupname))
+
         env.update(NB_THRGROUP  = self.custom_grpname)
         env.update(NB_OPTION    = self.custom_option)
         env.update(NB_THRGID    = self.teacher_gid)
@@ -828,9 +833,10 @@ class LTIPodmanSpawner(Spawner):
         groupname = self.get_groupname()    # get self.group_id, too
         user_gid  = self.group_id
         self.volumes = {}
+        notebook_dir = self.notebook_dir.format(username=username, groupname=groupname)
 
-        fullpath_dir = self.notebook_dir.format(username=username, groupname=groupname)  + '/' + projects_dir + '/' + self.works_dir
-        self.volumes[f'jupyterhub-user-{username}'] = self.notebook_dir.format(username=username, groupname=groupname) + '/' + projects_dir
+        self.volumes[f'jupyterhub-user-{username}'] = notebook_dir + '/' + self.projects_dir
+        fullpath_dir = notebook_dir  + '/' + self.projects_dir + '/' + self.works_dir
 
         mount_volumes = self.get_volumes_info(self.custom_volumes)
         mount_submits = self.get_volumes_info(self.custom_submits)
@@ -880,7 +886,7 @@ class LTIPodmanSpawner(Spawner):
         hosthome  = user_data.pw_dir
         groupname = self.get_groupname()    # get self.group_id, too
         conthome  = self.conthome + '/' + groupname + '/' + self.user.name
-        prjectdir = self.notebook_dir.format(username=username, groupname=groupname) + '/' + projects_dir
+        mountdir  = self.notebook_dir.format(username=username, groupname=groupname) + '/' + self.projects_dir
 
         self.create_dir(hosthome, int(user_data.pw_uid), int(user_data.pw_gid), 0o0700)
         self.create_dir(hosthome + '/' + self.projects_dir,  int(user_data.pw_uid), int(user_data.pw_gid), 0o0700)
@@ -905,7 +911,7 @@ class LTIPodmanSpawner(Spawner):
                 #
                 '--name', f'jupyterhub-{username}',
                 '--net', 'host',
-                '-w', prjectdir,
+                '-w', mountdir,
                 '-v', '{}:{}'.format(hosthome, conthome),
             ]
 
@@ -1070,7 +1076,6 @@ c.Spawner.environment = {
     'PRJCT_DIR' : projects_dir,
     'WORK_DIR'  : works_dir,
     'COURSE_DIR': courses_dir,
-    'NB_DIR'    : notebook_dir,
     'NB_UMASK'  : '0037',
     'CONDA_DIR' : '/opt/conda',
     'TZ'        : 'JST-9',

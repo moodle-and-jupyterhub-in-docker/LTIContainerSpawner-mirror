@@ -2,7 +2,7 @@
 # Copyright (c) Jupyter Development Team.
 # Distributed under the terms of the Modified BSD License.
 #
-# /usr/local/bin/start.sh   2021 09/22 v0.9.7
+# /usr/local/bin/start.sh   2021 09/22 v0.9.9
 #       This is modified by Fumi.Iseki for LTIDockerSpawner 
 #
 
@@ -261,17 +261,19 @@ if [ $(id -u) == 0 ] ; then
     #
     # Enable sudo if requested
     echo "$PRG_NAME: start to grant sudo access"
-    if [[ "$GRANT_SUDO" == "1" || "$GRANT_SUDO" == 'yes' ]]; then
-        if [ -x /usr/bin/sudo ] ;then
-            echo "$PRG_NAME: granting $NB_USER sudo access and appending $CONDA_DIR/bin to sudo path"
-            if [ ! -d /etc/sudoers.d ]; then
-                mkdir /etc/sudoers.d
-            fi
+
+    if [ -x /usr/bin/sudo ] ;then
+        echo "$PRG_NAME: granting $NB_USER sudo access and appending $CONDA_DIR/bin to sudo path"
+        if [ ! -d /etc/sudoers.d ]; then
+            mkdir /etc/sudoers.d
+        fi
+        # Add $CONDA_DIR/bin to sudo secure_path
+        sed -r "s#Defaults\s+secure_path\s*=\s*\"?([^\"]+)\"?#Defaults secure_path=\"\1:$CONDA_DIR/bin\"#" /etc/sudoers | \
+                                                                                                       grep secure_path > /etc/sudoers.d/path 
+        chmod 4111 /usr/bin/sudo 
+        #
+        if [[ "$GRANT_SUDO" == "1" || "$GRANT_SUDO" == 'yes' ]]; then
             echo "$NB_USER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/notebook 
-            chmod 4111 /usr/bin/sudo 
-            # Add $CONDA_DIR/bin to sudo secure_path
-            sed -r "s#Defaults\s+secure_path\s*=\s*\"?([^\"]+)\"?#Defaults secure_path=\"\1:$CONDA_DIR/bin\"#" /etc/sudoers | \
-                        grep secure_path > /etc/sudoers.d/path 
         fi
     fi
     
