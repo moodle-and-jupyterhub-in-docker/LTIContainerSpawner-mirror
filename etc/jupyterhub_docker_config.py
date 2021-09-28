@@ -742,8 +742,12 @@ class LTIDockerSpawner(SystemUserSpawner):
         #print('=== get_env() ===')
         env = super(LTIDockerSpawner, self).get_env()
 
-        env.update(NB_USER      = self.user.name)
-        env.update(NB_GROUP     = self.get_groupname())
+        username  = self.user.name
+        groupname = self.get_groupname()
+
+        env.update(NB_USER      = username)
+        env.update(NB_GROUP     = groupname)
+        env.update(NB_DIR       = self.notebook_dir.format(username=username, groupname=groupname))
 
         env.update(NB_THRGROUP  = self.custom_grpname)
         env.update(NB_OPTION    = self.custom_option)
@@ -875,7 +879,6 @@ c.Spawner.environment = {
     'PRJCT_DIR' : projects_dir,
     'WORK_DIR'  : works_dir,
     'COURSE_DIR': courses_dir,
-    'NB_DIR'    : notebook_dir,
     'NB_UMASK'  : '0037',
     'CONDA_DIR' : '/opt/conda',
     'TZ'        : 'JST-9',
