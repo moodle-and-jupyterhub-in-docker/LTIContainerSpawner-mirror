@@ -286,6 +286,11 @@ if [ $(id -u) == 0 ] ; then
     exec sudo -E -H -u $NB_USER PATH=$PATH XDG_CACHE_HOME=$HOME_DIR/$NB_USER/.cache PYTHONPATH=${PYTHONPATH:-} "${cmd[@]}" 
     #
 else
+    #
+    # rootless mode
+    #
+    echo "$PRG_NAME: rootless mode."
+    #
     if [[ "$NB_UID" == "$(id -u jovyan 2>/dev/null)" && "$NB_GID" == "$(id -g jovyan 2>/dev/null)" ]]; then
         # User is not attempting to override user/group via environment
         # variables, but they could still have overridden the uid/gid that

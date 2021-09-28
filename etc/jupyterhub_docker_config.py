@@ -993,7 +993,7 @@ c.DockerSpawner.image = 'jupyterhub/singleuser-ltids'
 #}
 
 c.DockerSpawner.remove = True
-#c.DockerSpawner.extra_create_kwargs = {'user': 'root'}
+c.DockerSpawner.extra_create_kwargs = {'user': 'root'}          # root or rootless mode
 #c.DockerSpawner.extra_host_config = {'runtime': 'nvidia'}
 #notebook_dir = '/home/jovyan/work'
 #notebook_dir = '/home/{username}/work'

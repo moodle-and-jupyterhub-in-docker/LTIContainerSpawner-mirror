@@ -1189,7 +1189,7 @@ c.LTIPodmanSpawner.image = 'jupyterhub/singleuser-ltids'
 #}
 
 c.LTIPodmanSpawner.remove = True
-#c.LTIPodmanSpawner.extra_create_kwargs = {'user': 'root'}
+c.LTIPodmanSpawner.extra_create_kwargs = {'user': 'root'}           # root or rootless mode
 #c.LTIPodmanSpawner.extra_host_config = {'runtime': 'nvidia'}
 #notebook_dir = '/home/jovyan/work'
 #notebook_dir = '/home/{username}/work'
