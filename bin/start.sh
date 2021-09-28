@@ -46,6 +46,10 @@ run-hooks /usr/local/bin/start-notebook.d
 
 # Handle special flags if we're root
 if [ $(id -u) == 0 ] ; then
+    #
+    # root mode
+    #
+    echo "$PRG_NAME: root mode."
     
     #
     # make home base directory
@@ -290,6 +294,7 @@ else
     # rootless mode
     #
     echo "$PRG_NAME: rootless mode."
+
     #
     if [[ "$NB_UID" == "$(id -u jovyan 2>/dev/null)" && "$NB_GID" == "$(id -g jovyan 2>/dev/null)" ]]; then
         # User is not attempting to override user/group via environment
