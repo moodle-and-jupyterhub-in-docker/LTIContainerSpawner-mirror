@@ -97,11 +97,12 @@ if [ $(id -u) == 0 ] ; then
 
     #
     # setup Jupyter work directory
-    if [ ! -d $HOME_DIR/$NB_USER/$PRJCT_DIR/$WORK_DIR/$COURSE_DIR ]; then
-        mkdir -p $HOME_DIR/$NB_USER/$PRJCT_DIR/$WORK_DIR/$COURSE_DIR || true
+    if [ ! -d $HOME_DIR/$NB_USER/$PRJCT_DIR/$WORK_DIR/$VOLUME_DIR ]; then
+        mkdir -p $HOME_DIR/$NB_USER/$PRJCT_DIR/$WORK_DIR/$VOLUME_DIR || true
     fi
     chown $NB_UID:$NB_GID $HOME_DIR/$NB_USER/$PRJCT_DIR || true
     chown $NB_UID:$NB_GID $HOME_DIR/$NB_USER/$PRJCT_DIR/$WORK_DIR || true
+    chown $NB_UID:$NB_GID $HOME_DIR/$NB_USER/$PRJCT_DIR/$WORK_DIR/$VOLUME_DIR || true
     #
     if [ ! -z "$CHOWN_EXTRA" ]; then
         for extra_dir in $(echo $CHOWN_EXTRA | tr ',' ' '); do
