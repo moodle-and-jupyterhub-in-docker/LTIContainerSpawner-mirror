@@ -507,7 +507,7 @@ class LTIDockerSpawner(SystemUserSpawner):
     host_homedir_format_string  = Unicode('/home/{groupname}/{username}', config = True)
     image_homedir_format_string = Unicode("/home/{groupname}/{username}", config = True)
 
-    courses_dir = Unicode('.courses', config = True)
+    volumes_dir = Unicode('.volumes', config = True)
     works_dir   = Unicode('works', config = True)
     teacher_gid = Int(7000, config = True)
 
@@ -730,7 +730,7 @@ class LTIDockerSpawner(SystemUserSpawner):
 
                 if mnt:
                     dirname = key + '_' + self.course_id + '_' + self.host_name
-                    vols.append(self.courses_dir + '/' + dirname + ':' + disp)
+                    vols.append(self.volumes_dir + '/' + dirname + ':' + disp)
         return vols
 
 
@@ -856,11 +856,11 @@ class LTIDockerSpawner(SystemUserSpawner):
 
 c.LTIDockerSpawner.use_group = True
 
-# Volumes are mounted at /user_home_dir/projects_dir/works_dir/courses_dir
+# Volumes are mounted at /user_home_dir/projects_dir/works_dir/volumes_dir
 user_home_dir = '/home/{groupname}/{username}'
 projects_dir  = 'jupyter'
 works_dir     = 'works'
-courses_dir   = '.courses'
+volumes_dir   = '.volumes'
 #
 teacher_gid   = 7000                            # 1000以上で，システムで使用していないGID
 
@@ -868,7 +868,7 @@ teacher_gid   = 7000                            # 1000以上で，システム�
 notebook_dir = user_home_dir
 c.LTIDockerSpawner.host_homedir_format_string  = user_home_dir
 c.LTIDockerSpawner.image_homedir_format_string = user_home_dir
-c.LTIDockerSpawner.courses_dir = courses_dir
+c.LTIDockerSpawner.volumes_dir = volumes_dir
 c.LTIDockerSpawner.works_dir   = works_dir
 c.LTIDockerSpawner.teacher_gid = teacher_gid
 
@@ -878,7 +878,7 @@ c.Spawner.environment = {
     'CHOWN_HOME': 'yes',
     'PRJCT_DIR' : projects_dir,
     'WORK_DIR'  : works_dir,
-    'COURSE_DIR': courses_dir,
+    'VOLUME_DIR': volumes_dir,
     'NB_UMASK'  : '0037',
     'CONDA_DIR' : '/opt/conda',
     'TZ'        : 'JST-9',

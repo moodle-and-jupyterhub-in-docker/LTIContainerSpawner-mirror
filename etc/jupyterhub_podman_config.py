@@ -503,7 +503,7 @@ class LTIPodmanSpawner(Spawner):
     use_group    = Bool(True, config = True)
     projects_dir = Unicode('jupyter', config = True)
     works_dir    = Unicode('works', config = True)
-    courses_dir  = Unicode('.courses', config = True)
+    volumes_dir  = Unicode('.volumes', config = True)
     teacher_gid  = Int(7000, config = True)
 
     # custom command
@@ -757,7 +757,7 @@ class LTIPodmanSpawner(Spawner):
 
                 if mnt:
                     dirname = key + '_' + self.course_id + '_' + self.host_name
-                    vols.append(self.courses_dir + '/' + dirname + ':' + disp)
+                    vols.append(self.volumes_dir + '/' + dirname + ':' + disp)
         return vols
 
 
@@ -1054,11 +1054,11 @@ class LTIPodmanSpawner(Spawner):
 
 c.LTIPodmanSpawner.use_group = True
 
-# Volumes are mounted at /user_home_dir/projects_dir/works_dir/courses_dir
+# Volumes are mounted at /user_home_dir/projects_dir/works_dir/volumes_dir
 user_home_dir = '/home/{groupname}/{username}'
 projects_dir  = 'jupyter'
 works_dir     = 'works'
-courses_dir   = '.courses'
+volumes_dir   = '.volumes'
 #
 teacher_gid   = 7000                            # 1000以上で，システムで使用していないGID
 
@@ -1066,7 +1066,7 @@ teacher_gid   = 7000                            # 1000以上で，システム�
 notebook_dir = user_home_dir
 c.LTIPodmanSpawner.projects_dir = projects_dir
 c.LTIPodmanSpawner.works_dir    = works_dir
-c.LTIPodmanSpawner.courses_dir  = courses_dir
+c.LTIPodmanSpawner.volumes_dir  = volumes_dir
 c.LTIPodmanSpawner.teacher_gid  = teacher_gid
 
 #
@@ -1075,7 +1075,7 @@ c.Spawner.environment = {
     'CHOWN_HOME': 'yes',
     'PRJCT_DIR' : projects_dir,
     'WORK_DIR'  : works_dir,
-    'COURSE_DIR': courses_dir,
+    'VOLUME_DIR': volumes_dir,
     'NB_UMASK'  : '0037',
     'CONDA_DIR' : '/opt/conda',
     'TZ'        : 'JST-9',
