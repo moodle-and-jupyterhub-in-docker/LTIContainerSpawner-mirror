@@ -34,13 +34,12 @@ $contents = fread($fp, filesize($in_file));
 fclose($fp);
 
 $json = json_decode($contents, false);
-if ($json==null) exit(1);
 
 
 /**
 
 */
-function  chek_code_cell(&$p_val, $filename, &$num)
+function  chek_code_cell(&$p_val, $filename, &$num, $num_fac)
 {
     if (property_exists($p_val, 'cell_type') and $p_val->cell_type=='code') {
         if (!property_exists($p_val, 'metadata')) {
@@ -63,7 +62,7 @@ function  chek_code_cell(&$p_val, $filename, &$num)
     else { 
         foreach ($p_val as &$val) {
             if (is_object($val)) {
-                chek_code_cell($val, $filename, $num);
+                chek_code_cell($val, $filename, $num, $num_fac);
             }
         }
     }
@@ -76,7 +75,7 @@ if (is_object($json)) {
     if (property_exists($json, "cells")) {
         foreach ($json->cells as &$val) {
             if (is_object($val)) {
-                chek_code_cell($val, $filename, $num);
+                chek_code_cell($val, $filename, $num, $num_fac);
             }
         }
     }

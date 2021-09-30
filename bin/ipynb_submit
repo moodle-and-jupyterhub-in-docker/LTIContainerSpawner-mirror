@@ -1,8 +1,6 @@
 #!/bin/bash
 #
 
-WRK_DIR="~/jupyter/works"
-
 #
 if [ $# -lt 1 ]; then
     echo "usage ... "$0" filename submit_dir"
@@ -10,11 +8,7 @@ if [ $# -lt 1 ]; then
 fi
 
 FL="$1"
-if [ "${2:0:1}" == "~" ]; then 
-    D_DIR="$2"
-else
-    D_DIR=${WRK_DIR}/"$2"
-fi
+D_DIR="$2"
 USR=`whoami`
 
 

@@ -235,7 +235,7 @@ if [ $(id -u) == 0 ] ; then
                 VF=`echo $FL | sed -e "s/\/lms_prs_/\/lms_vol_/"`
                 if [[ -d "$VF" && "$VF" != "$FL" ]]; then
                     cp --no-clobber -Rd $VF/* $FL || true
-                    chown -R $NB_UID:$EGID $FL || true
+                    chown -R $NB_UID:$NB_GID $FL || true
                 fi
             fi
         done
