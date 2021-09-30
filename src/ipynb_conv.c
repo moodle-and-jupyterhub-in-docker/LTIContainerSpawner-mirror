@@ -37,14 +37,12 @@ int main(int argc, char** argv)
     tJson* pp = json_parse_file(in_file, 999);
     if (pp==NULL) exit(1);
     if (pp->state!=JBXL_JSON_PARSED) {
+        print_message("PARSE Error (%s: %d)\n", in_file, pp->state);
         del_json(&pp);
         exit(1);
     }
     tList* ls = search_all_node_strval_json(pp, (char*)"cell_type", (char*)"code");
-    if (ls==NULL) {
-        del_json(&pp);
-        exit(1);
-    }
+
     //
     while (ls!=NULL) {
         if (ls->altp!=NULL) {
@@ -90,7 +88,7 @@ int main(int argc, char** argv)
         ls = ls->next;
     }
 
-    del_all_tList(&ls);
+    if (ls!=NULL) del_all_tList(&ls);
 
     if (out_file!=NULL) {
         FILE* fp = fopen(out_file, "w");
