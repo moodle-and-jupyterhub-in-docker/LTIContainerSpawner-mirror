@@ -505,7 +505,7 @@ class LTIDockerSpawner(SystemUserSpawner):
 
     use_group = Bool(True, config = True)
     host_homedir_format_string  = Unicode('/home/{groupname}/{username}', config = True)
-    image_homedir_format_string = Unicode("/home/{groupname}/{username}", config = True)
+    image_homedir_format_string = Unicode('/home/{groupname}/{username}', config = True)
 
     volumes_dir = Unicode('.volumes', config = True)
     works_dir   = Unicode('works', config = True)
@@ -783,8 +783,8 @@ class LTIDockerSpawner(SystemUserSpawner):
         user_gid  = user_data.pw_gid
         self.volumes = {}
 
-        fullpath_dir = self.notebook_dir + '/' + projects_dir + '/' + self.works_dir
-        self.volumes[f'jupyterhub-user-{username}'] = fullpath_dir
+        fullpath_dir = self.host_homedir + '/' + projects_dir + '/' + self.works_dir
+        #self.volumes[f'jupyterhub-user-{username}'] = fullpath_dir
 
         mount_volumes = self.get_volumes_info(self.custom_volumes)
         mount_submits = self.get_volumes_info(self.custom_submits)
@@ -866,6 +866,7 @@ teacher_gid   = 7000                            # 1000以上で，システム�
 
 #
 notebook_dir = user_home_dir
+#notebook_dir = user_home_dir + '/' + projects_dir
 c.LTIDockerSpawner.host_homedir_format_string  = user_home_dir
 c.LTIDockerSpawner.image_homedir_format_string = user_home_dir
 c.LTIDockerSpawner.volumes_dir = volumes_dir

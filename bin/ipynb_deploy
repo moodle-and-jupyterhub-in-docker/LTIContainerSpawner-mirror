@@ -19,8 +19,11 @@ if [ "$FLS" != "" ]; then
             FNM=`echo $FL | sed -e 's/\.[^\.]*$//'`
             #
             if [ "$EXN" == "ipynb" ]; then
-                echo "deploying ... "$FL $D_DIR/${FNM}.$EXN $N_FAC
+                echo "deploying ... "$FL $D_DIR/${FNM}.$EXN
                 /usr/bin/ipynb_conv  $FL $D_DIR/${FNM}.$EXN $N_FAC
+            else
+                echo "deploying ... "$FL $D_DIR/${FNM}.$EXN
+                /usr/bin/cp          $FL $D_DIR/${FNM}.$EXN
             fi
         done
     else
