@@ -120,7 +120,7 @@ c.LTI11Authenticator.username_key = 'ext_user_username'
 ##
 # My IP Address
 #my_ip_addr = '172.22.1.75'
-my_ip_addr = '202.26.150.118'
+my_ip_addr = '202.26.150.51'
 
 ## The public facing URL of the whole JupyterHub application.
 #  
@@ -595,13 +595,13 @@ class LTIPodmanSpawner(Spawner):
         #print('=== get_args() ===')
         args = super(LTIDockerSpawner, self).get_args()
 
-        if self.custom_iframe :
-            if sys.version_info >= (3, 8) : cookie_options = ', "cookie_options": { "SameSite": "None", "Secure": True }'
-            else :                          cookie_options = ''
-            #
-            frame_ancestors = "frame-ancestors 'self' " + self.host_url
-            args.append('--NotebookApp.tornado_settings={ "headers":{"Content-Security-Policy": "'+ frame_ancestors + '" }' + cookie_options + '}')
-            #get_config().NotebookApp.disable_check_xsrf = True
+        #if self.custom_iframe :
+            #if sys.version_info >= (3, 8) : cookie_options = ', "cookie_options": { "SameSite": "None", "Secure": True }'
+            #else :                          cookie_options = ''
+            ##
+            #frame_ancestors = "frame-ancestors 'self' " + self.host_url
+            #args.append('--NotebookApp.tornado_settings={ "headers":{"Content-Security-Policy": "'+ frame_ancestors + '" }' + cookie_options + '}')
+            ##get_config().NotebookApp.disable_check_xsrf = True
         return args
 
 
@@ -1105,9 +1105,9 @@ c.JupyterHub.services = [
 iframe_url = 'https://*'                          # iframe Host URL
 
 c.JupyterHub.tornado_settings = { "headers":{ "Content-Security-Policy": "frame-ancestors 'self' " + iframe_url } }
-if sys.version_info >= (3, 8) :
-    cookie_options = { "SameSite": "None", "Secure": True }
-    c.JupyterHub.tornado_settings["cookie_options"] = cookie_options
+#if sys.version_info >= (3, 8) :
+#    cookie_options = { "SameSite": "None", "Secure": True }
+#    c.JupyterHub.tornado_settings["cookie_options"] = cookie_options
 
 
 #
@@ -1224,14 +1224,16 @@ c.LTIPodmanSpawner.notebook_dir = notebook_dir
 #  When setting this, you should also set ssl_key
 #c.JupyterHub.ssl_cert = '/etc/gitlab/ssl/gitlab.crt'
 #c.JupyterHub.ssl_cert = '/etc/letsencrypt/live/gitlab.nsl.tuis.ac.jp/fullchain.pem'
-c.JupyterHub.ssl_cert = '/etc/pki/tls/certs/server.pem'
+#c.JupyterHub.ssl_cert = '/etc/pki/tls/certs/server.pem'
+c.JupyterHub.ssl_cert = '/etc/pki/ssl/cert2021.pem'
 
 ## Path to SSL key file for the public facing interface of the proxy
 #  
 #  When setting this, you should also set ssl_cert
 #c.JupyterHub.ssl_key = '/etc/gitlab/ssl/gitlab.key'
 #c.JupyterHub.ssl_key = '/etc/letsencrypt/live/gitlab.nsl.tuis.ac.jp/privkey.pem'
-c.JupyterHub.ssl_key = '/etc/pki/tls/private/key.pem'
+#c.JupyterHub.ssl_key = '/etc/pki/tls/private/key.pem'
+c.JupyterHub.ssl_key = '/etc/pki/ssl/private/key.pem'
 
 ## Host to send statsd metrics to. An empty string (the default) disables sending
 #  metrics.

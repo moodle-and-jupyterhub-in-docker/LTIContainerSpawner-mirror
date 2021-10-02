@@ -2,7 +2,7 @@
 # Copyright (c) Jupyter Development Team.
 # Distributed under the terms of the Modified BSD License.
 #
-# /usr/local/bin/start.sh   2021 09/28 v0.9.11
+# /usr/local/bin/start.sh   2021 10/02 v0.9.15
 #       This is modified by Fumi.Iseki for LTIDockerSpawner 
 #
 
@@ -67,7 +67,14 @@ if [ $(id -u) == 0 ] ; then
     # create new user account
     groupadd -f -g $NB_GID $NB_GROUP || true
     if [ ! $(id -u $NB_USER 2>/dev/null) ]; then
-        useradd --home $HOME_DIR/$NB_USER -u $NB_UID -g $NB_GID -l $NB_USER -s /bin/bash || true
+        JVYN_UID=`id -u jovyan`
+        if [ "$JVYN_UID" == "$NB_UID" ]; then
+            echo "$PRG_NAME: set username from jovyan to $NB_USER"
+            usermod -d $HOME_DIR/$NB_USER -g $NB_GID -l $NB_USER jovyan
+        else
+            echo "$PRG_NAME:create user: $NB_USER"
+            useradd --home $HOME_DIR/$NB_USER -u $NB_UID -g $NB_GID -l $NB_USER -s /bin/bash 
+        fi
     fi
     #
     echo "$PRG_NAME: setup user to $NB_USER"
