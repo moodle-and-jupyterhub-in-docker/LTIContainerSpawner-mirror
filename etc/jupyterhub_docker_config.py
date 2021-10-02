@@ -481,6 +481,10 @@ c.ConfigurableHTTPProxy.pid_file = '/var/lib/jupyterhub/jupyterhub-proxy.pid'
 
 
 #
+# Copyright (c) Jupyter Development Team.
+# Distributed under the terms of the Modified BSD License.
+
+#
 # LTIDockerSpawner v0.9.3 for LTI by Fumi.Iseki
 #
 #                                      BSD License.
@@ -506,6 +510,7 @@ class LTIDockerSpawner(SystemUserSpawner):
     host_homedir_format_string  = Unicode('/home/{groupname}/{username}', config = True)
     image_homedir_format_string = Unicode('/home/{groupname}/{username}', config = True)
 
+    #
     use_group     = Bool(True, config = True)
     user_home_dir = Unicode('/home/{groupname}/{username}', config = True)
     projects_dir  = Unicode('jupyter', config = True)
@@ -614,7 +619,6 @@ class LTIDockerSpawner(SystemUserSpawner):
             frame_ancestors = "frame-ancestors 'self' " + self.host_url
             args.append('--NotebookApp.tornado_settings={ "headers":{"Content-Security-Policy": "'+ frame_ancestors + '" }' + cookie_options + '}')
             #get_config().NotebookApp.disable_check_xsrf = True
-        #
         return args
 
 
@@ -637,7 +641,7 @@ class LTIDockerSpawner(SystemUserSpawner):
         self.init_custom_parameters()
 
         for key, value in self.userdata.items():
-            
+
             if key == 'context_id' : self.course_id = value         # Course ID
 
             elif key == 'lis_outcome_service_url' :
@@ -738,7 +742,8 @@ class LTIDockerSpawner(SystemUserSpawner):
 
     #
     # コンテナに渡す環境変数を設定する．
-    # NB_USER, NB_GROUP, NB_UMASK, NB_VOLUMES, NB_SUBMITS, NB_PRSNAL, NB_TEACHER, NB_THRGROUP, NB_THRGID, ...
+    # NB_UID, NB_GID, NB_USER, NB_GROUP, NB_UMASK, NB_VOLUMES, NB_SUBMITS, NB_PRSNAL,
+    # NB_TEACHER, NB_THRGROUP, NB_THRGID, ...
     #
     def get_env(self):
         #print('=== get_env() ===')
