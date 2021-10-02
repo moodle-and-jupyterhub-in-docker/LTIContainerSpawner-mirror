@@ -502,14 +502,16 @@ import pwd, grp, os, sys, re
 
 
 class LTIDockerSpawner(SystemUserSpawner):
-
-    use_group = Bool(True, config = True)
+    #
     host_homedir_format_string  = Unicode('/home/{groupname}/{username}', config = True)
     image_homedir_format_string = Unicode('/home/{groupname}/{username}', config = True)
 
-    volumes_dir = Unicode('.volumes', config = True)
-    works_dir   = Unicode('works', config = True)
-    teacher_gid = Int(7000, config = True)
+    use_group     = Bool(True, config = True)
+    user_home_dir = Unicode('/home/{groupname}/{username}', config = True)
+    projects_dir  = Unicode('jupyter', config = True)
+    works_dir     = Unicode('works', config = True)
+    volumes_dir   = Unicode('.volumes', config = True)
+    teacher_gid   = Int(7000, config = True)
 
     # custom command
     custom_image_cmd    = 'lms_image'
@@ -572,6 +574,13 @@ class LTIDockerSpawner(SystemUserSpawner):
         return
 
 
+    def template_namespace(self):
+        d = super(LTIDockerSpawner, self).template_namespace()
+        if self.use_group and self.group_id >= 0:
+            d['groupname'] = self.get_groupname()
+        return d
+
+
     @property
     def host_homedir(self):
         if (self.host_homedir_format_string is not None and
@@ -584,14 +593,7 @@ class LTIDockerSpawner(SystemUserSpawner):
 
     @property
     def homedir(self):
-        return self.image_homedir_format_string.format(username=self.user.name, groupname=self.get_groupname())
-
-
-    def template_namespace(self):
-        d = super(LTIDockerSpawner, self).template_namespace()
-        if self.use_group and self.group_id >= 0:
-            d['groupname'] = self.get_groupname()
-        return d
+        return self.user_home_dir.format(username=self.user.name, groupname=self.get_groupname())
 
 
     def get_groupname(self):
@@ -783,7 +785,7 @@ class LTIDockerSpawner(SystemUserSpawner):
         user_gid  = user_data.pw_gid
         self.volumes = {}
 
-        fullpath_dir = self.host_homedir + '/' + projects_dir + '/' + self.works_dir
+        fullpath_dir = self.homedir + '/' + self.projects_dir + '/' + self.works_dir
         #self.volumes[f'jupyterhub-user-{username}'] = fullpath_dir
 
         mount_volumes = self.get_volumes_info(self.custom_volumes)
@@ -850,6 +852,7 @@ class LTIDockerSpawner(SystemUserSpawner):
     #    return super(LTIDockerSpawner, self).docker(method, *args, **kwargs)
 
 
+
 #
 # LTIDockerSpawner Parameters
 #
@@ -866,12 +869,11 @@ teacher_gid   = 7000                            # 1000以上で，システム�
 
 #
 notebook_dir = user_home_dir
-#notebook_dir = user_home_dir + '/' + projects_dir
-c.LTIDockerSpawner.host_homedir_format_string  = user_home_dir
-c.LTIDockerSpawner.image_homedir_format_string = user_home_dir
-c.LTIDockerSpawner.volumes_dir = volumes_dir
-c.LTIDockerSpawner.works_dir   = works_dir
-c.LTIDockerSpawner.teacher_gid = teacher_gid
+c.LTIPodmanSpawner.user_home_dir = user_home_dir
+c.LTIPodmanSpawner.projects_dir  = projects_dir
+c.LTIPodmanSpawner.works_dir     = works_dir
+c.LTIPodmanSpawner.volumes_dir   = volumes_dir
+c.LTIPodmanSpawner.teacher_gid   = teacher_gid
 
 #
 c.Spawner.environment = {
@@ -891,7 +893,6 @@ c.Spawner.environment = {
 #
 # culler
 #
-
 c.JupyterHub.services = [
     {
         'name': 'idle-culler',
