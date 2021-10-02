@@ -452,7 +452,9 @@ c.ConfigurableHTTPProxy.pid_file = '/var/lib/jupyterhub/jupyterhub-proxy.pid'
 #   thanks very much for him and his works!!
 #                      https://github.com/gatoniel/podmanspawner
 #
-# LTIDockerSpawner v0.0.0 (popen version) for LTI by Fumi.Iseki
+# LTIPodmanSpawner v0.9.0 (popen version) for LTI by Fumi.Iseki
+#
+#                                      BSD License.
 #
 
 from subprocess import Popen, PIPE
@@ -498,13 +500,13 @@ class LTIPodmanSpawner(Spawner):
     preexec_fn_set = Bool(False)
     conthome = Unicode('/home')
 
-
     #
-    use_group    = Bool(True, config = True)
-    projects_dir = Unicode('jupyter', config = True)
-    works_dir    = Unicode('works', config = True)
-    volumes_dir  = Unicode('.volumes', config = True)
-    teacher_gid  = Int(7000, config = True)
+    use_group     = Bool(True, config = True)
+    user_home_dir = Unicode('/home/{groupname}/{username}', config = True)
+    projects_dir  = Unicode('jupyter', config = True)
+    works_dir     = Unicode('works', config = True)
+    volumes_dir   = Unicode('.volumes', config = True)
+    teacher_gid   = Int(7000, config = True)
 
     # custom command
     custom_image_cmd    = 'lms_image'
@@ -533,7 +535,7 @@ class LTIPodmanSpawner(Spawner):
     custom_memlimit = '0'
     custom_cpugrnt  = '0.0'
     custom_memgrnt  = '0'
-    custom_defurl   = ''
+    custom_defurl   = '/lab'
     custom_grpname  = ''
     custom_users    = []
     custom_teachers = []
@@ -568,18 +570,9 @@ class LTIPodmanSpawner(Spawner):
         return
 
 
-    #@property
-    #def homedir(self):
-    #    return self.image_homedir_format_string.format(username=self.user.name, groupname=self.get_groupname())
-
-
-    #def template_namespace(self):
-    #    d = super(LTIDockerSpawner, self).template_namespace()
-    #    if self.group_id < 0:
-    #        self.group_id = pwd.getpwnam(self.user.name).pw_gid
-    #    if self.use_group and self.group_id >= 0:
-    #        d['groupname'] = self.get_groupname()
-    #    return d
+    @property
+    def homedir(self):
+        return self.user_home_dir.format(username=self.user.name, groupname=self.get_groupname())
 
 
     def get_groupname(self):
@@ -761,7 +754,6 @@ class LTIPodmanSpawner(Spawner):
         return vols
 
 
-
     def user_env(self, env):
         # for root mode execution
         env['USER'] = 'root'
@@ -784,7 +776,7 @@ class LTIPodmanSpawner(Spawner):
 
     #
     # コンテナに渡す環境変数を設定する．
-    # NB_UID, NB_GID, NB_USER, NB_GROUP, NB_UMASK, NB_VOLUMES, NB_SUBMITS, NB_PRSNAL, 
+    # NB_UID, NB_GID, NB_USER, NB_GROUP, NB_UMASK, NB_VOLUMES, NB_SUBMITS, NB_PRSNAL,
     # NB_TEACHER, NB_THRGROUP, NB_THRGID, ...
     #
     def get_env(self):
@@ -792,8 +784,8 @@ class LTIPodmanSpawner(Spawner):
         env = super(LTIPodmanSpawner, self).get_env()
         #
         username  = self.user.name
-        user_data = pwd.getpwnam(username)
         groupname = self.get_groupname()
+        user_data = pwd.getpwnam(username)
         #
         env.update(NB_UID       = user_data.pw_uid)
         env.update(NB_GID       = user_data.pw_gid)
@@ -835,8 +827,8 @@ class LTIPodmanSpawner(Spawner):
         self.volumes = {}
         notebook_dir = self.notebook_dir.format(username=username, groupname=groupname)
 
-        self.volumes[f'jupyterhub-user-{username}'] = notebook_dir + '/' + self.projects_dir
-        fullpath_dir = notebook_dir  + '/' + self.projects_dir + '/' + self.works_dir
+        fullpath_dir = self.homedir + '/' + self.projects_dir + '/' + self.works_dir
+        #self.volumes[f'jupyterhub-user-{username}'] = self.homedir + '/' + self.projects_dir
 
         mount_volumes = self.get_volumes_info(self.custom_volumes)
         mount_submits = self.get_volumes_info(self.custom_submits)
@@ -886,7 +878,7 @@ class LTIPodmanSpawner(Spawner):
         hosthome  = user_data.pw_dir
         groupname = self.get_groupname()    # get self.group_id, too
         conthome  = self.conthome + '/' + groupname + '/' + self.user.name
-        mountdir  = self.notebook_dir.format(username=username, groupname=groupname) + '/' + self.projects_dir
+        mountdir  = self.homedir + '/' + self.projects_dir
 
         self.create_dir(hosthome, int(user_data.pw_uid), int(user_data.pw_gid), 0o0700)
         self.create_dir(hosthome + '/' + self.projects_dir,  int(user_data.pw_uid), int(user_data.pw_gid), 0o0700)
@@ -911,7 +903,7 @@ class LTIPodmanSpawner(Spawner):
                 #
                 '--name', f'jupyterhub-{username}',
                 '--net', 'host',
-                '-w', mountdir,
+                #'-w', mountdir,
                 '-v', '{}:{}'.format(hosthome, conthome),
             ]
 
@@ -1064,10 +1056,11 @@ teacher_gid   = 7000                            # 1000以上で，システム�
 
 #
 notebook_dir = user_home_dir
-c.LTIPodmanSpawner.projects_dir = projects_dir
-c.LTIPodmanSpawner.works_dir    = works_dir
-c.LTIPodmanSpawner.volumes_dir  = volumes_dir
-c.LTIPodmanSpawner.teacher_gid  = teacher_gid
+c.LTIPodmanSpawner.user_home_dir = user_home_dir
+c.LTIPodmanSpawner.projects_dir  = projects_dir
+c.LTIPodmanSpawner.works_dir     = works_dir
+c.LTIPodmanSpawner.volumes_dir   = volumes_dir
+c.LTIPodmanSpawner.teacher_gid   = teacher_gid
 
 #
 c.Spawner.environment = {

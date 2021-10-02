@@ -566,7 +566,7 @@ class LTIDockerSpawner(SystemUserSpawner):
         self.custom_memlimit = '0'
         self.custom_cpugrnt  = '0.0'
         self.custom_memgrnt  = '0'
-        self.custom_defurl   = ''
+        self.custom_defurl   = '/lab'
         self.custom_grpname  = 'TEACHERS'
         self.custom_users    = []
         self.custom_teachers = []

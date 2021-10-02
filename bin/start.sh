@@ -3,7 +3,7 @@
 # Distributed under the terms of the Modified BSD License.
 #
 # /usr/local/bin/start.sh   2021 10/02 v0.9.15
-#       This is modified by Fumi.Iseki for LTIDockerSpawner 
+#       This is modified by Fumi.Iseki for LTIDockerSpawner/LTIPodmanSpawner
 #
 
 PRG_NAME="start.sh"
@@ -325,6 +325,8 @@ if [ $(id -u) == 0 ] ; then
 else
     #
     # rootless mode
+    #
+    # LTIDockerSpawner/LTIPodmanSpawner don't support rootless mode
     #
     echo "$PRG_NAME: rootless mode."
 
