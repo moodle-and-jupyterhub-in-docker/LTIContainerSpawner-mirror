@@ -2,7 +2,7 @@
 # Copyright (c) Jupyter Development Team.
 # Distributed under the terms of the Modified BSD License.
 #
-# /usr/local/bin/start.sh   2021 09/28 v0.9.10
+# /usr/local/bin/start.sh   2021 09/28 v0.9.11
 #       This is modified by Fumi.Iseki for LTIDockerSpawner 
 #
 
@@ -81,10 +81,15 @@ if [ $(id -u) == 0 ] ; then
         #
         if [ ! -e "$HOME_DIR/$NB_USER" ]; then
             mkdir -p $HOME_DIR/$NB_USER
+            cp -f /etc/skel/.bashrc $HOME_DIR/$NB_USER || true
+            cp -f /etc/skel/.bash_profile $HOME_DIR/$NB_USER || true
+            chown $NB_UID:$NB_GID $HOME_DIR/$NB_USER 
+            chown $NB_UID:$NB_GID $HOME_DIR/$NB_USER/.bash* || true
+            chmod 0700 $HOME_DIR/$NB_USER
         fi
 
-        DROWN=`ls -ld $HOME_DIR/$NB_USER | grep ^d | awk -F" " '{print $3}'`
-        if [ "$DROWN" != "$NB_USER" ]; then
+        DR_OWN=`ls -ld $HOME_DIR/$NB_USER | grep ^d | awk -F" " '{print $3}'`
+        if [ "$DR_OWN" != "$NB_USER" ]; then
             chown $NB_UID:$NB_GID $HOME_DIR/$NB_USER 
             chown $NB_UID:$NB_GID $HOME_DIR/$NB_USER/* || true
             chmod 0700 $HOME_DIR/$NB_USER
@@ -111,7 +116,12 @@ if [ $(id -u) == 0 ] ; then
     fi
     echo "$PRG_NAME: setup Jupyter work directory to $HOME_DIR/$NB_USER/$PRJCT_DIR/$WORK_DIR ($NB_UID:$NB_GID)"
 
-    # clean up and path to home directory
+    # clean up symbolic link
+    cd $HOME_DIR/$NB_USER/$PRJCT_DIR/$WORK_DIR/$VOLUME_DIR
+    LKS=`ls -l | grep ^l | awk -F" " '{print $9}'`
+    if [ "$LKS" != "" ]; then
+        rm -f $LKS || true
+    fi
     cd $HOME_DIR/$NB_USER/$PRJCT_DIR/$WORK_DIR
     LKS=`ls -l | grep ^l | awk -F" " '{print $9}'`
     if [ "$LKS" != "" ]; then
@@ -149,7 +159,7 @@ if [ $(id -u) == 0 ] ; then
     #
     echo "$PRG_NAME: task volumes are     : $NB_VOLUMES"
     echo "$PRG_NAME: submit volumes are   : $NB_SUBMITS"
-    echo "$PRG_NAME: personal volumes are : $NB_PRDNALS"
+    echo "$PRG_NAME: personal volumes are : $NB_PRSNALS"
 
     cd $HOME_DIR/$NB_USER/$PRJCT_DIR/$WORK_DIR
 
@@ -169,9 +179,11 @@ if [ $(id -u) == 0 ] ; then
                 if [[ ! -e "$LK" || "$LK" == "." ]]; then
                     if [ "${LK:0:1}" != "-" ]; then
                         ln -s $FL $LK || true
+                        ln -s ../$FL $VOLUME_DIR/$LK || true
                     else
                         if [ "$NB_TEACHER" == "$NB_USER" ]; then
                             ln -s $FL "${LK:1}" || true
+                            ln -s ../$FL $VOLUME_DIR/"${LK:1}" || true
                         fi
                     fi
                 fi
@@ -192,14 +204,20 @@ if [ $(id -u) == 0 ] ; then
                 if [[ "$FLOWN" == "root" && "$NB_TEACHER" == "$NB_USER" ]]; then
                     chown $NB_UID:$EGID $FL || true
                     chmod 3777 $FL || true
+                    # .ipynb_checkpoints
+                    mkdir $FL/.ipynb_checkpoints || true
+                    chown $NB_UID:$EGID $FL/.ipynb_checkpoints || true
+                    chmod 3777 $FL/.ipynb_checkpoints || true
                 fi
                 #
                 if [[ ! -e "$LK" || "$LK" == "." ]]; then
                     if [ "${LK:0:1}" != "-" ]; then
                         ln -s $FL $LK || true
+                        ln -s ../$FL $VOLUME_DIR/$LK || true
                     else
                         if [ "$NB_TEACHER" == "$NB_USER" ]; then
                             ln -s $FL "${LK:1}" || true
+                            ln -s ../$FL $VOLUME_DIR/"${LK:1}" || true
                         fi
                     fi
                 fi
@@ -225,9 +243,11 @@ if [ $(id -u) == 0 ] ; then
                 if [[ ! -e "$LK" || "$LK" == "." ]]; then
                     if [ "${LK:0:1}" != "-" ]; then
                         ln -s $FL $LK || true
+                        ln -s ../$FL $VOLUME_DIR/$LK || true
                     else
                         if [ "$NB_TEACHER" == "$NB_USER" ]; then
                             ln -s $FL "${LK:1}" || true
+                            ln -s ../$FL $VOLUME_DIR/"${LK:1}" || true
                         fi
                     fi
                 fi

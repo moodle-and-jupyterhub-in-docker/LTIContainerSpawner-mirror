@@ -293,7 +293,7 @@ if [ $(id -u) == 0 ] ; then
     # the environment preserved
     run-hooks /usr/local/bin/before-notebook.d
     echo "$PRG_NAME: executing the command: ${cmd[@]}"
-    exec sudo -E -H -u $NB_USER PATH=$PATH XDG_CACHE_HOME=$HOME_DIR/$NB_USER/.cache PYTHONPATH=${PYTHONPATH:-} "${cmd[@]}" 
+    exec sudo -E -H -u $NB_USER PATH=$PATH XDG_CACHE_HOME=$HOME_DIR/$NB_USER/.cache PYTHONPATH=$PYTHONPATH "${cmd[@]}" 
     #
 else
     #

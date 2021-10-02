@@ -2,7 +2,7 @@
 #
 
 #
-if [ $# -lt 1 ]; then
+if [ $# -lt 2 ]; then
     echo "usage ... "$0" filename submit_dir"
     exit 1
 fi
