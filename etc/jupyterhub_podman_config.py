@@ -588,13 +588,13 @@ class LTIPodmanSpawner(Spawner):
         #print('=== get_args() ===')
         args = super(LTIDockerSpawner, self).get_args()
 
-        #if self.custom_iframe :
-            #if sys.version_info >= (3, 8) : cookie_options = ', "cookie_options": { "SameSite": "None", "Secure": True }'
-            #else :                          cookie_options = ''
-            ##
-            #frame_ancestors = "frame-ancestors 'self' " + self.host_url
-            #args.append('--NotebookApp.tornado_settings={ "headers":{"Content-Security-Policy": "'+ frame_ancestors + '" }' + cookie_options + '}')
-            ##get_config().NotebookApp.disable_check_xsrf = True
+        if self.custom_iframe :
+            if sys.version_info >= (3, 8) : cookie_options = ', "cookie_options": { "SameSite": "None", "Secure": True }'
+            else :                          cookie_options = ''
+            #
+            frame_ancestors = "frame-ancestors 'self' " + self.host_url
+            args.append('--NotebookApp.tornado_settings={ "headers":{"Content-Security-Policy": "'+ frame_ancestors + '" }' + cookie_options + '}')
+            #get_config().NotebookApp.disable_check_xsrf = True
         return args
 
 
@@ -878,7 +878,7 @@ class LTIPodmanSpawner(Spawner):
         hosthome  = user_data.pw_dir
         groupname = self.get_groupname()    # get self.group_id, too
         conthome  = self.conthome + '/' + groupname + '/' + self.user.name
-        mountdir  = self.homedir + '/' + self.projects_dir
+        #mountdir  = self.homedir + '/' + self.projects_dir
 
         self.create_dir(hosthome, int(user_data.pw_uid), int(user_data.pw_gid), 0o0700)
         self.create_dir(hosthome + '/' + self.projects_dir,  int(user_data.pw_uid), int(user_data.pw_gid), 0o0700)
@@ -1064,7 +1064,7 @@ c.LTIPodmanSpawner.teacher_gid   = teacher_gid
 
 #
 c.Spawner.environment = {
-    'GRANT_SUDO': 'yes',                # 通常使用では 'no'
+    'GRANT_SUDO': 'no',                # 通常使用では 'no'
     'CHOWN_HOME': 'yes',
     'PRJCT_DIR' : projects_dir,
     'WORK_DIR'  : works_dir,
@@ -1098,6 +1098,8 @@ c.JupyterHub.services = [
 iframe_url = 'https://*'                          # iframe Host URL
 
 c.JupyterHub.tornado_settings = { "headers":{ "Content-Security-Policy": "frame-ancestors 'self' " + iframe_url } }
+
+# if you charenge to show iframe, uncomment bellow 3 lines.
 #if sys.version_info >= (3, 8) :
 #    cookie_options = { "SameSite": "None", "Secure": True }
 #    c.JupyterHub.tornado_settings["cookie_options"] = cookie_options

@@ -916,9 +916,11 @@ c.JupyterHub.services = [
 iframe_url = 'https://*'                          # iframe Host URL
 
 c.JupyterHub.tornado_settings = { "headers":{ "Content-Security-Policy": "frame-ancestors 'self' " + iframe_url } }
-if sys.version_info >= (3, 8) :
-    cookie_options = { "SameSite": "None", "Secure": True }
-    c.JupyterHub.tornado_settings["cookie_options"] = cookie_options
+
+# if you charenge to show iframe, uncomment bellow 3 lines.
+#if sys.version_info >= (3, 8) :
+#   cookie_options = { "SameSite": "None", "Secure": True }
+#   c.JupyterHub.tornado_settings["cookie_options"] = cookie_options
 
 
 #
