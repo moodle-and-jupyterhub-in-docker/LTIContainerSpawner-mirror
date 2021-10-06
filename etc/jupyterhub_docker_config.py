@@ -1276,7 +1276,6 @@ c.Spawner.default_url = '/lab'
 #  wait before assuming that the server is unable to accept connections.
 #c.Spawner.http_timeout = 30
 c.Spawner.http_timeout = 60
-c.Spawner.slow_spawn_timeout = 120
 
 ## The IP address (or hostname) the single-user server should listen on.
 #  

@@ -42,7 +42,7 @@ run-hooks () {
     echo "$PRG_NAME: done running hooks in $1"
 }
 
-run-hooks /usr/local/bin/start-notebook.d
+#run-hooks /usr/local/bin/start-notebook.d
 
 #
 # Handle special flags if we're root
