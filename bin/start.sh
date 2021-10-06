@@ -87,21 +87,30 @@ if [ $(id -u) == 0 ] ; then
     if [ "$NB_USER" != "jovyan" ]; then
         #
         if [ ! -e "$HOME_DIR/$NB_USER" ]; then
+            echo "$PRG_NAME: make user home dir: $HOME_DIR/$NB_USER"
             mkdir -p $HOME_DIR/$NB_USER
-            cp -f /etc/skel/.bashrc $HOME_DIR/$NB_USER || true
-            cp -f /etc/skel/.bash_profile $HOME_DIR/$NB_USER || true
             chown $NB_UID:$NB_GID $HOME_DIR/$NB_USER 
-            chown $NB_UID:$NB_GID $HOME_DIR/$NB_USER/.bash* || true
             chmod 0700 $HOME_DIR/$NB_USER
         fi
 
         DR_OWN=`ls -ld $HOME_DIR/$NB_USER | grep ^d | awk -F" " '{print $3}'`
         if [ "$DR_OWN" != "$NB_USER" ]; then
+            echo "$PRG_NAME: change owner of home dir: $HOME_DIR/$NB_USER"
             chown $NB_UID:$NB_GID $HOME_DIR/$NB_USER 
             chown $NB_UID:$NB_GID $HOME_DIR/$NB_USER/* || true
             chmod 0700 $HOME_DIR/$NB_USER
             chmod 0700 $HOME_DIR/$NB_USER/* || true 
         fi
+
+        if [ ! -f $HOME_DIR/$NB_USER/.bashrc ]; then
+            cp -f /etc/skel/.bashrc $HOME_DIR/$NB_USER || true
+            chown $NB_UID:$NB_GID $HOME_DIR/$NB_USER/.bashrc || true
+        fi
+        if [ ! -f $HOME_DIR/$NB_USER/.bash_profile ]; then
+            cp -f /etc/skel/.bash_profile $HOME_DIR/$NB_USER || true
+            chown $NB_UID:$NB_GID $HOME_DIR/$NB_USER/.bash_profile || true
+        fi
+
         rm -rf /home/jovyan || true
         # 
         echo "$PRG_NAME: relocated home dir to $HOME_DIR/$NB_USER"
