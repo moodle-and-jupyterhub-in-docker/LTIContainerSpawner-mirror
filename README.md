@@ -6,8 +6,6 @@ LTIカスタムパラメータ拡張による LMS - JupyterHub 連携に関す�
 Please see bellow wiki (but sorry, this wiki is Japanese Text only)
 - https://www.nsl.tuis.ac.jp/xoops/modules/xpwiki/?Moodle+JupyterHub
 
-
-[[_TOC_]]
 # 概要
 - **Moodle(LMS)** から **LTI**を利用して **JupyterHub** にSSOする際に幾つかの LTIカスタムパラメータを渡し，**JupyterHub** を制御する．
 - さらに JupyterHub から環境変数を使用して，コンテナ（Docker/Podman）を制御する．
