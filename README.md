@@ -117,7 +117,7 @@ c.JupyterHub.services = [
    }
 ]
 ```
-## NSLによる拡張（今回の仕事）
+## NSLによる拡張（今回の追加機能）
 ### LTIContainerSpawner
 - https://gitlab.nsl.tuis.ac.jp/iseki/lticontainerspawner
 ##### LTIDockerSpawner
