@@ -1,6 +1,6 @@
-FROM www.nsl.tuis.ac.jp:5000/jupyterhub/singleuser-ltids
 #FROM jupyter/base-notebook
 #FROM jupyterhub/singleuser
+FROM jupyter/dev-ltids
 #FROM jupyter/datascience-notebook
 #FROM jupyter/tensorflow-notebook
 #FROM jupyter/scipy-notebook
