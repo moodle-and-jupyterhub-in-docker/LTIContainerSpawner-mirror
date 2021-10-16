@@ -11,7 +11,7 @@ Please see bellow wiki (but sorry, this wiki is Japanese Text only)
 - **Moodle(LMS)** から **LTI**を利用して **JupyterHub** にSSOする際に幾つかの LTIカスタムパラメータを渡し，**JupyterHub** を制御する．
 - さらに JupyterHub から環境変数を使用して，コンテナ（Docker/Podman）を制御する．
 - Moodle側で LTIカスタムパラメータの設定補助を行うモジュールが [**mod_ltids**](https://gitlab.nsl.tuis.ac.jp/iseki/mod_ltids)
-- JupyterHub側で LTIカスタムパラメータを処理し，コンテナの制御を行うのが **LTIContainerSpawner**
+- JupyterHub側で LTIカスタムパラメータを処理し，コンテナの制御を行うのが [**LTIContainerSpawner**](https://gitlab.nsl.tuis.ac.jp/iseki/lticontainerspawner)
     - LTIContainerSpawner は **LTIDockerSpawner** と **LTIPodmanSpawner** から成る．
 
 # 機能
