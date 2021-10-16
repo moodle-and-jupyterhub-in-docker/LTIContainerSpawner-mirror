@@ -7,12 +7,15 @@ Please see bellow wiki (but sorry, this wiki is Japanese Text only)
 - https://www.nsl.tuis.ac.jp/xoops/modules/xpwiki/?Moodle+JupyterHub
 
 
+[[_TOC_]]
 # 概要
 - **Moodle(LMS)** から **LTI**を利用して **JupyterHub** にSSOする際に幾つかの LTIカスタムパラメータを渡し，**JupyterHub** を制御する．
 - さらに JupyterHub から環境変数を使用して，コンテナ（Docker/Podman）を制御する．
 - Moodle側で LTIカスタムパラメータの設定補助を行うモジュールが [**mod_ltids**](https://gitlab.nsl.tuis.ac.jp/iseki/mod_ltids)
-- JupyterHub側で LTIカスタムパラメータを処理し，コンテナの制御を行うのが [**LTIContainerSpawner**](https://gitlab.nsl.tuis.ac.jp/iseki/lticontainerspawner)
-    - LTIContainerSpawner は **LTIDockerSpawner** と **LTIPodmanSpawner** から成る．
+- JupyterHub側で LTIカスタムパラメータを処理し，コンテナの制御を行うのが **LTIContainerSpawner**
+    - LTIContainerSpawner は [**LTIDockerSpawner**](./md/LTIDockerSpawner(J).md) と [**LTIPodmanSpawner**](./md/LTIPodmanSpawner(J).md) から成る．
+- 追加参照 Wiki
+     - mod_ltids: https://gitlab.nsl.tuis.ac.jp/iseki/mod_ltids/-/wikis/mod_ltids-(J)
 
 # 機能
 - 以下の機能をコース内の外部ツール（LTI設定）毎に設定可能．（同じJupyterHubホストに対して複数同時設定が可能）
@@ -40,14 +43,12 @@ Please see bellow wiki (but sorry, this wiki is Japanese Text only)
     - 3.4以下は試していないだけで，LTIをサポートするパージョンであれば動く可能性は大．
 - Moodle ホストはJupyterHub が動くホストとは別のホストでもOK．
 - JupyterHub で使用するユーザの認証が可能である必要がある（通常は**LDAP**などを用いる）．
-- 外部ツール，Webサービス（オプション）を使用する．
-- Docker を使用する場合はMoodle ホスト側に，少なくとも docker-ce-cli/docker-cli がインストールされている必要がある．
-- Podman を使用する場合はMoodle ホスト側に，少なくとも podman-remote がインストールされている必要がある． 
+- 外部ツール（LTI），Webサービス（オプション）を使用する． 
 ### Container システム
 - **Docker** または **Podman** が使用可能（両方を一台のホストにインストールして運用するのは不可能だと思われる）
 ### JupyterHub
 - **SystemUserSpawner**
-    - コンテナとして Docker を使用する場合に必要．（Podmanを使用する場合は不要）
+    - Container システムとして Docker を使用する場合に必要．（Podmanを使用する場合は不要）
     - 通常は JupyterHub に付属してインストールされる．ただし最新版でない場合は，別途手動でインストールする．
 ### NSS（ユーザ情報）
 - JupyterHub ホスト側で，使用するユーザの情報（/etc/passwd, /etc/group形式）が必要（パスワード自体の情報は不要）．
@@ -117,22 +118,27 @@ c.JupyterHub.services = [
    }
 ]
 ```
+----------------
 ## NSLによる拡張（今回の追加機能）
+### Moodle
+- LTIDockerSpawner を使用する場合はMoodle ホスト側に，少なくとも **docker-ce-cli**/docker-cli がインストールされている必要がある．
+- LTIPodmanSpawner を使用する場合はMoodle ホスト側に，少なくとも **podman-remote** がインストールされている必要がある．
 ### LTIContainerSpawner
 - https://gitlab.nsl.tuis.ac.jp/iseki/lticontainerspawner
-##### LTIDockerSpawner
 ```
 # git clone https://gitlab.nsl.tuis.ac.jp/iseki/lticontainerspawner.git
-# vi lticontainerspawner/etc/jupyterhubdocker_config.py
+```
+##### [LTIDockerSpawner](LTIDockerSpawner(J).md)
+```
+# vi lticontainerspawner/etc/jupyterhub_docker_config.py
 # jupyterhub -f lticontainerspawner/etc/jupyterhub_docker_config.py
 ```
-##### LTIpodmanSpawner
+##### [LTIpodmanSpawner](LTIpodmanSpawner(J).md)
 ```
-# git clone https://gitlab.nsl.tuis.ac.jp/iseki/lticontainerspawner.git
 # vi lticontainerspawner/etc/jupyterhub_podman_config.py
 # jupyterhub -f lticontainerspawner/etc/jupyterhub_podman_config.py
 ```
-### mod_ltids
+### [mod_ltids](https://gitlab.nsl.tuis.ac.jp/iseki/mod_ltids/-/wikis/mod_ltids-(J))
 - https://gitlab.nsl.tuis.ac.jp/iseki/mod_ltids
 ```
 # cd [Moodle Path]/mod
@@ -141,7 +147,7 @@ c.JupyterHub.services = [
 # chown -R [wwwサーバの実効ユーザ].[wwwサーバの実効グループ] ltids
 adminユーザで Moodleにログインする
 ```
-### feserver (オプション)
+### [feserver](md/feserver(J).md) (オプション)
 - ユーザの学習状況のデータを収集するためのツール．
 - Moodle と JupyterHub に間に設置し，WebSocketのデータを解析して Moodle にXML-RPCの形でデータを投げる．
 - 本来は MITM 的動作を行う私的試験用ツール（TCP中継サーバ）．
