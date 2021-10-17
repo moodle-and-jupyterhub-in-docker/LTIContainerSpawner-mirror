@@ -6,14 +6,15 @@ LTIカスタムパラメータ拡張による LMS - JupyterHub 連携に関す�
 Please see bellow wiki (but sorry, this wiki is Japanese Text only)
 - https://www.nsl.tuis.ac.jp/xoops/modules/xpwiki/?Moodle+JupyterHub
 
+
 # 概要
 - **Moodle(LMS)** から **LTI**を利用して **JupyterHub** にSSOする際に幾つかの LTIカスタムパラメータを渡し，**JupyterHub** を制御する．
 - さらに JupyterHub から環境変数を使用して，コンテナ（Docker/Podman）を制御する．
 - Moodle側で LTIカスタムパラメータの設定補助を行うモジュールが [**mod_ltids**](https://gitlab.nsl.tuis.ac.jp/iseki/mod_ltids)
-- JupyterHub側で LTIカスタムパラメータを処理し，コンテナの制御を行うのが **LTIContainerSpawner**
+- JupyterHub側で LTIカスタムパラメータを処理し，コンテナの制御を行うのが [**LTIContainerSpawner**](./md/LTIContainerSpawner(J).md) 
     - LTIContainerSpawner は [**LTIDockerSpawner**](./md/LTIDockerSpawner(J).md) と [**LTIPodmanSpawner**](./md/LTIPodmanSpawner(J).md) から成る．
 - 追加参照 Wiki
-     - mod_ltids: https://gitlab.nsl.tuis.ac.jp/iseki/mod_ltids/-/wikis/mod_ltids-(J)
+     - [mod_ltids](https://gitlab.nsl.tuis.ac.jp/iseki/mod_ltids/-/wikis/mod_ltids-(J))
 
 # 機能
 - 以下の機能をコース内の外部ツール（LTI設定）毎に設定可能．（同じJupyterHubホストに対して複数同時設定が可能）
@@ -30,24 +31,31 @@ Please see bellow wiki (but sorry, this wiki is Japanese Text only)
     - 起動 URL（Lab/Notebook）の選択．(mod_ltids + LTIContainerSpawner)
     - iframe の一部サポート．(mod_ltids + LTIContainerSpawner)
         - 動くための条件がシビアなので（tornado のバージョンやWebブラウザの種類によって条件が変わる），"一部サポート" とする．
-    - コンテナの使用する CPU/Momery リソースの制限．(mod_ltids)
+    - コンテナの使用する CPU/Momery リソースの制限．(LTIContainerSpawner)
     - コンテナとして Podman を選択可能．(LTIContainerSpawner)
 - 現在構築中の機能（オプション扱い）
     - ユーザの学習状況のリアルタイムでの確認と可視化．(feserver + Moodle)
-# インストール
-## 必要な既知システム（細かいインストール手順は省略）
+# 各システムの概要
+## 前提となる既知システム（細かいインストール手順は省略）
 ### Moodle
 - v3.5 以上
     - 3.4以下は試していないだけで，LTIをサポートするパージョンであれば動く可能性は大．
 - Moodle ホストはJupyterHub が動くホストとは別のホストでもOK．
 - JupyterHub で使用するユーザの認証が可能である必要がある（通常は**LDAP**などを用いる）．
 - 外部ツール（LTI），Webサービス（オプション）を使用する． 
+- **LTIDockerSpawner** を使用する場合はMoodle ホスト側に，少なくとも **docker-ce-cli**/docker-cli がインストールされている必要がある．
+- **LTIPodmanSpawner** を使用する場合はMoodle ホスト側に，少なくとも **podman-remote** がインストールされている必要がある．
 ### Container システム
 - **Docker** または **Podman** が使用可能（両方を一台のホストにインストールして運用するのは不可能だと思われる）
 ### JupyterHub
+```
+# conda install -c conda-forge jupyterhub==1.4.2 -y
+```
 - **SystemUserSpawner**
+    - JupyterHub のユーザとして，System(ホスト)のユーザを使用可能なSpawner. DockerSpawner を継承．
     - Container システムとして Docker を使用する場合に必要．（Podmanを使用する場合は不要）
     - 通常は JupyterHub に付属してインストールされる．ただし最新版でない場合は，別途手動でインストールする．
+
 ### NSS（ユーザ情報）
 - JupyterHub ホスト側で，使用するユーザの情報（/etc/passwd, /etc/group形式）が必要（パスワード自体の情報は不要）．
     - **getent passwd** コマンドでユーザの情報（/etc/passwd形式）が取れることが必要．（および /etc/group形式の情報も）
@@ -71,11 +79,13 @@ Please see bellow wiki (but sorry, this wiki is Japanese Text only)
 passwd: files altfiles
 group:  files altfiles
 ```
-### LTI
+### LTI Authenticator
 - Moodle から JupyterHub にSSOするためのモジュール（Moodleの外部サービスを使用）
-- V1.0.0 では Moodleで使用するに当たりパッチが必要だったが，v1.2.0 ではパッチが不必要になった．
+- v1.0.0 では Moodleで使用する場合はパッチが必要だったが，v1.2.0 (2021/9/2) ではパッチが不必要になった．
+- **LTI1.1** を使用する．（LTI1.3は未検証）
 - **oauthlib** が先にインストールされていなければならない．
 ```
+# pip install oauthlib
 # pip install jupyterhub-ltiauthenticator==1.2.0
 ```
 - Moodle の外部ツールと JupyterHubの設定ファイル（jupyterhub_config.py）で，コンシューマ鍵と共有秘密鍵を合わせる必要がある．
@@ -95,7 +105,7 @@ c.LTI11Authenticator.username_key = 'ext_user_username'
 #### cull_idle_servers.py
 - https://github.com/jupyterhub/jupyterhub/tree/a6b7e303df03865d6420f6bccdf627b39f1d0dc1/examples/cull-idle
 ```
-# pip3 install pycurl
+# pip install pycurl
 # wget https://raw.githubusercontent.com/jupyterhub/jupyterhub/a6b7e303df03865d6420f6bccdf627b39f1d0dc1/examples/cull-idle/cull_idle_servers.py
 # cp cull_idle_servers.py /usr/local/bin
 # chmod a+rx /usr/local/bin/cull_idle_servers.py
@@ -117,21 +127,25 @@ c.JupyterHub.services = [
 ]
 ```
 ----------------
-## NSLによる拡張（今回の追加機能）
-### Moodle
-- LTIDockerSpawner を使用する場合はMoodle ホスト側に，少なくとも **docker-ce-cli**/docker-cli がインストールされている必要がある．
-- LTIPodmanSpawner を使用する場合はMoodle ホスト側に，少なくとも **podman-remote** がインストールされている必要がある．
-### LTIContainerSpawner
+## 我々の拡張（今回の追加機能）
+- 詳細はリンク先を参照．
+
+### [**LTIContainerSpawner**](./md/LTIContainerSpawner(J).md) 
 - https://gitlab.nsl.tuis.ac.jp/iseki/lticontainerspawner
 ```
 # git clone https://gitlab.nsl.tuis.ac.jp/iseki/lticontainerspawner.git
 ```
-##### [LTIDockerSpawner](LTIDockerSpawner(J).md)
+#### [LTIDockerSpawner](md/LTIDockerSpawner(J).md)
+- SystemUserSpawner を継承．
+- jupyterhub_docker_config.py 中に実装
 ```
 # vi lticontainerspawner/etc/jupyterhub_docker_config.py
 # jupyterhub -f lticontainerspawner/etc/jupyterhub_docker_config.py
 ```
-##### [LTIpodmanSpawner](LTIpodmanSpawner(J).md)
+#### [LTIPodmanSpawner](md/LTIPodmanSpawner(J).md)
+- **niklas netter** 氏の **podmanspawner** を改造
+    - https://github.com/gatoniel/podmanspawner
+- jupyterhub_podman_config.py 中に実装
 ```
 # vi lticontainerspawner/etc/jupyterhub_podman_config.py
 # jupyterhub -f lticontainerspawner/etc/jupyterhub_podman_config.py
@@ -152,9 +166,8 @@ adminユーザで Moodleにログインする
     - subversionリポジトリ： svn co http://www.nsl.tuis.ac.jp/svn/linux/feserver/trunk feserver
     - 各種モジュールを読み込むことにより，色々な通信データの処理が可能．
     - 今回は feplg_nbws.so モジュールを使用する．
-    - コンパイルには JunkBox_Lib が必要
-----------------
-- コンパイルと起動
+    - コンパイルには [JunkBox_Lib](https://www.nsl.tuis.ac.jp/xoops/modules/xpwiki/?JunkBox_Lib) が必要．
+* コンパイルと起動
 ```comannd:コンパイルと起動
 # svn co http://www.nsl.tuis.ac.jp/svn/linux/JunkBox_Lib/trunk JunkBox_Lib
 # cd JunkBox_Lib
@@ -165,6 +178,7 @@ adminユーザで Moodleにログインする
 # svn co http://www.nsl.tuis.ac.jp/svn/linux/feserver/trunk feserver
 # cd feserver
 # make
+# cd ..
 # vi nbsw.conf
 # ./fesvr ......  -m feplg_nbws.so  --conf nbsw.conf
 ```
