@@ -25,6 +25,7 @@ if [ "$FLS" != "" ]; then
                 echo "deploying ... "$FL $D_DIR/${FNM}.$EXN
                 /usr/bin/cp          $FL $D_DIR/${FNM}.$EXN
             fi
+            /usr/bin/chmod a+r  $FL $D_DIR/${FNM}.$EXN
         done
     else
         echo "$D_DIR is not exist."
