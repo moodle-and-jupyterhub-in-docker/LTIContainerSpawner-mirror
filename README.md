@@ -7,6 +7,7 @@ Please see bellow wiki (but sorry, this wiki is Japanese Text only)
 - https://www.nsl.tuis.ac.jp/xoops/modules/xpwiki/?Moodle+JupyterHub
 
 
+# Index
 [[_TOC_]]
 # 概要
 - **Moodle(LMS)** から **LTI**を利用して **JupyterHub** にSSOする際に幾つかの LTIカスタムパラメータを渡し，**JupyterHub** を制御する．
@@ -17,7 +18,6 @@ Please see bellow wiki (but sorry, this wiki is Japanese Text only)
 - 追加参照 Wiki
      - [mod_ltids](https://gitlab.nsl.tuis.ac.jp/iseki/mod_ltids/-/wikis/mod_ltids-(J))
 
-<img src="uploads/6a88e9af989bfa54533def9b782eadbe/LTIContainer.png" width="65%">
 
 # 機能
 - 以下の機能をコース内の外部ツール（LTI設定）毎に設定可能．（同じJupyterHubホストに対して複数同時設定が可能）
