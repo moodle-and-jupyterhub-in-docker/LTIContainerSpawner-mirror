@@ -1,5 +1,6 @@
-FROM tensorflow/tensorflow:latest-gpu-conda
+#FROM tensorflow/tensorflow:latest-gpu-conda
 # tensorflow/tensorflow:latest-gpu-jupyter に手動で anaconda を入れた物
+FROM tensorflow/tensorflow:latest-gpu-jupyter
 USER root
 ADD  bin/start.sh \
      bin/commit.sh \
@@ -25,16 +26,11 @@ ADD  etc/passwd.orig \
      /etc/
 RUN  chmod a+rx /usr/local/bin/* \
   && chmod a+rx /usr/bin/ipynb_*
-RUN  /opt/conda/bin/conda install --prefix /opt/conda conda==4.10.3 -y \
-  && /opt/conda/bin/conda install --prefix /opt/conda -c conda-forge jupyterhub==1.4.2 -y \
-  && /opt/conda/bin/conda install --prefix /opt/conda -c conda-forge jupyterlab -y \
-  && /opt/conda/bin/conda install --prefix /opt/conda jupyterhub-singleuser -y \
-  && /opt/conda/bin/conda update  --prefix /opt/conda --all -y \
-  && /opt/conda/bin/conda clean   --all -y \
-  && true
 RUN  apt-get update \
   && apt-get upgrade -y \
   && apt-get install -y --no-install-recommends \
+     libgl1-mesa-glx libegl1-mesa libxrandr2 libxrandr2 libxss1 libxcursor1 libxcomposite1 libasound2 libxi6 libxtst6 \
+     wget \
      apt-utils \
      sudo \
 #     tini \
@@ -43,6 +39,21 @@ RUN  apt-get update \
 #     git \
   && apt-get -y clean \
   && rm -rf /var/lib/apt/lists/* \
+#  && wget -P /opt https://repo.anaconda.com/archive/Anaconda3-2020.02-Linux-x86_64.sh \
+#  && bash /opt/Anaconda3-2020.02-Linux-x86_64.sh -b -p /opt/conda \
+#  && rm /opt/Anaconda3-2020.02-Linux-x86_64.sh \
+  && wget -P /opt https://repo.anaconda.com/archive/Anaconda3-2020.07-Linux-x86_64.sh \
+  && bash Anaconda3-2020.07-Linux-x86_64.sh -b -p /opt/conda \
+  && rm /opt/Anaconda3-2020.07-Linux-x86_64.sh \
+  && /opt/conda/bin/conda init \
+  && true
+#
+RUN  /opt/conda/bin/conda install --prefix /opt/conda conda==4.10.3 -y \
+  && /opt/conda/bin/conda install --prefix /opt/conda -c conda-forge jupyterhub==1.4.2 -y \
+  && /opt/conda/bin/conda install --prefix /opt/conda -c conda-forge jupyterlab -y \
+  && /opt/conda/bin/conda install --prefix /opt/conda jupyterhub-singleuser -y \
+  && /opt/conda/bin/conda update  --prefix /opt/conda --all -y \
+  && /opt/conda/bin/conda clean   --all -y \
   && true
 #
 CMD ["start-notebook.sh"]
