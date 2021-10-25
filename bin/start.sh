@@ -93,8 +93,8 @@ if [ $(id -u) == 0 ] ; then
             chmod 0700 $HOME_DIR/$NB_USER
         fi
 
-        DROWN=`ls -ld $HOME_DIR/$NB_USER | grep ^d | awk -F" " '{print $3}'`
-        if [ "$DROWN" != "$NB_USER" ]; then
+        DR_OWN=`ls -ld $HOME_DIR/$NB_USER | grep ^d | awk -F" " '{print $3}'`
+        if [ "$DR_OWN" != "$NB_USER" ]; then
             echo "$PRG_NAME: change owner of home dir: $HOME_DIR/$NB_USER"
             chown $NB_UID:$NB_GID $HOME_DIR/$NB_USER 
             chown $NB_UID:$NB_GID $HOME_DIR/$NB_USER/* || true
@@ -186,8 +186,8 @@ if [ $(id -u) == 0 ] ; then
             LK=`echo $VOLUME | cut -d ':' -f 2`
             #
             if [[ "$DR" != "" && "$LK" != ""  && -d "$DR" ]]; then
-                DROWN=`ls -ld $DR | awk -F" " '{print $3}'`
-                if [[ "$DROWN" == "root" && "$NB_TEACHER" == "$NB_USER" ]]; then
+                DR_OWN=`ls -ld $DR | awk -F" " '{print $3}'`
+                if [[ "$DR_OWN" == "root" && "$NB_TEACHER" == "$NB_USER" ]]; then
                     chown -R $NB_UID:$EGID $DR || true
                 fi
                 #
@@ -218,8 +218,8 @@ if [ $(id -u) == 0 ] ; then
             LK=`echo $SUBMIT | cut -d ':' -f 2`
             #
             if [[ "$DR" != "" && "$LK" != ""  && -d "$DR" ]]; then
-                DROWN=`ls -ld $DR | awk -F" " '{print $3}'`
-                if [[ "$DROWN" == "root" && "$NB_TEACHER" == "$NB_USER" ]]; then
+                DR_OWN=`ls -ld $DR | awk -F" " '{print $3}'`
+                if [[ "$DR_OWN" == "root" && "$NB_TEACHER" == "$NB_USER" ]]; then
                     chown $NB_UID:$EGID $DR || true
                     chmod 3777 $DR || true
                     # .ipynb_checkpoints
