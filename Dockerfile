@@ -13,6 +13,7 @@ ADD  bin/ipynb_conv \
      bin/ipynb_conv.php \
      bin/ipynb_deploy \
      bin/ipynb_deploy_php \
+     bin/ipynb_setup \
      bin/ipynb_submit \
      /usr/bin/
 ADD  etc/.bashrc \

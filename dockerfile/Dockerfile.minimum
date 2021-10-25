@@ -1,6 +1,6 @@
 #FROM jupyter/base-notebook
-#FROM jupyterhub/singleuser
-FROM jupyter/dev-ltids
+FROM jupyterhub/singleuser
+#FROM jupyter/dev-ltids
 #FROM jupyter/datascience-notebook
 #FROM jupyter/tensorflow-notebook
 #FROM jupyter/scipy-notebook
@@ -14,6 +14,7 @@ ADD  bin/ipynb_conv \
      bin/ipynb_conv.php \
      bin/ipynb_deploy \
      bin/ipynb_deploy_php \
+     bin/ipynb_setup \
      bin/ipynb_submit \
      /usr/bin/
 ADD  etc/.bashrc \

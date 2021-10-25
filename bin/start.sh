@@ -93,8 +93,8 @@ if [ $(id -u) == 0 ] ; then
             chmod 0700 $HOME_DIR/$NB_USER
         fi
 
-        DR_OWN=`ls -ld $HOME_DIR/$NB_USER | grep ^d | awk -F" " '{print $3}'`
-        if [ "$DR_OWN" != "$NB_USER" ]; then
+        DROWN=`ls -ld $HOME_DIR/$NB_USER | grep ^d | awk -F" " '{print $3}'`
+        if [ "$DROWN" != "$NB_USER" ]; then
             echo "$PRG_NAME: change owner of home dir: $HOME_DIR/$NB_USER"
             chown $NB_UID:$NB_GID $HOME_DIR/$NB_USER 
             chown $NB_UID:$NB_GID $HOME_DIR/$NB_USER/* || true
@@ -182,24 +182,26 @@ if [ $(id -u) == 0 ] ; then
     echo "$PRG_NAME: start to link to task volumes"
     if [ "$NB_VOLUMES" != "" ]; then
         for VOLUME in $NB_VOLUMES; do
-            FL=`echo $VOLUME | cut -d ':' -f 1`
+            DR=`echo $VOLUME | cut -d ':' -f 1`
             LK=`echo $VOLUME | cut -d ':' -f 2`
             #
-            if [[ "$FL" != "" && "$LK" != ""  && -d "$FL" ]]; then
-                FLOWN=`ls -ld $FL | awk -F" " '{print $3}'`
-                if [[ "$FLOWN" == "root" && "$NB_TEACHER" == "$NB_USER" ]]; then
-                    chown $NB_UID:$EGID $FL || true
-                    chmod 2775 $FL || true
+            if [[ "$DR" != "" && "$LK" != ""  && -d "$DR" ]]; then
+                DROWN=`ls -ld $DR | awk -F" " '{print $3}'`
+                if [[ "$DROWN" == "root" && "$NB_TEACHER" == "$NB_USER" ]]; then
+                    chown -R $NB_UID:$EGID $DR || true
                 fi
+                #
+                find $DR -type f | xargs chmod -R 0664 $DR || true
+                find $DR -type d | xargs chmod -R 2775 $DR || true
                 #
                 if [[ ! -e "$LK" || "$LK" == "." ]]; then
                     if [ "${LK:0:1}" != "-" ]; then
-                        ln -s $FL $LK || true
-                        ln -s ../$FL $VOLUME_DIR/$LK || true
+                        ln -s $DR $LK || true
+                        ln -s ../$DR $VOLUME_DIR/$LK || true
                     else
                         if [ "$NB_TEACHER" == "$NB_USER" ]; then
-                            ln -s $FL "${LK:1}" || true
-                            ln -s ../$FL $VOLUME_DIR/"${LK:1}" || true
+                            ln -s $DR "${LK:1}" || true
+                            ln -s ../$DR $VOLUME_DIR/"${LK:1}" || true
                         fi
                     fi
                 fi
@@ -212,28 +214,28 @@ if [ $(id -u) == 0 ] ; then
     echo "$PRG_NAME: start to link to submit volumes"
     if [ "$NB_SUBMITS" != "" ]; then
         for SUBMIT in $NB_SUBMITS; do
-            FL=`echo $SUBMIT | cut -d ':' -f 1`
+            DR=`echo $SUBMIT | cut -d ':' -f 1`
             LK=`echo $SUBMIT | cut -d ':' -f 2`
             #
-            if [[ "$FL" != "" && "$LK" != ""  && -d "$FL" ]]; then
-                FLOWN=`ls -ld $FL | awk -F" " '{print $3}'`
-                if [[ "$FLOWN" == "root" && "$NB_TEACHER" == "$NB_USER" ]]; then
-                    chown $NB_UID:$EGID $FL || true
-                    chmod 3777 $FL || true
+            if [[ "$DR" != "" && "$LK" != ""  && -d "$DR" ]]; then
+                DROWN=`ls -ld $DR | awk -F" " '{print $3}'`
+                if [[ "$DROWN" == "root" && "$NB_TEACHER" == "$NB_USER" ]]; then
+                    chown $NB_UID:$EGID $DR || true
+                    chmod 3777 $DR || true
                     # .ipynb_checkpoints
-                    mkdir $FL/.ipynb_checkpoints || true
-                    chown $NB_UID:$EGID $FL/.ipynb_checkpoints || true
-                    chmod 3777 $FL/.ipynb_checkpoints || true
+                    mkdir $DR/.ipynb_checkpoints || true
+                    chown $NB_UID:$EGID $DR/.ipynb_checkpoints || true
+                    chmod 3777 $DR/.ipynb_checkpoints || true
                 fi
                 #
                 if [[ ! -e "$LK" || "$LK" == "." ]]; then
                     if [ "${LK:0:1}" != "-" ]; then
-                        ln -s $FL $LK || true
-                        ln -s ../$FL $VOLUME_DIR/$LK || true
+                        ln -s $DR $LK || true
+                        ln -s ../$DR $VOLUME_DIR/$LK || true
                     else
                         if [ "$NB_TEACHER" == "$NB_USER" ]; then
-                            ln -s $FL "${LK:1}" || true
-                            ln -s ../$FL $VOLUME_DIR/"${LK:1}" || true
+                            ln -s $DR "${LK:1}" || true
+                            ln -s ../$DR $VOLUME_DIR/"${LK:1}" || true
                         fi
                     fi
                 fi
@@ -246,32 +248,36 @@ if [ $(id -u) == 0 ] ; then
     echo "$PRG_NAME: start to link to personal volumes"
     if [ "$NB_PRSNALS" != "" ]; then
         for PRSNAL in $NB_PRSNALS; do
-            FL=`echo $PRSNAL | cut -d ':' -f 1`
+            DR=`echo $PRSNAL | cut -d ':' -f 1`
             LK=`echo $PRSNAL | cut -d ':' -f 2`
             #
-            if [[ "$FL" != "" && "$LK" != "" ]]; then
-                if [ ! -d "$FL" ]; then
-                    mkdir -p $FL || true
-                    chown $NB_UID:$NB_GID $FL || true
-                    chmod 0700 $FL || true
+            if [[ "$DR" != "" && "$LK" != "" ]]; then
+                if [ ! -d "$DR" ]; then
+                    mkdir -p $DR || true
+                    chown $NB_UID:$NB_GID $DR || true
+                    chmod 0700 $DR || true
                 fi
                 #
                 if [[ ! -e "$LK" || "$LK" == "." ]]; then
                     if [ "${LK:0:1}" != "-" ]; then
-                        ln -s $FL $LK || true
-                        ln -s ../$FL $VOLUME_DIR/$LK || true
+                        ln -s $DR $LK || true
+                        ln -s ../$DR $VOLUME_DIR/$LK || true
                     else
                         if [ "$NB_TEACHER" == "$NB_USER" ]; then
-                            ln -s $FL "${LK:1}" || true
-                            ln -s ../$FL $VOLUME_DIR/"${LK:1}" || true
+                            ln -s $DR "${LK:1}" || true
+                            ln -s ../$DR $VOLUME_DIR/"${LK:1}" || true
                         fi
                     fi
                 fi
                 #
-                VF=`echo $FL | sed -e "s/\/lms_prs_/\/lms_vol_/"`
-                if [[ -d "$VF" && "$VF" != "$FL" ]]; then
-                    cp --no-clobber -Rd $VF/* $FL || true
-                    chown -R $NB_UID:$NB_GID $FL || true
+                # copy to personal vol. from task vol.
+                VF=`echo $DR | sed -e "s/\/lms_prs_/\/lms_vol_/"`
+                if [[ -d "$VF" && "$VF" != "$DR" ]]; then
+                    cp --no-clobber -Rd $VF/* $DR || true
+                    if [[ -x "/usr/bin/ipynb_setup" && -x "/usr/bin/ipynb_conv" ]]; then
+                        /usr/bin/ipynb_setup $DR || true
+                    fi
+                    chown -R $NB_UID:$NB_GID $DR || true
                 fi
             fi
         done
@@ -307,7 +313,7 @@ if [ $(id -u) == 0 ] ; then
         fi
         # Add $CONDA_DIR/bin to sudo secure_path
         sed -r "s#Defaults\s+secure_path\s*=\s*\"?([^\"]+)\"?#Defaults secure_path=\"\1:$CONDA_DIR/bin\"#" /etc/sudoers | \
-                                                                                                       grep secure_path > /etc/sudoers.d/path 
+                                                                                     grep secure_path > /etc/sudoers.d/path 
         chmod 4111 /usr/bin/sudo 
         #
         if [[ "$GRANT_SUDO" == "1" || "$GRANT_SUDO" == 'yes' ]]; then
