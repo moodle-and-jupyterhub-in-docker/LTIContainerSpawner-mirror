@@ -31,6 +31,6 @@ RUN  /opt/conda/bin/conda install --prefix /opt/conda conda==4.10.3 -y \
   && /opt/conda/bin/conda update  --prefix /opt/conda --all -y \
   && /opt/conda/bin/conda clean   --all -y \
   && true
-COPY vhtec/jupyter_notebook_config.json /opt/conda/etc/jupyter/
-COPY vhtec/plat_other.py /opt/conda/lib/python3.6/site-packages/send2trash/
+COPY dockerfile/vhtec/jupyter_notebook_config.json /opt/conda/etc/jupyter/
+COPY dockerfile/vhtec/plat_other.py /opt/conda/lib/python3.6/site-packages/send2trash/
 RUN  chmod a+r /opt/conda/lib/python3.6/site-packages/send2trash/*
