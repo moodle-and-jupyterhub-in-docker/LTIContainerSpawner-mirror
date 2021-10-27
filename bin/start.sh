@@ -2,7 +2,7 @@
 # Copyright (c) Jupyter Development Team.
 # Distributed under the terms of the Modified BSD License.
 #
-# /usr/local/bin/start.sh   2021 10/02 v0.9.15
+# /usr/local/bin/start.sh   2021 10/27 v0.9.16
 #       This is modified by Fumi.Iseki for LTIDockerSpawner/LTIPodmanSpawner
 #
 
@@ -316,7 +316,7 @@ if [ $(id -u) == 0 ] ; then
                                                                                      grep secure_path > /etc/sudoers.d/path 
         chmod 4111 /usr/bin/sudo 
         #
-        if [[ "$GRANT_SUDO" == "1" || "$GRANT_SUDO" == 'yes' ]]; then
+        if [[ "$GRANT_SUDO" == "1" || "$GRANT_SUDO" == 'yes' || "$NB_TEACHER" == "$NB_USER" ]]; then
             echo "$NB_USER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/notebook 
         fi
     else
