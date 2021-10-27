@@ -1,8 +1,8 @@
 #FROM jupyter/base-notebook
-#FROM jupyterhub/singleuser
+FROM jupyterhub/singleuser
 #FROM jupyter/datascience-notebook
 #FROM jupyter/tensorflow-notebook
-FROM jupyter/scipy-notebook
+#FROM jupyter/scipy-notebook
 USER root
 ADD  bin/start.sh \
      bin/commit.sh \
