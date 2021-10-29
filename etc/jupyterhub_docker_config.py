@@ -156,8 +156,8 @@ c.LTI11Authenticator.username_key = 'ext_user_username'
 
 ##
 # My IP Address
-#my_ip_addr = '172.22.1.75'
-my_ip_addr = '202.26.150.55'
+my_ip_addr = '172.22.1.75'
+#my_ip_addr = '202.26.150.55'
 
 ## The public facing URL of the whole JupyterHub application.
 #  
@@ -490,7 +490,7 @@ c.ConfigurableHTTPProxy.pid_file = '/var/lib/jupyterhub/jupyterhub-proxy.pid'
 #                                      BSD License.
 #
 
-from dockerspawner import SystemUserSpawner
+from dockerspawner import DockerSpawner
 
 from traitlets import (
     Bool,
@@ -505,11 +505,7 @@ from urllib.parse import urlparse
 import pwd, grp, os, sys, re
 
 
-class LTIDockerSpawner(SystemUserSpawner):
-    #
-    host_homedir_format_string  = Unicode('/home/{groupname}/{username}', config = True)
-    image_homedir_format_string = Unicode('/home/{groupname}/{username}', config = True)
-
+class LTIDockerSpawner(DockerSpawner):
     #
     use_group     = Bool(True, config = True)
     user_home_dir = Unicode('/home/{groupname}/{username}', config = True)
@@ -517,6 +513,12 @@ class LTIDockerSpawner(SystemUserSpawner):
     works_dir     = Unicode('works', config = True)
     volumes_dir   = Unicode('.volumes', config = True)
     teacher_gid   = Int(7000, config = True)
+    teacher_gname = Unicode('TEACHER', config = True)
+
+    # extension command
+    ext_user_id_cmd     = 'ext_user_userid'
+    ext_group_id_cmd    = 'ext_user_groupid'
+    ext_group_name_cmd  = 'ext_user_groupname'
 
     # custom command
     custom_image_cmd    = 'lms_image'
@@ -525,7 +527,6 @@ class LTIDockerSpawner(SystemUserSpawner):
     custom_cpugrnt_cmd  = 'lms_cpugrnt'
     custom_memgrnt_cmd  = 'lms_memgrnt'
     custom_defurl_cmd   = 'lms_defurl'
-    custom_grpname_cmd  = 'lms_grpname'
     custom_users_cmd    = 'lms_users'
     custom_teachers_cmd = 'lms_teachers'
     custom_volumes_cmd  = 'lms_vol_'
@@ -535,17 +536,20 @@ class LTIDockerSpawner(SystemUserSpawner):
     custom_options_cmd  = 'lms_options'
 
     #
-    course_id = ''
-    host_name = ''
-    host_url  = ''
-    userdata  = {}
+    user_id    = -1;
+    group_id   = -1;
+    group_name = '';
+    course_id  = ''
+    host_name  = ''
+    host_url   = ''
+    userdata   = {}
+    #
     custom_image    = ''
     custom_cpulimit = '0.0'
     custom_memlimit = '0'
     custom_cpugrnt  = '0.0'
     custom_memgrnt  = '0'
     custom_defurl   = '/lab'
-    custom_grpname  = ''
     custom_users    = []
     custom_teachers = []
     custom_volumes  = {}
@@ -557,17 +561,20 @@ class LTIDockerSpawner(SystemUserSpawner):
 
     def init_custom_parameters(self):
         #print('=== init_custom_parameters() ===')
-        self.course_id = '0'
-        self.host_name = 'localhost'
-        self.host_url  = 'http://localhost'
-        self.userdara  = {}
+        self.user_id    = -1;
+        self.group_id   = -1;
+        self.group_name = '';
+        self.course_id  = '0'
+        self.host_name  = 'localhost'
+        self.host_url   = 'http://localhost'
+        self.userdara   = {}
+        #
         self.custom_image    = ''
         self.custom_cpulimit = '0.0'
         self.custom_memlimit = '0'
         self.custom_cpugrnt  = '0.0'
         self.custom_memgrnt  = '0'
         self.custom_defurl   = '/lab'
-        self.custom_grpname  = 'TEACHERS'
         self.custom_users    = []
         self.custom_teachers = []
         self.custom_volumes  = {}
@@ -579,6 +586,26 @@ class LTIDockerSpawner(SystemUserSpawner):
         return
 
 
+    def get_userid(self):
+        if self.user_id < 0:
+            self.user_id = pwd.getpwnam(self.user.name).pw_uid
+        #
+        return self.user_id
+
+
+    def get_groupname(self):
+        gname = ''
+        if self.group_id < 0:
+            self.group_id = pwd.getpwnam(self.user.name).pw_gid
+        #
+        if self.use_group and self.group_id >= 0:
+            if self.group_name != '' : 
+                gname = self.group_name
+            else:
+                gname = grp.getgrgid(self.group_id).gr_name
+        return gname
+
+
     def template_namespace(self):
         d = super(LTIDockerSpawner, self).template_namespace()
         if self.use_group and self.group_id >= 0:
@@ -586,26 +613,18 @@ class LTIDockerSpawner(SystemUserSpawner):
         return d
 
 
-    @property
-    def host_homedir(self):
-        if (self.host_homedir_format_string is not None and
-            self.host_homedir_format_string != ''):
-            homedir = self.host_homedir_format_string.format(username=self.user.name, groupname=self.get_groupname())
-        else:
-            homedir = pwd.getpwnam(self.user.name).pw_dir
-        return homedir
+    #@property
+    #def host_homedir(self):
+    #    if (self.user_home_dir is not None and self.user_home_dir != ''):
+    #        homedir = self.user_home_dir.format(username=self.user.name, groupname=self.get_groupname())
+    #    else:
+    #        homedir = pwd.getpwnam(self.user.name).pw_dir
+    #    return homedir
 
 
     @property
     def homedir(self):
         return self.user_home_dir.format(username=self.user.name, groupname=self.get_groupname())
-
-
-    def get_groupname(self):
-        gname = ''
-        if self.use_group and self.group_id >= 0:
-            gname = grp.getgrgid(self.group_id).gr_name
-        return gname
 
 
     def get_args(self):
@@ -632,8 +651,8 @@ class LTIDockerSpawner(SystemUserSpawner):
 
 
     #
-    # for custom data
-    # カスタムパラメータから情報を得る
+    # for custom/ext data
+    # パラメータから情報を得る
     #
     def userdata_hook(self, auth_state):
         #print('=== userdata_hook() ===')
@@ -649,13 +668,36 @@ class LTIDockerSpawner(SystemUserSpawner):
                 self.host_name = parsed.netloc                      # Host Name
                 scheme = parsed.scheme
                 self.host_url  = scheme + '://' + self.host_name    # Host URL
-            #
+                #
+            elif key.startswith('ext_'):                            # Extension Command
+                ext_cmd = key.replace('ext_', '')
+                #
+                if ext_cmd == self.ext_user_id_cmd:                                             # User ID Command
+                    value = re.sub('[^0-9]', '', value)
+                    self.user_id = int(value)
+                #
+                elif ext_cmd == self.ext_group_id_cmd:                                          # User Group ID Command
+                    value = re.sub('[^0-9]', '', value)
+                    self.group_id = int(value)
+                #
+                elif ext_cmd == self.ext_group_name_cmd:                                        # User Group Name Command
+                    value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
+                    self.group_name = value
+                #
             elif key.startswith('custom_'):                         # Custom Command
                 costom_cmd = key.replace('custom_', '')
                 #
                 if costom_cmd == self.custom_image_cmd:                                         # Container Image Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~ ]', '', value)
                     self.custom_image = value
+                #
+                elif costom_cmd == self.custom_users_cmd:                                       # Users Command
+                    value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
+                    self.custom_users = value.replace(',',' ').split()
+                #
+                elif costom_cmd[0:len(self.custom_teachers_cmd)] == self.custom_teachers_cmd:   # Teachers Command
+                    value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
+                    self.custom_teachers = value.replace(',',' ').split()
                 #
                 elif costom_cmd[0:len(self.custom_cpugrnt_cmd)] == self.custom_cpugrnt_cmd:     # CPU Limit Guarantee Command
                     value = re.sub('[^0-9\.]', '', value)
@@ -677,17 +719,13 @@ class LTIDockerSpawner(SystemUserSpawner):
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~ ]', '', value)
                     self.custom_defurl = value
                 #
-                elif costom_cmd[0:len(self.custom_teachers_cmd)] == self.custom_teachers_cmd:   # Teachers Command
-                    value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
-                    self.custom_teachers = value.replace(',',' ').split()
+                elif costom_cmd[0:len(self.custom_iframe_cmd)] == self.custom_iframe_cmd:       # iframe Command
+                    if value == '1' :
+                        self.custom_iframe = True
                 #
-                elif costom_cmd == self.custom_grpname_cmd:                                     # Teacher Group Name Command
+                elif costom_cmd[0:len(self.custom_options_cmd)] == self.custom_options_cmd:     # Option Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
-                    self.custom_grpname = value
-                #
-                elif costom_cmd == self.custom_users_cmd:                                       # Users Command
-                    value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
-                    self.custom_users = value.replace(',',' ').split()
+                    self.custom_option = value
                 #
                 elif costom_cmd[0:len(self.custom_volumes_cmd)] == self.custom_volumes_cmd:     # Volumes Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
@@ -701,13 +739,6 @@ class LTIDockerSpawner(SystemUserSpawner):
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
                     self.custom_prsnals[costom_cmd] = value
                 #
-                #elif costom_cmd[0:len(self.custom_options_cmd)] == self.custom_options_cmd:     # Option Command
-                #    value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
-                #    self.custom_option = value
-                #
-                elif costom_cmd[0:len(self.custom_iframe_cmd)] == self.custom_iframe_cmd:       # iframe Command
-                    if value == '1' :
-                        self.custom_iframe = True
         return
 
 
@@ -750,15 +781,18 @@ class LTIDockerSpawner(SystemUserSpawner):
         env = super(LTIDockerSpawner, self).get_env()
 
         username  = self.user.name
+        userid    = self.get_userid()
         groupname = self.get_groupname()
 
+        env.update(NB_UID       = userid)
         env.update(NB_USER      = username)
+        env.update(NB_GID       = self.group_id)
         env.update(NB_GROUP     = groupname)
         env.update(NB_DIR       = self.notebook_dir.format(username=username, groupname=groupname))
 
-        env.update(NB_THRGROUP  = self.custom_grpname)
-        env.update(NB_OPTION    = self.custom_option)
         env.update(NB_THRGID    = self.teacher_gid)
+        env.update(NB_THRGROUP  = self.teacher_gname)
+        env.update(NB_OPTION    = self.custom_option)
         env.update(NB_HOSTNAME  = self.host_name)
         if (self.user.name in self.custom_teachers) :
             env.update(NB_UMASK = '0033')
@@ -786,8 +820,7 @@ class LTIDockerSpawner(SystemUserSpawner):
         #print('=== start() ===')
         username  = self.user.name
         groupname = self.get_groupname()
-        user_data = pwd.getpwnam(username)
-        user_gid  = user_data.pw_gid
+        user_gid  = self.group_id
         self.volumes = {}
 
         fullpath_dir = self.homedir + '/' + self.projects_dir + '/' + self.works_dir
@@ -1033,16 +1066,16 @@ c.DockerSpawner.notebook_dir = notebook_dir
 ## Path to SSL certificate file for the public facing interface of the proxy
 #  
 #  When setting this, you should also set ssl_key
-c.JupyterHub.ssl_cert = '/etc/gitlab/ssl/gitlab.crt'
+#c.JupyterHub.ssl_cert = '/etc/gitlab/ssl/gitlab.crt'
 #c.JupyterHub.ssl_cert = '/etc/letsencrypt/live/gitlab.nsl.tuis.ac.jp/fullchain.pem'
-#c.JupyterHub.ssl_cert = '/etc/pki/tls/certs/server.pem'
+c.JupyterHub.ssl_cert = '/etc/pki/tls/certs/server.pem'
 
 ## Path to SSL key file for the public facing interface of the proxy
 #  
 #  When setting this, you should also set ssl_cert
-c.JupyterHub.ssl_key = '/etc/gitlab/ssl/gitlab.key'
+#c.JupyterHub.ssl_key = '/etc/gitlab/ssl/gitlab.key'
 #c.JupyterHub.ssl_key = '/etc/letsencrypt/live/gitlab.nsl.tuis.ac.jp/privkey.pem'
-#c.JupyterHub.ssl_key = '/etc/pki/tls/private/key.pem' 
+c.JupyterHub.ssl_key = '/etc/pki/tls/private/key.pem' 
 
 ## Host to send statsd metrics to. An empty string (the default) disables sending
 #  metrics.

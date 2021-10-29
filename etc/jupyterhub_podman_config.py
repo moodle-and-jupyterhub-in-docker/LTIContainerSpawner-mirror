@@ -501,12 +501,19 @@ class LTIPodmanSpawner(Spawner):
     conthome = Unicode('/home')
 
     #
+    #
     use_group     = Bool(True, config = True)
     user_home_dir = Unicode('/home/{groupname}/{username}', config = True)
     projects_dir  = Unicode('jupyter', config = True)
     works_dir     = Unicode('works', config = True)
     volumes_dir   = Unicode('.volumes', config = True)
     teacher_gid   = Int(7000, config = True)
+    teacher_gname = Unicode('TEACHER', config = True)
+
+    # extension command
+    ext_user_id_cmd     = 'ext_user_userid'
+    ext_group_id_cmd    = 'ext_user_groupid'
+    ext_group_name_cmd  = 'ext_user_groupname'
 
     # custom command
     custom_image_cmd    = 'lms_image'
@@ -515,7 +522,6 @@ class LTIPodmanSpawner(Spawner):
     custom_cpugrnt_cmd  = 'lms_cpugrnt'
     custom_memgrnt_cmd  = 'lms_memgrnt'
     custom_defurl_cmd   = 'lms_defurl'
-    custom_grpname_cmd  = 'lms_grpname'
     custom_users_cmd    = 'lms_users'
     custom_teachers_cmd = 'lms_teachers'
     custom_volumes_cmd  = 'lms_vol_'
@@ -525,18 +531,20 @@ class LTIPodmanSpawner(Spawner):
     custom_options_cmd  = 'lms_options'
 
     #
-    group_id  = -1
-    course_id = ''
-    host_name = ''
-    host_url  = ''
-    userdata  = {}
+    user_id    = -1
+    group_id   = -1
+    group_name = ''
+    course_id  = ''
+    host_name  = ''
+    host_url   = ''
+    userdata   = {}
+    #
     custom_image    = ''
     custom_cpulimit = '0.0'
     custom_memlimit = '0'
     custom_cpugrnt  = '0.0'
     custom_memgrnt  = '0'
     custom_defurl   = '/lab'
-    custom_grpname  = ''
     custom_users    = []
     custom_teachers = []
     custom_volumes  = {}
@@ -547,11 +555,14 @@ class LTIPodmanSpawner(Spawner):
 
     def init_custom_parameters(self):
         #print('=== init_custom_parameters() ===')
-        self.group_id  = -1
-        self.course_id = '0'
-        self.host_name = 'localhost'
-        self.host_url  = 'http://localhost'
-        self.userdara  = {}
+        self.user_id    = -1
+        self.group_id   = -1
+        self.group_name = ''
+        self.course_id  = '0'
+        self.host_name  = 'localhost'
+        self.host_url   = 'http://localhost'
+        self.userdara   = {}
+        #
         self.custom_image    = ''
         self.custom_cpulimit = '0.0'
         self.custom_memlimit = '0'
@@ -570,18 +581,38 @@ class LTIPodmanSpawner(Spawner):
         return
 
 
-    @property
-    def homedir(self):
-        return self.user_home_dir.format(username=self.user.name, groupname=self.get_groupname())
+    def get_userid(self):
+        if self.user_id < 0:
+            self.user_id = pwd.getpwnam(self.user.name).pw_uid
+        #
+        return self.user_id
 
 
     def get_groupname(self):
         gname = ''
         if self.group_id < 0:
             self.group_id = pwd.getpwnam(self.user.name).pw_gid
+        #
         if self.use_group and self.group_id >= 0:
-            gname = grp.getgrgid(self.group_id).gr_name
+            if self.group_name != '' :
+                gname = self.group_name
+            else:
+                gname = grp.getgrgid(self.group_id).gr_name
         return gname
+
+
+    #@property
+    #def host_homedir(self):
+    #    if (self.user_home_dir is not None and self.user_home_dir != ''):
+    #        homedir = self.user_home_dir.format(username=self.user.name, groupname=self.get_groupname())
+    #    else:
+    #        homedir = pwd.getpwnam(self.user.name).pw_dir
+    #    return homedir
+
+
+    @property
+    def homedir(self):
+        return self.user_home_dir.format(username=self.user.name, groupname=self.get_groupname())
 
 
     def get_args(self):
@@ -640,14 +671,13 @@ class LTIPodmanSpawner(Spawner):
     #    return authentication
 
 
-    
     #def spawn_hook(self):
     #    print('=== spawn_hook() ===')
 
 
     #
-    # for custom data
-    # カスタムパラメータから情報を得る
+    # for custom/ext data
+    # パラメータから情報を得る
     #
     def userdata_hook(self, auth_state):
         #print('=== userdata_hook() ===')
@@ -664,12 +694,35 @@ class LTIPodmanSpawner(Spawner):
                 scheme = parsed.scheme
                 self.host_url  = scheme + '://' + self.host_name    # Host URL
             #
+            elif key.startswith('ext_'):                            # Extension Command
+                ext_cmd = key.replace('ext_', '')
+                #
+                if ext_cmd == self.ext_user_id_cmd:                                             # User ID Command
+                    value = re.sub('[^0-9]', '', value)
+                    self.user_id = int(value)
+                #
+                elif ext_cmd == self.ext_group_id_cmd:                                          # User Group ID Command
+                    value = re.sub('[^0-9]', '', value)
+                    self.group_id = int(value)
+                #
+                elif ext_cmd == self.ext_group_name_cmd:                                        # User Group Name Command
+                    value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
+                    self.group_name = value
+                #
             elif key.startswith('custom_'):                         # Custom Command
                 costom_cmd = key.replace('custom_', '')
                 #
                 if costom_cmd == self.custom_image_cmd:                                         # Container Image Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~ ]', '', value)
                     self.custom_image = value
+                #
+                elif costom_cmd == self.custom_users_cmd:                                       # Users Command
+                    value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
+                    self.custom_users = value.replace(',',' ').split()
+                #
+                elif costom_cmd[0:len(self.custom_teachers_cmd)] == self.custom_teachers_cmd:   # Teachers Command
+                    value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
+                    self.custom_teachers = value.replace(',',' ').split()
                 #
                 elif costom_cmd[0:len(self.custom_cpugrnt_cmd)] == self.custom_cpugrnt_cmd:     # CPU Limit Guarantee Command
                     value = re.sub('[^0-9\.]', '', value)
@@ -691,17 +744,13 @@ class LTIPodmanSpawner(Spawner):
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~ ]', '', value)
                     self.custom_defurl = value
                 #
-                elif costom_cmd[0:len(self.custom_teachers_cmd)] == self.custom_teachers_cmd:   # Teachers Command
-                    value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
-                    self.custom_teachers = value.replace(',',' ').split()
+                elif costom_cmd[0:len(self.custom_iframe_cmd)] == self.custom_iframe_cmd:       # iframe Command
+                    if value == '1' :
+                        self.custom_iframe = True
                 #
-                elif costom_cmd == self.custom_grpname_cmd:                                     # Teacher Group Name Command
+                elif costom_cmd[0:len(self.custom_options_cmd)] == self.custom_options_cmd:     # Option Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
-                    self.custom_grpname = value
-                #
-                elif costom_cmd == self.custom_users_cmd:                                       # Users Command
-                    value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
-                    self.custom_users = value.replace(',',' ').split()
+                    self.custom_option = value
                 #
                 elif costom_cmd[0:len(self.custom_volumes_cmd)] == self.custom_volumes_cmd:     # Volumes Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
@@ -715,13 +764,6 @@ class LTIPodmanSpawner(Spawner):
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
                     self.custom_prsnals[costom_cmd] = value
                 #
-                #elif costom_cmd[0:len(self.custom_options_cmd)] == self.custom_options_cmd:     # Option Command
-                #    value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
-                #    self.custom_option = value
-                #
-                elif costom_cmd[0:len(self.custom_iframe_cmd)] == self.custom_iframe_cmd:       # iframe Command
-                    if value == '1' :
-                        self.custom_iframe = True
         return
 
 
@@ -784,18 +826,18 @@ class LTIPodmanSpawner(Spawner):
         env = super(LTIPodmanSpawner, self).get_env()
         #
         username  = self.user.name
+        userid    = self.get_userid()
         groupname = self.get_groupname()
-        user_data = pwd.getpwnam(username)
         #
-        env.update(NB_UID       = user_data.pw_uid)
-        env.update(NB_GID       = user_data.pw_gid)
+        env.update(NB_UID       = userid)
         env.update(NB_USER      = username)
+        env.update(NB_GID       = self.group_id)
         env.update(NB_GROUP     = groupname)
         env.update(NB_DIR       = self.notebook_dir.format(username=username, groupname=groupname))
 
-        env.update(NB_THRGROUP  = self.custom_grpname)
-        env.update(NB_OPTION    = self.custom_option)
         env.update(NB_THRGID    = self.teacher_gid)
+        env.update(NB_THRGROUP  = self.teacher_gname)
+        env.update(NB_OPTION    = self.custom_option)
         env.update(NB_HOSTNAME  = self.host_name)
         if (self.user.name in self.custom_teachers) :
             env.update(NB_UMASK = '0033')
@@ -825,7 +867,6 @@ class LTIPodmanSpawner(Spawner):
         groupname = self.get_groupname()    # get self.group_id, too
         user_gid  = self.group_id
         self.volumes = {}
-        notebook_dir = self.notebook_dir.format(username=username, groupname=groupname)
 
         fullpath_dir = self.homedir + '/' + self.projects_dir + '/' + self.works_dir
         #self.volumes[f'jupyterhub-user-{username}'] = self.homedir + '/' + self.projects_dir
@@ -874,15 +915,19 @@ class LTIPodmanSpawner(Spawner):
     def podman_start(self):
         #print('=== podman_start() ===')
         username  = self.user.name
-        user_data = pwd.getpwnam(username)
-        hosthome  = user_data.pw_dir
+        #user_data = pwd.getpwnam(username)
+        #hosthome  = user_data.pw_dir
+        hosthome  = self.homedir
         groupname = self.get_groupname()    # get self.group_id, too
         conthome  = self.conthome + '/' + groupname + '/' + self.user.name
         #mountdir  = self.homedir + '/' + self.projects_dir
 
-        self.create_dir(hosthome, int(user_data.pw_uid), int(user_data.pw_gid), 0o0700)
-        self.create_dir(hosthome + '/' + self.projects_dir,  int(user_data.pw_uid), int(user_data.pw_gid), 0o0700)
-        self.create_dir(hosthome + '/' + self.projects_dir + '/' + self.works_dir,  int(user_data.pw_uid), int(user_data.pw_gid), 0o0700)
+        #self.create_dir(hosthome, int(user_data.pw_uid), int(user_data.pw_gid), 0o0700)
+        #self.create_dir(hosthome + '/' + self.projects_dir,  int(user_data.pw_uid), int(user_data.pw_gid), 0o0700)
+        #self.create_dir(hosthome + '/' + self.projects_dir + '/' + self.works_dir,  int(user_data.pw_uid), int(user_data.pw_gid), 0o0700)
+        self.create_dir(hosthome, self.user_id, self.group_id, 0o0700)
+        self.create_dir(hosthome + '/' + self.projects_dir,  self.user_id, self.group_id, 0o0700)
+        self.create_dir(hosthome + '/' + self.projects_dir + '/' + self.works_dir, self.user_id, self.group_id, 0o0700)
 
         import subprocess
         self.create_dir('/run/user/0', 0, 0, 0o0700)
