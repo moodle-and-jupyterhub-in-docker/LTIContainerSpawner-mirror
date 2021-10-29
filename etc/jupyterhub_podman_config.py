@@ -695,17 +695,16 @@ class LTIPodmanSpawner(Spawner):
                 self.host_url  = scheme + '://' + self.host_name    # Host URL
             #
             elif key.startswith('ext_'):                            # Extension Command
-                ext_cmd = key.replace('ext_', '')
                 #
-                if ext_cmd == self.ext_user_id_cmd:                                             # User ID Command
+                if key == self.ext_user_id_cmd:                                                 # User ID Command
                     value = re.sub('[^0-9]', '', value)
                     self.user_id = int(value)
                 #
-                elif ext_cmd == self.ext_group_id_cmd:                                          # User Group ID Command
+                elif key == self.ext_group_id_cmd:                                              # User Group ID Command
                     value = re.sub('[^0-9]', '', value)
                     self.group_id = int(value)
                 #
-                elif ext_cmd == self.ext_group_name_cmd:                                        # User Group Name Command
+                elif key == self.ext_group_name_cmd:                                            # User Group Name Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
                     self.group_name = value
                 #

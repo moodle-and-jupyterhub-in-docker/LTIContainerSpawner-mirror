@@ -670,6 +670,7 @@ class LTIDockerSpawner(DockerSpawner):
                 self.host_url  = scheme + '://' + self.host_name    # Host URL
                 #
             elif key.startswith('ext_'):                            # Extension Command
+                #
                 if key == self.ext_user_id_cmd:                                                 # User ID Command
                     value = re.sub('[^0-9]', '', value)
                     self.user_id = int(value)
