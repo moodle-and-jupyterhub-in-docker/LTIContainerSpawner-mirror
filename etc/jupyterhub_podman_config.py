@@ -498,7 +498,7 @@ class LTIPodmanSpawner(Spawner):
     env_keep = List([])
     # here we would need traitlets callable type...
     preexec_fn_set = Bool(False)
-    conthome = Unicode('/home')
+    #conthome = Unicode('/home')
 
     #
     #
@@ -511,9 +511,9 @@ class LTIPodmanSpawner(Spawner):
     teacher_gname = Unicode('TEACHER', config = True)
 
     # extension command
-    ext_user_id_cmd     = 'ext_user_userid'
-    ext_group_id_cmd    = 'ext_user_groupid'
-    ext_group_name_cmd  = 'ext_user_groupname'
+    ext_user_id_cmd     = 'user_userid'
+    ext_group_id_cmd    = 'user_groupid'
+    ext_group_name_cmd  = 'user_groupname'
 
     # custom command
     custom_image_cmd    = 'lms_image'
@@ -551,7 +551,7 @@ class LTIPodmanSpawner(Spawner):
     custom_submits  = {}
     custom_prsnals  = {}
     custom_iframe   = False
-    custom_option   = ''
+    custom_options  = ''
 
     def init_custom_parameters(self):
         #print('=== init_custom_parameters() ===')
@@ -576,7 +576,7 @@ class LTIPodmanSpawner(Spawner):
         self.custom_submits  = {}
         self.custom_prsnals  = {}
         self.custom_iframe   = False
-        self.custom_option   = ''
+        self.custom_options  = ''
         #
         return
 
@@ -695,16 +695,17 @@ class LTIPodmanSpawner(Spawner):
                 self.host_url  = scheme + '://' + self.host_name    # Host URL
             #
             elif key.startswith('ext_'):                            # Extension Command
+                ext_cmd = key.replace('ext_', '')
                 #
-                if key == self.ext_user_id_cmd:                                                 # User ID Command
+                if ext_cmd == self.ext_user_id_cmd:                                             # User ID Command
                     value = re.sub('[^0-9]', '', value)
                     self.user_id = int(value)
                 #
-                elif key == self.ext_group_id_cmd:                                              # User Group ID Command
+                elif ext_cmd == self.ext_group_id_cmd:                                          # User Group ID Command
                     value = re.sub('[^0-9]', '', value)
                     self.group_id = int(value)
                 #
-                elif key == self.ext_group_name_cmd:                                            # User Group Name Command
+                elif ext_cmd == self.ext_group_name_cmd:                                        # User Group Name Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
                     self.group_name = value
                 #
@@ -749,7 +750,7 @@ class LTIPodmanSpawner(Spawner):
                 #
                 elif costom_cmd[0:len(self.custom_options_cmd)] == self.custom_options_cmd:     # Option Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
-                    self.custom_option = value
+                    self.custom_options = value
                 #
                 elif costom_cmd[0:len(self.custom_volumes_cmd)] == self.custom_volumes_cmd:     # Volumes Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
@@ -823,20 +824,21 @@ class LTIPodmanSpawner(Spawner):
     def get_env(self):
         #print('=== get_env() ===')
         env = super(LTIPodmanSpawner, self).get_env()
-        #
-        username  = self.user.name
+        
         userid    = self.get_userid()
+        username  = self.user.name
+        groupid   = self.group_id
         groupname = self.get_groupname()
-        #
+        
         env.update(NB_UID       = userid)
         env.update(NB_USER      = username)
-        env.update(NB_GID       = self.group_id)
+        env.update(NB_GID       = groupid)
         env.update(NB_GROUP     = groupname)
         env.update(NB_DIR       = self.notebook_dir.format(username=username, groupname=groupname))
 
         env.update(NB_THRGID    = self.teacher_gid)
         env.update(NB_THRGROUP  = self.teacher_gname)
-        env.update(NB_OPTION    = self.custom_option)
+        env.update(NB_OPTION    = self.custom_options)
         env.update(NB_HOSTNAME  = self.host_name)
         if (self.user.name in self.custom_teachers) :
             env.update(NB_UMASK = '0033')
@@ -864,14 +866,8 @@ class LTIPodmanSpawner(Spawner):
         #print('=== start() ===')
         username  = self.user.name
         groupname = self.get_groupname()    # get self.group_id, too
-        user_gid  = self.group_id
+        hosthome  = self.homedir
         self.volumes = {}
-
-        fullpath_dir = self.homedir + '/' + self.projects_dir + '/' + self.works_dir
-        #self.volumes[f'jupyterhub-user-{username}'] = self.homedir + '/' + self.projects_dir
-
-        mount_volumes = self.get_volumes_info(self.custom_volumes)
-        mount_submits = self.get_volumes_info(self.custom_submits)
 
         # cpu and memory
         if self.custom_cpugrnt != '':
@@ -895,6 +891,16 @@ class LTIPodmanSpawner(Spawner):
             self.default_url = self.custom_defurl
 
         # volume
+        self.volumes[hosthome] = hosthome
+
+        self.create_dir(hosthome, self.user_id, self.group_id, 0o0700)
+        self.create_dir(hosthome + '/' + self.projects_dir,  self.user_id, self.group_id, 0o0700)
+        self.create_dir(hosthome + '/' + self.projects_dir + '/' + self.works_dir, self.user_id, self.group_id, 0o0700)
+
+        fullpath_dir = self.homedir + '/' + self.projects_dir + '/' + self.works_dir
+        mount_volumes = self.get_volumes_info(self.custom_volumes)
+        mount_submits = self.get_volumes_info(self.custom_submits)
+
         for volume in mount_volumes:
             mountp  = volume.rsplit(':')[0]
             dirname = mountp.split('/')[-1]
@@ -905,6 +911,7 @@ class LTIPodmanSpawner(Spawner):
             dirname = mountp.split('/')[-1]
             self.volumes[dirname] = fullpath_dir + '/' + mountp
 
+        #
         self.remove = True
 
         return self.podman_start()
@@ -914,19 +921,10 @@ class LTIPodmanSpawner(Spawner):
     def podman_start(self):
         #print('=== podman_start() ===')
         username  = self.user.name
-        #user_data = pwd.getpwnam(username)
-        #hosthome  = user_data.pw_dir
-        hosthome  = self.homedir
         groupname = self.get_groupname()    # get self.group_id, too
-        conthome  = self.conthome + '/' + groupname + '/' + self.user.name
+        #hosthome  = self.homedir
+        #conthome  = self.conthome + '/' + groupname + '/' + self.user.name
         #mountdir  = self.homedir + '/' + self.projects_dir
-
-        #self.create_dir(hosthome, int(user_data.pw_uid), int(user_data.pw_gid), 0o0700)
-        #self.create_dir(hosthome + '/' + self.projects_dir,  int(user_data.pw_uid), int(user_data.pw_gid), 0o0700)
-        #self.create_dir(hosthome + '/' + self.projects_dir + '/' + self.works_dir,  int(user_data.pw_uid), int(user_data.pw_gid), 0o0700)
-        self.create_dir(hosthome, self.user_id, self.group_id, 0o0700)
-        self.create_dir(hosthome + '/' + self.projects_dir,  self.user_id, self.group_id, 0o0700)
-        self.create_dir(hosthome + '/' + self.projects_dir + '/' + self.works_dir, self.user_id, self.group_id, 0o0700)
 
         import subprocess
         self.create_dir('/run/user/0', 0, 0, 0o0700)
@@ -948,7 +946,7 @@ class LTIPodmanSpawner(Spawner):
                 '--name', f'jupyterhub-{username}',
                 '--net', 'host',
                 #'-w', mountdir,
-                '-v', '{}:{}'.format(hosthome, conthome),
+                #'-v', '{}:{}'.format(hosthome, hosthome),
             ]
 
         #
@@ -963,7 +961,6 @@ class LTIPodmanSpawner(Spawner):
     
         # volumes
         for k, v in self.volumes.items():
-            #print(k + ' ----> '+ v)
             podman_base_cmd.append('-v')
             podman_base_cmd.append(f'{k}:{v}')
             Popen(shlex.split(f'podman volume create {k}'), stderr = PIPE)
@@ -972,9 +969,9 @@ class LTIPodmanSpawner(Spawner):
         podman_base_cmd_jupyter_env = []
         jupyter_env = self.get_env()
         for k, v in jupyter_env.items():
-            #os.environ[k] = str(v)
             podman_base_cmd_jupyter_env.append('--env')
             podman_base_cmd_jupyter_env.append(f'{k}="{v}"')
+
         podman_base_cmd += podman_base_cmd_jupyter_env
 
         # set port number
@@ -1041,7 +1038,6 @@ class LTIPodmanSpawner(Spawner):
 
     async def poll(self):
         #print('=== poll() ===')
-
         output, err, returncode = self.podman("inspect")
         if returncode == 0:
             state = json.loads(output)[0]["State"]
