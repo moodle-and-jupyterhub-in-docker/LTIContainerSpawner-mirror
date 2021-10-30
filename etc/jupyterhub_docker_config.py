@@ -485,7 +485,7 @@ c.ConfigurableHTTPProxy.pid_file = '/var/lib/jupyterhub/jupyterhub-proxy.pid'
 # Distributed under the terms of the Modified BSD License.
 
 #
-# LTIDockerSpawner v0.9.5 for LTI by Fumi.Iseki
+# LTIDockerSpawner v0.9.9 for LTI by Fumi.Iseki
 #
 #                                      BSD License.
 #

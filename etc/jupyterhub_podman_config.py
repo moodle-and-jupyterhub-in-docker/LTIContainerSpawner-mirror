@@ -448,11 +448,12 @@ c.ConfigurableHTTPProxy.pid_file = '/var/lib/jupyterhub/jupyterhub-proxy.pid'
 
 # copied from the jupyterhub.spawner.LocalProcessSpawner
 
+#
 # copied and modified from Mr. niklas netter's the podmanspawner
 #   thanks very much for him and his works!!
 #                      https://github.com/gatoniel/podmanspawner
 #
-# LTIPodmanSpawner v0.9.0 (popen version) for LTI by Fumi.Iseki
+# LTIPodmanSpawner v0.9.9 (popen version) for LTI by Fumi.Iseki
 #
 #                                      BSD License.
 #
@@ -494,7 +495,6 @@ class LTIPodmanSpawner(Spawner):
     jupyter_additional_cmds = List( default_value=[], config = True)
 
     enable_lab = Bool(True)
-
     env_keep = List([])
     # here we would need traitlets callable type...
     preexec_fn_set = Bool(False)
@@ -507,8 +507,9 @@ class LTIPodmanSpawner(Spawner):
     projects_dir  = Unicode('jupyter', config = True)
     works_dir     = Unicode('works', config = True)
     volumes_dir   = Unicode('.volumes', config = True)
-    teacher_gid   = Int(7000, config = True)
     teacher_gname = Unicode('TEACHER', config = True)
+    teacher_gid   = Int(7000, config = True)
+    base_id       = Int(2000, config = True)
 
     # extension command
     ext_user_id_cmd     = 'user_userid'
@@ -531,13 +532,18 @@ class LTIPodmanSpawner(Spawner):
     custom_options_cmd  = 'lms_options'
 
     #
-    user_id    = -1
-    group_id   = -1
-    group_name = ''
-    course_id  = ''
-    host_name  = ''
-    host_url   = ''
-    userdata   = {}
+    user_id     = -1
+    group_id    = -1
+    group_name  = ''
+    lms_user_id = ''
+    course_id   = ''
+    host_name   = ''
+    host_url    = ''
+    userdata    = {}
+    #
+    ext_user_id     = -1;
+    ext_group_id    = -1;
+    ext_group_name  = '';
     #
     custom_image    = ''
     custom_cpulimit = '0.0'
@@ -553,15 +559,21 @@ class LTIPodmanSpawner(Spawner):
     custom_iframe   = False
     custom_options  = ''
 
+
     def init_custom_parameters(self):
         #print('=== init_custom_parameters() ===')
-        self.user_id    = -1
-        self.group_id   = -1
-        self.group_name = ''
-        self.course_id  = '0'
-        self.host_name  = 'localhost'
-        self.host_url   = 'http://localhost'
-        self.userdara   = {}
+        self.user_id     = -1
+        self.group_id    = -1
+        self.group_name  = ''
+        self.lms_user_id = ''
+        self.course_id   = '0'
+        self.host_name   = 'localhost'
+        self.host_url    = 'http://localhost'
+        self.userdara    = {}
+        #
+        self.ext_user_id     = -1;
+        self.ext_group_id    = -1;
+        self.ext_group_name  = '';
         #
         self.custom_image    = ''
         self.custom_cpulimit = '0.0'
@@ -569,7 +581,6 @@ class LTIPodmanSpawner(Spawner):
         self.custom_cpugrnt  = '0.0'
         self.custom_memgrnt  = '0'
         self.custom_defurl   = '/lab'
-        self.custom_grpname  = 'TEACHERS'
         self.custom_users    = []
         self.custom_teachers = []
         self.custom_volumes  = {}
@@ -581,33 +592,54 @@ class LTIPodmanSpawner(Spawner):
         return
 
 
+    def get_lms_userinfo(self):
+        group_name = 'users'
+        userinfo = {}
+        #
+        userinfo['uid']   = self.base_id + int(self.lms_user_id)
+        userinfo['gname'] = group_name
+        try :
+            userinfo['gid'] = grp.getgrnam(group_name).gr_gid
+        except :
+            userinfo['gid'] = self.base_id
+
+        return userinfo
+
+
     def get_userid(self):
         if self.user_id < 0:
-            self.user_id = pwd.getpwnam(self.user.name).pw_uid
+            try :
+                self.user_id = pwd.getpwnam(self.user.name).pw_uid
+            except :
+                if self.ext_user_id>=0 :
+                    self.user_id = int(self.ext_user_id)
+                else :
+                    self.user_id = self.get_lms_userinfo()['uid']
         #
         return self.user_id
 
 
     def get_groupname(self):
-        gname = ''
         if self.group_id < 0:
-            self.group_id = pwd.getpwnam(self.user.name).pw_gid
+            try :
+                self.group_id = pwd.getpwnam(self.user.name).pw_gid
+            except :
+                if self.ext_group_id>=0 :
+                    self.group_id = int(self.ext_group_id)
+                else :
+                    self.group_id = self.get_lms_userinfo()['gid']
         #
-        if self.use_group and self.group_id >= 0:
-            if self.group_name != '' :
-                gname = self.group_name
-            else:
-                gname = grp.getgrgid(self.group_id).gr_name
-        return gname
-
-
-    #@property
-    #def host_homedir(self):
-    #    if (self.user_home_dir is not None and self.user_home_dir != ''):
-    #        homedir = self.user_home_dir.format(username=self.user.name, groupname=self.get_groupname())
-    #    else:
-    #        homedir = pwd.getpwnam(self.user.name).pw_dir
-    #    return homedir
+        if self.use_group and self.group_id >= 0 :
+            if self.group_name == '' :
+                try :
+                    self.group_name = grp.getgrgid(self.group_id).gr_name
+                except :
+                    if self.ext_group_name != '' :
+                        self.group_name = self.ext_group_name
+                    else :
+                        self.group_name = self.get_lms_userinfo()['gname']
+        #
+        return self.group_name
 
 
     @property
@@ -617,7 +649,7 @@ class LTIPodmanSpawner(Spawner):
 
     def get_args(self):
         #print('=== get_args() ===')
-        args = super(LTIDockerSpawner, self).get_args()
+        args = super(LTIPodmanSpawner, self).get_args()
 
         if self.custom_iframe :
             if sys.version_info >= (3, 8) : cookie_options = ', "cookie_options": { "SameSite": "None", "Secure": True }'
@@ -687,6 +719,8 @@ class LTIPodmanSpawner(Spawner):
         for key, value in self.userdata.items():
 
             if key == 'context_id' : self.course_id = value         # Course ID
+
+            elif key == 'user_id' : self.lms_user_id = value        # LMS USER ID
 
             elif key == 'lis_outcome_service_url' :
                 parsed = urlparse(value)
@@ -793,6 +827,7 @@ class LTIPodmanSpawner(Spawner):
                 if mnt:
                     dirname = key + '_' + self.course_id + '_' + self.host_name
                     vols.append(self.volumes_dir + '/' + dirname + ':' + disp)
+        #
         return vols
 
 
@@ -1092,7 +1127,8 @@ projects_dir  = 'jupyter'
 works_dir     = 'works'
 volumes_dir   = '.volumes'
 #
-teacher_gid   = 7000                            # 1000以上で，システムで使用していないGID
+teacher_gid   = 7000                        # 1000以上で，システムで使用していないGID
+base_id       = 2000                        # ID 不明の場合に，基底となる ID番号．システムで使用されていない部分．
 
 #
 notebook_dir = user_home_dir
@@ -1101,10 +1137,11 @@ c.LTIPodmanSpawner.projects_dir  = projects_dir
 c.LTIPodmanSpawner.works_dir     = works_dir
 c.LTIPodmanSpawner.volumes_dir   = volumes_dir
 c.LTIPodmanSpawner.teacher_gid   = teacher_gid
+c.LTIPodmanSpawner.base_id       = base_id
 
 #
 c.Spawner.environment = {
-    'GRANT_SUDO': 'no',                # 通常使用では 'no'
+    'GRANT_SUDO': 'no',                     # 通常使用では 'no'
     'CHOWN_HOME': 'yes',
     'PRJCT_DIR' : projects_dir,
     'WORK_DIR'  : works_dir,
