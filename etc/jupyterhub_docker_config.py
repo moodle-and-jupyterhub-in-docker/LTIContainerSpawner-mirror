@@ -485,7 +485,7 @@ c.ConfigurableHTTPProxy.pid_file = '/var/lib/jupyterhub/jupyterhub-proxy.pid'
 # Distributed under the terms of the Modified BSD License.
 
 #
-# LTIDockerSpawner v0.9.3 for LTI by Fumi.Iseki
+# LTIDockerSpawner v0.9.5 for LTI by Fumi.Iseki
 #
 #                                      BSD License.
 #
@@ -512,13 +512,14 @@ class LTIDockerSpawner(DockerSpawner):
     projects_dir  = Unicode('jupyter', config = True)
     works_dir     = Unicode('works', config = True)
     volumes_dir   = Unicode('.volumes', config = True)
-    teacher_gid   = Int(7000, config = True)
     teacher_gname = Unicode('TEACHER', config = True)
+    teacher_gid   = Int(7000, config = True)
+    base_id       = Int(2000, config = True)
 
     # extension command
-    ext_user_id_cmd     = 'ext_user_userid'
-    ext_group_id_cmd    = 'ext_user_groupid'
-    ext_group_name_cmd  = 'ext_user_groupname'
+    ext_user_id_cmd     = 'user_userid'
+    ext_group_id_cmd    = 'user_groupid'
+    ext_group_name_cmd  = 'user_groupname'
 
     # custom command
     custom_image_cmd    = 'lms_image'
@@ -536,13 +537,18 @@ class LTIDockerSpawner(DockerSpawner):
     custom_options_cmd  = 'lms_options'
 
     #
-    user_id    = -1;
-    group_id   = -1;
-    group_name = '';
-    course_id  = ''
-    host_name  = ''
-    host_url   = ''
-    userdata   = {}
+    user_id     = -1;
+    group_id    = -1;
+    group_name  = '';
+    lms_user_id = ''
+    course_id   = ''
+    host_name   = ''
+    host_url    = ''
+    userdata    = {}
+    #
+    ext_user_id     = -1;
+    ext_group_id    = -1;
+    ext_group_name  = '';
     #
     custom_image    = ''
     custom_cpulimit = '0.0'
@@ -556,18 +562,23 @@ class LTIDockerSpawner(DockerSpawner):
     custom_submits  = {}
     custom_prsnals  = {}
     custom_iframe   = False
-    custom_option   = ''
+    custom_options  = ''
 
 
     def init_custom_parameters(self):
         #print('=== init_custom_parameters() ===')
-        self.user_id    = -1;
-        self.group_id   = -1;
-        self.group_name = '';
-        self.course_id  = '0'
-        self.host_name  = 'localhost'
-        self.host_url   = 'http://localhost'
-        self.userdara   = {}
+        self.user_id     = -1;
+        self.group_id    = -1;
+        self.group_name  = '';
+        self.lms_user_id = ''
+        self.course_id   = '0'
+        self.host_name   = 'localhost'
+        self.host_url    = 'http://localhost'
+        self.userdara    = {}
+        #
+        self.ext_user_id     = -1;
+        self.ext_group_id    = -1;
+        self.ext_group_name  = '';
         #
         self.custom_image    = ''
         self.custom_cpulimit = '0.0'
@@ -581,45 +592,65 @@ class LTIDockerSpawner(DockerSpawner):
         self.custom_submits  = {}
         self.custom_prsnals  = {}
         self.custom_iframe   = False
-        self.custom_option   = ''
+        self.custom_options  = ''
         #
         return
 
 
+    def get_lms_userinfo(self):
+        group_name = 'users'
+        userinfo = {}
+        #
+        userinfo['uid']   = self.base_id + int(self.lms_user_id)
+        userinfo['gname'] = group_name 
+        try :
+            userinfo['gid'] = grp.getgrnam(group_name).gr_gid
+        except :
+            userinfo['gid'] = self.base_id
+
+        return userinfo
+
+
     def get_userid(self):
         if self.user_id < 0:
-            self.user_id = pwd.getpwnam(self.user.name).pw_uid
+            try :
+                self.user_id = pwd.getpwnam(self.user.name).pw_uid
+            except :
+                if self.ext_user_id>=0 :
+                    self.user_id = int(self.ext_user_id)
+                else :
+                    self.user_id = self.get_lms_userinfo()['uid']
         #
         return self.user_id
 
 
     def get_groupname(self):
-        gname = ''
         if self.group_id < 0:
-            self.group_id = pwd.getpwnam(self.user.name).pw_gid
+            try :
+                self.group_id = pwd.getpwnam(self.user.name).pw_gid
+            except :
+                if self.ext_group_id>=0 :
+                    self.group_id = int(self.ext_group_id)
+                else :
+                    self.group_id = self.get_lms_userinfo()['gid']
         #
-        if self.use_group and self.group_id >= 0:
-            if self.group_name != '' : 
-                gname = self.group_name
-            else:
-                gname = grp.getgrgid(self.group_id).gr_name
-        return gname
+        if self.use_group and self.group_id >= 0 :
+            if self.group_name == '' : 
+                try :
+                    self.group_name = grp.getgrgid(self.group_id).gr_name
+                except :
+                    if self.ext_group_name != '' :
+                        self.group_name = self.ext_group_name
+                    else :
+                        self.group_name = self.get_lms_userinfo()['gname']
+        #
+        return self.group_name
 
 
     def template_namespace(self):
         d = super(LTIDockerSpawner, self).template_namespace()
-        if self.use_group and self.group_id >= 0:
-            d['groupname'] = self.get_groupname()
+        d['groupname'] = self.get_groupname()
         return d
-
-
-    #@property
-    #def host_homedir(self):
-    #    if (self.user_home_dir is not None and self.user_home_dir != ''):
-    #        homedir = self.user_home_dir.format(username=self.user.name, groupname=self.get_groupname())
-    #    else:
-    #        homedir = pwd.getpwnam(self.user.name).pw_dir
-    #    return homedir
 
 
     @property
@@ -639,6 +670,13 @@ class LTIDockerSpawner(DockerSpawner):
             args.append('--NotebookApp.tornado_settings={ "headers":{"Content-Security-Policy": "'+ frame_ancestors + '" }' + cookie_options + '}')
             #get_config().NotebookApp.disable_check_xsrf = True
         return args
+
+
+    def create_dir(self, directory, uid, gid, mode) :
+        if not os.path.isdir(directory) :
+            os.makedirs(directory)
+            os.chown(directory, uid, gid)
+            os.chmod(directory, mode)
 
 
     #def auth_hook(authenticator, handler, authentication):
@@ -663,6 +701,8 @@ class LTIDockerSpawner(DockerSpawner):
 
             if key == 'context_id' : self.course_id = value         # Course ID
 
+            elif key == 'user_id' : self.lms_user_id = value        # LMS USER ID
+
             elif key == 'lis_outcome_service_url' :
                 parsed = urlparse(value)
                 self.host_name = parsed.netloc                      # Host Name
@@ -670,18 +710,19 @@ class LTIDockerSpawner(DockerSpawner):
                 self.host_url  = scheme + '://' + self.host_name    # Host URL
                 #
             elif key.startswith('ext_'):                            # Extension Command
+                ext_cmd = key.replace('ext_', '')
                 #
-                if key == self.ext_user_id_cmd:                                                 # User ID Command
+                if ext_cmd == self.ext_user_id_cmd:                                             # User ID Command
                     value = re.sub('[^0-9]', '', value)
-                    self.user_id = int(value)
+                    self.ext_user_id = int(value)
                 #
-                elif key == self.ext_group_id_cmd:                                              # User Group ID Command
+                elif ext_cmd == self.ext_group_id_cmd:                                          # User Group ID Command
                     value = re.sub('[^0-9]', '', value)
-                    self.group_id = int(value)
+                    self.ext_group_id = int(value)
                 #
-                elif key == self.ext_group_name_cmd:                                            # User Group Name Command
+                elif ext_cmd == self.ext_group_name_cmd:                                        # User Group Name Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
-                    self.group_name = value
+                    self.ext_group_name = value
                 #
             elif key.startswith('custom_'):                         # Custom Command
                 costom_cmd = key.replace('custom_', '')
@@ -724,7 +765,7 @@ class LTIDockerSpawner(DockerSpawner):
                 #
                 elif costom_cmd[0:len(self.custom_options_cmd)] == self.custom_options_cmd:     # Option Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
-                    self.custom_option = value
+                    self.custom_options = value
                 #
                 elif costom_cmd[0:len(self.custom_volumes_cmd)] == self.custom_volumes_cmd:     # Volumes Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
@@ -767,6 +808,7 @@ class LTIDockerSpawner(DockerSpawner):
                 if mnt:
                     dirname = key + '_' + self.course_id + '_' + self.host_name
                     vols.append(self.volumes_dir + '/' + dirname + ':' + disp)
+        #
         return vols
 
 
@@ -779,19 +821,20 @@ class LTIDockerSpawner(DockerSpawner):
         #print('=== get_env() ===')
         env = super(LTIDockerSpawner, self).get_env()
 
-        username  = self.user.name
         userid    = self.get_userid()
+        username  = self.user.name
+        groupid   = self.group_id
         groupname = self.get_groupname()
 
         env.update(NB_UID       = userid)
         env.update(NB_USER      = username)
-        env.update(NB_GID       = self.group_id)
+        env.update(NB_GID       = groupid)
         env.update(NB_GROUP     = groupname)
         env.update(NB_DIR       = self.notebook_dir.format(username=username, groupname=groupname))
 
         env.update(NB_THRGID    = self.teacher_gid)
         env.update(NB_THRGROUP  = self.teacher_gname)
-        env.update(NB_OPTION    = self.custom_option)
+        env.update(NB_OPTION    = self.custom_options)
         env.update(NB_HOSTNAME  = self.host_name)
         if (self.user.name in self.custom_teachers) :
             env.update(NB_UMASK = '0033')
@@ -818,15 +861,9 @@ class LTIDockerSpawner(DockerSpawner):
     def start(self):
         #print('=== start() ===')
         username  = self.user.name
-        groupname = self.get_groupname()
-        user_gid  = self.group_id
+        groupname = self.get_groupname()    # get self.group_id, too
+        hosthome  = self.homedir
         self.volumes = {}
-
-        fullpath_dir = self.homedir + '/' + self.projects_dir + '/' + self.works_dir
-        #self.volumes[f'jupyterhub-user-{username}'] = fullpath_dir
-
-        mount_volumes = self.get_volumes_info(self.custom_volumes)
-        mount_submits = self.get_volumes_info(self.custom_submits)
 
         # cpu and memory
         if self.custom_cpugrnt != '':
@@ -850,6 +887,16 @@ class LTIDockerSpawner(DockerSpawner):
             self.default_url = self.custom_defurl
 
         # volume
+        self.volumes[hosthome] = hosthome
+
+        self.create_dir(hosthome, self.user_id, self.group_id, 0o0700)
+        self.create_dir(hosthome + '/' + self.projects_dir,  self.user_id, self.group_id, 0o0700)
+        self.create_dir(hosthome + '/' + self.projects_dir + '/' + self.works_dir, self.user_id, self.group_id, 0o0700)
+
+        fullpath_dir  = hosthome + '/' + self.projects_dir + '/' + self.works_dir
+        mount_volumes = self.get_volumes_info(self.custom_volumes)
+        mount_submits = self.get_volumes_info(self.custom_submits)
+
         for volume in mount_volumes:
             mountp  = volume.rsplit(':')[0]
             dirname = mountp.split('/')[-1]
@@ -860,6 +907,7 @@ class LTIDockerSpawner(DockerSpawner):
             dirname = mountp.split('/')[-1]
             self.volumes[dirname] = fullpath_dir + '/' + mountp
 
+        #
         self.remove = True
 
         #print('=== START LTIDockerSpawner ===')
@@ -902,19 +950,21 @@ projects_dir  = 'jupyter'
 works_dir     = 'works'
 volumes_dir   = '.volumes'
 #
-teacher_gid   = 7000                            # 1000以上で，システムで使用していないGID
+teacher_gid   = 7000                        # 1000以上で，システムで使用していない GID
+base_id       = 2000                        # ID 不明の場合に，基底となる ID番号．システムで使用されていない部分．
 
 #
 notebook_dir = user_home_dir
-c.LTIPodmanSpawner.user_home_dir = user_home_dir
-c.LTIPodmanSpawner.projects_dir  = projects_dir
-c.LTIPodmanSpawner.works_dir     = works_dir
-c.LTIPodmanSpawner.volumes_dir   = volumes_dir
-c.LTIPodmanSpawner.teacher_gid   = teacher_gid
+c.LTIDockerSpawner.user_home_dir = user_home_dir
+c.LTIDockerSpawner.projects_dir  = projects_dir
+c.LTIDockerSpawner.works_dir     = works_dir
+c.LTIDockerSpawner.volumes_dir   = volumes_dir
+c.LTIDockerSpawner.teacher_gid   = teacher_gid
+c.LTIDockerSpawner.base_id       = base_id
 
 #
 c.Spawner.environment = {
-    'GRANT_SUDO': 'no',                # 通常使用では 'no'
+    'GRANT_SUDO': 'no',                     # 通常使用では 'no'
     'CHOWN_HOME': 'yes',
     'PRJCT_DIR' : projects_dir,
     'WORK_DIR'  : works_dir,
