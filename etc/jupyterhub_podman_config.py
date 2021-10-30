@@ -956,10 +956,6 @@ class LTIPodmanSpawner(Spawner):
     def podman_start(self):
         #print('=== podman_start() ===')
         username  = self.user.name
-        groupname = self.get_groupname()    # get self.group_id, too
-        #hosthome  = self.homedir
-        #conthome  = self.conthome + '/' + groupname + '/' + self.user.name
-        #mountdir  = self.homedir + '/' + self.projects_dir
 
         import subprocess
         self.create_dir('/run/user/0', 0, 0, 0o0700)
