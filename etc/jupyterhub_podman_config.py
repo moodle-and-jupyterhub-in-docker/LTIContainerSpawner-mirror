@@ -105,7 +105,11 @@ c.JupyterHub.authenticator_class = 'ltiauthenticator.LTIAuthenticator'
 c.LTI11Authenticator.consumers = {
     "b18e82ec683724743236fade71350720029a29144a585c66f6741d8e9c6e0d83" : "c0fe2924dbb0f4701d898d36aaf9fd89c7a3ed3a7db6f0003d0e825a7eccb41c"
 }
-c.LTI11Authenticator.username_key = 'ext_user_username'
+
+c.LTI11Authenticator.username_key = 'ext_user_username'             # for Moodle
+#c.LTI11Authenticator.username_key = 'custom_lis_user_username'      # for Canvas or BlackBoard
+#c.LTI11Authenticator.username_key = 'ext_d2l_username'              # for Desire2Learn
+#c.LTI11Authenticator.username_key = 'lis_person_sourcedid'          # for Sakai
 
 
 ## The base URL of the entire application.
@@ -508,8 +512,8 @@ class LTIPodmanSpawner(Spawner):
     works_dir     = Unicode('works', config = True)
     volumes_dir   = Unicode('.volumes', config = True)
     teacher_gname = Unicode('TEACHER', config = True)
-    teacher_gid   = Int(7000, config = True)
-    base_id       = Int(2000, config = True)
+    teacher_gid   = Int(7000,  config = True)
+    base_id       = Int(30000, config = True)
 
     # extension command
     ext_user_id_cmd     = 'user_userid'
@@ -1124,7 +1128,7 @@ works_dir     = 'works'
 volumes_dir   = '.volumes'
 #
 teacher_gid   = 7000                        # 1000以上で，システムで使用していないGID
-base_id       = 2000                        # ID 不明の場合に，基底となる ID番号．システムで使用されていない部分．
+base_id       = 30000                       # ID 不明の場合に，基底となる ID番号．システムで使用されていない部分．
 
 #
 notebook_dir = user_home_dir
