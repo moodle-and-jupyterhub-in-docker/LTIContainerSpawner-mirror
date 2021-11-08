@@ -1,7 +1,7 @@
 # LTIContainerSpawner
 
-LTIカスタムパラメータ拡張による Moodle(LMS) - JupyterHub 連携に関する研究．
-- Moodle(LMS) and JupyterHub Integration by LTI Custom Parameters Extension. 
+LTIカスタムパラメータによる Moodle(LMS) - JupyterHub 連携に関する研究．
+- Moodle(LMS) and JupyterHub Integration by LTI Custom Parameters. 
 
 Japanese Wiki
 - https://gitlab.nsl.tuis.ac.jp/iseki/lticontainerspawner/-/wikis/Moodle---JupyterHub-(J)
