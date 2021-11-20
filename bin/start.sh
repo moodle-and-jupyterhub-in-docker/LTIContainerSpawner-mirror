@@ -111,7 +111,8 @@ if [ $(id -u) == 0 ] ; then
             chown $NB_UID:$NB_GID $HOME_DIR/$NB_USER/.bash_profile || true
         fi
 
-        rm -rf /home/jovyan || true
+        # /home/jovyan is used at "docker exec"
+        #rm -rf /home/jovyan || true
         # 
         echo "$PRG_NAME: relocated home dir to $HOME_DIR/$NB_USER"
     fi 
