@@ -29,13 +29,15 @@ ADD  etc/passwd.orig \
      /etc/
 RUN  chmod a+rx /usr/local/bin/* \
   && chmod a+rx /usr/bin/ipynb_*
+
 RUN  /opt/conda/bin/conda install --prefix /opt/conda conda==4.10.3 -y \
   && /opt/conda/bin/conda install --prefix /opt/conda -c conda-forge jupyterhub==1.4.2 -y \
   && /opt/conda/bin/conda install --prefix /opt/conda -c conda-forge jupyterlab -y \
   && /opt/conda/bin/conda update  --prefix /opt/conda --all -y \
+  && /opt/conda/bin/conda install --prefix /opt/conda jupyterhub-singleuser -y \
   && /opt/conda/bin/conda clean   --all -y \
   && true
-RUN  /opt/conda/bin/conda install --prefix /opt/conda jupyterhub-singleuser -y
+
 RUN  apt-get update \
   && apt-get upgrade -y \
 #  && apt-get install -y --no-install-recommends \

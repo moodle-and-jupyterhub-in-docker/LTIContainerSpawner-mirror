@@ -969,7 +969,6 @@ c.LTIDockerSpawner.base_id       = base_id
 #
 c.Spawner.environment = {
     'GRANT_SUDO': 'no',                     # 通常使用では 'no'
-    'CHOWN_HOME': 'yes',
     'PRJCT_DIR' : projects_dir,
     'WORK_DIR'  : works_dir,
     'VOLUME_DIR': volumes_dir,

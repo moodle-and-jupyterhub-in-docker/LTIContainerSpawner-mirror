@@ -67,7 +67,7 @@ if [ $(id -u) == 0 ] ; then
     # create new user account
     groupadd -f -g $NB_GID $NB_GROUP || true
     if [ ! $(id -u $NB_USER 2>/dev/null) ]; then
-        JVYN_UID=`id -u jovyan`
+        JVYN_UID=`id -u jovyan` || true
         if [ "$JVYN_UID" == "$NB_UID" ]; then
             echo "$PRG_NAME: set username from jovyan to $NB_USER"
             usermod -d $HOME_DIR/$NB_USER -g $NB_GID -l $NB_USER jovyan
@@ -336,7 +336,7 @@ if [ $(id -u) == 0 ] ; then
     # the environment preserved
     run-hooks /usr/local/bin/before-notebook.d
     echo "$PRG_NAME: executing the command: ${cmd[@]}"
-    exec sudo -E -H -u $NB_USER PATH=$PATH XDG_CACHE_HOME=$HOME_DIR/$NB_USER/.cache PYTHONPATH=$PYTHONPATH "${cmd[@]}" 
+    exec sudo -E -H -u $NB_USER PATH=$PATH XDG_CACHE_HOME=$HOME_DIR/$NB_USER/.cache PYTHONPATH=$PYTHONPATH "${cmd[@]}"
     #
 else
     #
