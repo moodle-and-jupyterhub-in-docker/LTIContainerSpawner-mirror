@@ -2,7 +2,7 @@
 # Copyright (c) Jupyter Development Team.
 # Distributed under the terms of the Modified BSD License.
 #
-# /usr/local/bin/start.sh   2021 10/27 v0.9.16
+# /usr/local/bin/start.sh   2021 11/21 v0.9.17b
 #       This is modified by Fumi.Iseki for LTIDockerSpawner/LTIPodmanSpawner
 #
 
