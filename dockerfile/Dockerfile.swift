@@ -1,5 +1,7 @@
 # Start from S4TF base image
-FROM gcr.io/swift-tensorflow/base-deps-cuda10.2-cudnn7-ubuntu18.04
+#FROM gcr.io/swift-tensorflow/base-deps-cuda10.2-cudnn7-ubuntu18.04
+#FROM gcr.io/swift-tensorflow/base-deps-cuda11.0-cudnn8-ubuntu18.04
+FROM gcr.io/swift-tensorflow/base-deps-ubuntu20.04
 #FROM jupyter/tensorflow-notebook
 
 USER root
@@ -39,13 +41,22 @@ RUN  apt-get update \
   && apt-get install -y --no-install-recommends \
      sudo \
      git \
+     libfreetype6-dev\
+     openssl \
+     libssl-dev \
+     clang \
+     libpython3-dev \
+     libblocksruntime-dev \
   && apt-get -y clean \
   && rm -rf /var/lib/apt/lists/* \
   && true
 
 #
 # Allow the caller to specify the toolchain to use
-ARG swift_tf_url=https://storage.googleapis.com/swift-tensorflow-artifacts/nightlies/latest/swift-tensorflow-DEVELOPMENT-cuda10.2-cudnn7-ubuntu18.04.tar.gz
+#ARG swift_tf_url=https://storage.googleapis.com/swift-tensorflow-artifacts/nightlies/latest/swift-tensorflow-DEVELOPMENT-cuda10.2-cudnn7-ubuntu18.04.tar.gz
+#ARG swift_tf_url=https://storage.googleapis.com/swift-tensorflow-artifacts/nightlies/latest/swift-tensorflow-DEVELOPMENT-stock-ubuntu20.04.tar.gz
+#ARG swift_tf_url=https://storage.googleapis.com/swift-tensorflow-artifacts/releases/v0.13/swift-tensorflow-RELEASE-0.13-ubuntu18.04.tar.gz
+ARG swift_tf_url=https://storage.googleapis.com/swift-tensorflow-artifacts/releases/v0.13/swift-tensorflow-RELEASE-0.13-ubuntu20.04.tar.gz
 
 # Download and extract S4TF
 WORKDIR /
