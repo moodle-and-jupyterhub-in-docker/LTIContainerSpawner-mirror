@@ -2,7 +2,7 @@
 # Copyright (c) Jupyter Development Team.
 # Distributed under the terms of the Modified BSD License.
 #
-# /usr/local/bin/start.sh   2021 11/21 v0.9.17b
+# /usr/local/bin/start.sh   2021 12/04 v0.9.18
 #       This is modified by Fumi.Iseki for LTIDockerSpawner/LTIPodmanSpawner
 #
 
@@ -78,8 +78,8 @@ if [ $(id -u) == 0 ] ; then
     fi
     #
     echo "$PRG_NAME: setup user to $NB_USER"
-    echo "$PRG_NAME: /etc/passwd is ..."
-    cat /etc/passwd | tail -3
+    #echo "$PRG_NAME: /etc/passwd is ..."
+    #cat /etc/passwd | tail -3
 
     #
     # setup home directory
@@ -164,8 +164,8 @@ if [ $(id -u) == 0 ] ; then
         fi 
         #
         echo "$PRG_NAME: setup new teacher group ($EGID) for docker volumes"
-        echo "$PRG_NAME: /etc/group is ..."
-        cat /etc/group | tail -3
+        #echo "$PRG_NAME: /etc/group is ..."
+        #cat /etc/group | tail -3
     fi
 
     #
@@ -299,8 +299,8 @@ if [ $(id -u) == 0 ] ; then
         fi
         # 
         echo "$PRG_NAME: fixed user information."
-        echo "$PRG_NAME: /etc/passwd is ..."
-        cat /etc/passwd | tail -3
+        #echo "$PRG_NAME: /etc/passwd is ..."
+        #cat /etc/passwd | tail -3
     fi
 
     #

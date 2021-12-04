@@ -1,4 +1,5 @@
 FROM jupyter/base-notebook
+
 USER root
 ADD  bin/start.sh \
      bin/commit.sh \
@@ -27,9 +28,10 @@ RUN  chmod a+rx /usr/local/bin/* \
   && chmod a+rx /usr/bin/ipynb_* \
   && true
 
-RUN  /opt/conda/bin/conda install --prefix /opt/conda conda==4.10.3 -y \
-  && /opt/conda/bin/conda install --prefix /opt/conda -c conda-forge jupyterhub==1.4.2 -y \
-  && /opt/conda/bin/conda install --prefix /opt/conda -c conda-forge jupyterlab -y \
+RUN  /opt/conda/bin/conda update  --prefix /opt/conda conda -y \
+  && /opt/conda/bin/conda update  --prefix /opt/conda -c conda-forge jupyterhub -y \
+  && /opt/conda/bin/conda update  --prefix /opt/conda -c conda-forge jupyterlab -y \
+  && /opt/conda/bin/conda install --prefix /opt/conda jupyterlab-language-pack-ja-JP -y \
   && /opt/conda/bin/conda update  --prefix /opt/conda --all -y \
   && /opt/conda/bin/conda clean   --all -y \
   && true
@@ -39,11 +41,14 @@ RUN  apt-get update \
   && apt-get install -y --no-install-recommends \
      default-jre \
      default-jdk \
-#     apt-utils \
+     apt-utils \
+     binutils \
 #     tini \
 #     g++ \
 #     vim \
      git \
+     language-pack-ja-base \
+     language-pack-ja \
   && apt-get -y clean \
   && rm -rf /var/lib/apt/lists/* \
   && true

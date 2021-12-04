@@ -1,4 +1,5 @@
 FROM tensorflow/tensorflow:latest-gpu-jupyter
+
 USER root
 ADD  bin/start.sh \
      bin/commit.sh \
@@ -24,16 +25,20 @@ ADD  etc/passwd.orig \
      /etc/
 RUN  chmod a+rx /usr/local/bin/* \
   && chmod a+rx /usr/bin/ipynb_*
+
 RUN  apt-get update \
   && apt-get upgrade -y \
   && apt-get install -y --no-install-recommends \
-     wget \
+     binutils \
      apt-utils \
      sudo \
+     wget \
 #     tini \
 #     g++ \
 #     vim \
 #     git \
+     language-pack-ja-base \
+     language-pack-ja \
   && apt-get -y clean \
   && rm -rf /var/lib/apt/lists/* \
   && wget -P /opt https://repo.anaconda.com/archive/Anaconda3-2020.07-Linux-x86_64.sh \
@@ -42,10 +47,11 @@ RUN  apt-get update \
   && /opt/conda/bin/conda init \
   && true
 #
-RUN  /opt/conda/bin/conda install --prefix /opt/conda conda==4.10.3 -y \
-  && /opt/conda/bin/conda install --prefix /opt/conda -c conda-forge jupyterhub==1.4.2 -y \
-  && /opt/conda/bin/conda install --prefix /opt/conda -c conda-forge jupyterlab -y \
-  && /opt/conda/bin/conda install --prefix /opt/conda jupyterhub-singleuser -y \
+RUN  /opt/conda/bin/conda update  --prefix /opt/conda conda -y \
+  && /opt/conda/bin/conda update  --prefix /opt/conda -c conda-forge jupyterhub -y \
+  && /opt/conda/bin/conda update  --prefix /opt/conda -c conda-forge jupyterlab -y \
+  && /opt/conda/bin/conda update  --prefix /opt/conda jupyterhub-singleuser -y \
+  && /opt/conda/bin/conda install --prefix /opt/conda jupyterlab-language-pack-ja-JP -y \
   && /opt/conda/bin/conda update  --prefix /opt/conda --all -y \
   && /opt/conda/bin/conda clean   --all -y \
   && true

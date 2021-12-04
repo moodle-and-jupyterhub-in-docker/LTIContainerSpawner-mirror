@@ -1,5 +1,6 @@
 #FROM jupyterhub/singleuser
 FROM jupyter/base-notebook
+
 USER root
 ADD  bin/start.sh \
      bin/commit.sh \
@@ -27,22 +28,25 @@ ADD  etc/passwd.orig \
 RUN  chmod a+rx /usr/local/bin/* \
   && chmod a+rx /usr/bin/ipynb_*
 
-RUN  /opt/conda/bin/conda install --prefix /opt/conda conda==4.10.3 -y \
-  && /opt/conda/bin/conda install --prefix /opt/conda -c conda-forge jupyterhub==1.4.2 -y \
-  && /opt/conda/bin/conda install --prefix /opt/conda -c conda-forge jupyterlab -y \
+RUN  /opt/conda/bin/conda update  --prefix /opt/conda conda -y \
+  && /opt/conda/bin/conda update  --prefix /opt/conda -c conda-forge jupyterhub -y \
+  && /opt/conda/bin/conda update  --prefix /opt/conda -c conda-forge jupyterlab -y \
+  && /opt/conda/bin/conda install --prefix /opt/conda jupyterlab-language-pack-ja-JP -y \
   && /opt/conda/bin/conda update  --prefix /opt/conda --all -y \
   && /opt/conda/bin/conda clean   --all -y \
-  && true
-
-RUN  /opt/conda/bin/conda install --prefix /opt/conda -c conda-forge xeus-cling -y \
-  && /opt/conda/bin/pip install   --prefix /opt/conda jupyter_c_kernel \
+#
+  && /opt/conda/bin/conda install --prefix /opt/conda -c conda-forge xeus-cling -y \
+  && /opt/conda/bin/pip   install --prefix /opt/conda jupyter_c_kernel \
   && /opt/conda/bin/install_c_kernel --sys-prefix \
   && true
 
 RUN  apt-get update \
   && apt-get install -y --no-install-recommends \
+     binutils \
      apt-utils \
      g++ \
+     language-pack-ja-base \
+     language-pack-ja \
   && apt-get upgrade -y \
   && apt-get -y clean \
   && rm -rf /var/lib/apt/lists/* \

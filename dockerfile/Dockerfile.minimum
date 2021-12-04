@@ -4,6 +4,7 @@ FROM jupyter/base-notebook
 #FROM jupyter/datascience-notebook
 #FROM jupyter/tensorflow-notebook
 #FROM jupyter/scipy-notebook
+
 USER root
 ADD  bin/start.sh \
      bin/commit.sh \
@@ -30,3 +31,4 @@ ADD  etc/passwd.orig \
      /etc/
 RUN  chmod a+rx /usr/local/bin/* \
   && chmod a+rx /usr/bin/ipynb_*
+

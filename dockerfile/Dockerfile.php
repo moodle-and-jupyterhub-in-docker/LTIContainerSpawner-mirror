@@ -1,4 +1,5 @@
 FROM jupyter/base-notebook
+
 USER root
 ADD  bin/start.sh \
      bin/commit.sh \
@@ -27,9 +28,10 @@ RUN  chmod a+rx /usr/local/bin/* \
   && chmod a+rx /usr/bin/ipynb_* \
   && true
 
-RUN  /opt/conda/bin/conda install --prefix /opt/conda conda==4.10.3 -y \
-  && /opt/conda/bin/conda install --prefix /opt/conda -c conda-forge jupyterhub==1.4.2 -y \
-  && /opt/conda/bin/conda install --prefix /opt/conda -c conda-forge jupyterlab -y \
+RUN  /opt/conda/bin/conda update  --prefix /opt/conda conda -y \
+  && /opt/conda/bin/conda update  --prefix /opt/conda -c conda-forge jupyterhub -y \
+  && /opt/conda/bin/conda update  --prefix /opt/conda -c conda-forge jupyterlab -y \
+  && /opt/conda/bin/conda install --prefix /opt/conda jupyterlab-language-pack-ja-JP -y \
   && /opt/conda/bin/conda update  --prefix /opt/conda --all -y \
   && /opt/conda/bin/conda clean   --all -y \
   && true
@@ -37,6 +39,7 @@ RUN  /opt/conda/bin/conda install --prefix /opt/conda conda==4.10.3 -y \
 RUN  apt-get update \
   && apt-get upgrade -y \
   && apt-get install -y --no-install-recommends \
+     binutils \
      apt-utils \
      wget \
      php-cli php-dev php-pear \
@@ -44,6 +47,8 @@ RUN  apt-get update \
      git \
      make \
      g++ \
+     language-pack-ja-base \
+     language-pack-ja \
   && apt-get -y clean \
   && rm -rf /var/lib/apt/lists/* \
   && true
@@ -57,7 +62,7 @@ RUN wget https://github.com/zeromq/zeromq4-1/releases/download/v4.1.5/zeromq-4.1
   && rm -r zeromq-4.1.5 zeromq-4.1.5.tar.gz \
   && true
 
-#RUN git clone git://github.com/mkoppanen/php-zmq.git \
+RUN git clone git://github.com/mkoppanen/php-zmq.git \
   && cd php-zmq \
   && phpize && ./configure \
   && make \

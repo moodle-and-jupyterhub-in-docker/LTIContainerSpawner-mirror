@@ -1,8 +1,4 @@
-# Start from S4TF base image
-#FROM gcr.io/swift-tensorflow/base-deps-cuda10.2-cudnn7-ubuntu18.04
-#FROM gcr.io/swift-tensorflow/base-deps-cuda11.0-cudnn8-ubuntu18.04
-FROM gcr.io/swift-tensorflow/base-deps-ubuntu20.04
-#FROM jupyter/tensorflow-notebook
+FROM jupyter/base-notebook
 
 USER root
 ADD  bin/start.sh \
@@ -31,15 +27,11 @@ ADD  etc/passwd.orig \
 RUN  chmod a+rx /usr/local/bin/* \
   && chmod a+rx /usr/bin/ipynb_*
 
-RUN  pip3 install --upgrade pip \
-  && pip3 install jupyterhub \
-  && pip3 install jupyterlab \
-  && true
-
 RUN  apt-get update \
 #  && apt-get upgrade -y \
   && apt-get install -y --no-install-recommends \
-     sudo \
+     binutils \
+     apt-utils \
      git \
      libfreetype6-dev\
      openssl \
@@ -47,21 +39,27 @@ RUN  apt-get update \
      clang \
      libpython3-dev \
      libblocksruntime-dev \
+     language-pack-ja-base \
+     language-pack-ja \
   && apt-get -y clean \
   && rm -rf /var/lib/apt/lists/* \
   && true
 
+RUN  /opt/conda/bin/conda update  --prefix /opt/conda conda -y \
+  && /opt/conda/bin/conda update  --prefix /opt/conda -c conda-forge jupyterhub -y \
+  && /opt/conda/bin/conda update  --prefix /opt/conda -c conda-forge jupyterlab -y \
+  && /opt/conda/bin/conda install --prefix /opt/conda jupyterlab-language-pack-ja-JP -y \
+#  && /opt/conda/bin/conda update  --prefix /opt/conda --all -y \
+  && /opt/conda/bin/conda clean   --all -y \
+  && true
+
 #
-# Allow the caller to specify the toolchain to use
-#ARG swift_tf_url=https://storage.googleapis.com/swift-tensorflow-artifacts/nightlies/latest/swift-tensorflow-DEVELOPMENT-cuda10.2-cudnn7-ubuntu18.04.tar.gz
-#ARG swift_tf_url=https://storage.googleapis.com/swift-tensorflow-artifacts/nightlies/latest/swift-tensorflow-DEVELOPMENT-stock-ubuntu20.04.tar.gz
-#ARG swift_tf_url=https://storage.googleapis.com/swift-tensorflow-artifacts/releases/v0.13/swift-tensorflow-RELEASE-0.13-ubuntu18.04.tar.gz
-ARG swift_tf_url=https://storage.googleapis.com/swift-tensorflow-artifacts/releases/v0.13/swift-tensorflow-RELEASE-0.13-ubuntu20.04.tar.gz
+ARG swift_url=https://download.swift.org/swift-5.5.1-release/ubuntu2004/swift-5.5.1-RELEASE/swift-5.5.1-RELEASE-ubuntu20.04.tar.gz
 
 # Download and extract S4TF
 WORKDIR /
-ADD  $swift_tf_url swift.tar.gz
-RUN  tar -xzf swift.tar.gz --directory=usr --strip-components=1 \
+ADD  $swift_url swift.tar.gz
+RUN  tar -xzf swift.tar.gz --directory=usr --strip-components=2 \
   && rm swift.tar.gz \
   && git clone https://github.com/google/swift-jupyter.git \
   && true
@@ -71,10 +69,8 @@ WORKDIR /swift-jupyter
 RUN  echo "Pillow" >> docker/requirements_py_graphics.txt \
   && python3 -m pip install --no-cache-dir -r docker/requirements.txt \
   && python3 -m pip install --no-cache-dir -r docker/requirements_py_graphics.txt \
-  && python3 register.py --sys-prefix --swift-toolchain  / > /dev/null \
+#  && python3 register.py --sys-prefix --swift-toolchain  / > /dev/null \
+  && python3 register.py --sys-prefix --swift-python-use-conda --use-conda-shared-libs --swift-toolchain  / > /dev/null \
   && chmod a+r * \
   && true
-
-ENV PATH="$PATH:/usr/local/bin:/usr/bin"
-CMD ["start-notebook.sh"]
 
