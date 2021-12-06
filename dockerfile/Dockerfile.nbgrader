@@ -1,0 +1,27 @@
+#FROM jupyterhub-ltids/swift-tensorflo:20211204
+#FROM jupyterhub-ltids/java:20211204
+#FROM jupyterhub-ltids/php:20211204
+#FROM jupyterhub-ltids/vhtec_jupyter:20211204
+#FROM jupyterhub-ltids/jupyter-dev:20211204
+#FROM jupyterhub-ltids/xeus-cling:20211204
+#FROM jupyterhub-ltids/jupyter-scipy:20211204
+#FROM jupyterhub-ltids/jupyter-tensorflow:20211204
+#FROM jupyterhub-ltids/jupyter-datascience:20211204
+#FROM jupyterhub-ltids/jupyter-singleuser:20211204
+FROM jupyterhub-ltids/jupyter-base:20211204
+#FROM jupyterhub-ltids/jupyter-minimum:20211204
+
+USER root
+
+RUN  /opt/conda/bin/conda update  --prefix /opt/conda conda -y \
+  && /opt/conda/bin/conda update  --prefix /opt/conda -c conda-forge jupyterhub -y \
+  && /opt/conda/bin/conda update  --prefix /opt/conda -c conda-forge jupyterlab -y \
+  && /opt/conda/bin/conda install --prefix /opt/conda -c conda-forge nbgrader -y \
+#  && /opt/conda/bin/conda update  --prefix /opt/conda --all -y \
+  && /opt/conda/bin/conda clean   --all -y \
+  && /opt/conda/bin/jupyter nbextension install --sys-prefix --py nbgrader --overwrite \
+  && /opt/conda/bin/jupyter nbextension enable  --sys-prefix --py nbgrader \
+  && /opt/conda/bin/jupyter serverextension enable --sys-prefix --py nbgrader \
+  && /opt/conda/bin/pip install etc_jupyterlab_nbgrader_validate \
+  && true
+
