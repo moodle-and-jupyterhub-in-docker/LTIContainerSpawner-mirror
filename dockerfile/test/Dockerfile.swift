@@ -24,8 +24,11 @@ ADD  etc/.bash_profile \
 ADD  etc/passwd.orig \
      etc/group.orig \
      /etc/
+
 RUN  chmod a+rx /usr/local/bin/* \
-  && chmod a+rx /usr/bin/ipynb_*
+  && chmod a+rx /usr/bin/ipynb_* \
+  && chmod a+r  /etc/skel/* /etc/skel/.vimrc /etc/skel/.bash* \
+  && true
 
 RUN  apt-get update \
 #  && apt-get upgrade -y \
