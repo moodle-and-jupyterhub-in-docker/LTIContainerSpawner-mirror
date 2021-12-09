@@ -1,11 +1,11 @@
-FROM jupyterhub-ltids/jupyter-dev:20211121
+FROM jupyterhub-ltids/jupyter-dev:20211204
 
 USER root
-ADD  bin/start.sh \
+#ADD  bin/start.sh \
 #     bin/commit.sh \
 #     bin/start-notebook.sh \
 #     bin/start-singleuser.sh \
-     /usr/local/bin/
+#     /usr/local/bin/
 #ADD  bin/ipynb_conv \
 #     bin/ipynb_conv.php \
 #     bin/ipynb_deploy \
@@ -33,20 +33,20 @@ ADD  bin/start.sh \
 RUN  /opt/conda/bin/conda install --prefix /opt/conda conda==4.11.0 -y \
   && /opt/conda/bin/conda update  --prefix /opt/conda -c conda-forge jupyterhub -y \
   && /opt/conda/bin/conda update  --prefix /opt/conda -c conda-forge jupyterlab -y \
-  && /opt/conda/bin/conda install --prefix /opt/conda jupyterlab-language-pack-ja-JP -y \
+#  && /opt/conda/bin/conda install --prefix /opt/conda jupyterlab-language-pack-ja-JP -y \
 #  && /opt/conda/bin/conda update  --prefix /opt/conda --all -y \
   && /opt/conda/bin/conda clean   --all -y \
   && true
 
-RUN  apt-get update \
-#  && apt-get upgrade -y \
-  && apt-get install -y --no-install-recommends \
-     binutils \
-     apt-utils \
-     language-pack-ja-base \
-     language-pack-ja \
-  && apt-get -y clean \
-  && rm -rf /var/lib/apt/lists/* \
-  && true
+#RUN  apt-get update \
+##  && apt-get upgrade -y \
+#  && apt-get install -y --no-install-recommends \
+#     binutils \
+#     apt-utils \
+#     language-pack-ja-base \
+#     language-pack-ja \
+#  && apt-get -y clean \
+#  && rm -rf /var/lib/apt/lists/* \
+#  && true
 
 #CMD ["start-notebook.sh"]
