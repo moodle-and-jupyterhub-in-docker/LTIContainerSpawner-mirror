@@ -704,18 +704,18 @@ class LTIDockerSpawner(DockerSpawner):
     custom_options_cmd  = 'lms_options'
 
     #
-    user_id     = -1;
-    group_id    = -1;
-    group_name  = '';
+    user_id     = -1
+    group_id    = -1
+    group_name  = ''
     lms_user_id = ''
     course_id   = ''
     host_name   = ''
     host_url    = ''
     userdata    = {}
     #
-    ext_user_id     = -1;
-    ext_group_id    = -1;
-    ext_group_name  = '';
+    ext_user_id     = -1
+    ext_group_id    = -1
+    ext_group_name  = ''
     #
     custom_image    = ''
     custom_cpulimit = '0.0'
@@ -734,18 +734,18 @@ class LTIDockerSpawner(DockerSpawner):
 
     def init_custom_parameters(self):
         #print('=== init_custom_parameters() ===')
-        self.user_id     = -1;
-        self.group_id    = -1;
-        self.group_name  = '';
+        self.user_id     = -1
+        self.group_id    = -1
+        self.group_name  = ''
         self.lms_user_id = ''
         self.course_id   = '0'
         self.host_name   = 'localhost'
         self.host_url    = 'http://localhost'
         self.userdara    = {}
         #
-        self.ext_user_id     = -1;
-        self.ext_group_id    = -1;
-        self.ext_group_name  = '';
+        self.ext_user_id     = -1
+        self.ext_group_id    = -1
+        self.ext_group_name  = ''
         #
         self.custom_image    = ''
         self.custom_cpulimit = '0.0'
@@ -1205,9 +1205,9 @@ class LTIPodmanSpawner(Spawner):
     host_url    = ''
     userdata    = {}
     #
-    ext_user_id     = -1;
-    ext_group_id    = -1;
-    ext_group_name  = '';
+    ext_user_id     = -1
+    ext_group_id    = -1
+    ext_group_name  = ''
     #
     custom_image    = ''
     custom_cpulimit = '0.0'
@@ -1235,9 +1235,9 @@ class LTIPodmanSpawner(Spawner):
         self.host_url    = 'http://localhost'
         self.userdara    = {}
         #
-        self.ext_user_id     = -1;
-        self.ext_group_id    = -1;
-        self.ext_group_name  = '';
+        self.ext_user_id     = -1
+        self.ext_group_id    = -1
+        self.ext_group_name  = ''
         #
         self.custom_image    = ''
         self.custom_cpulimit = '0.0'

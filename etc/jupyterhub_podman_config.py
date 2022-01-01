@@ -545,9 +545,9 @@ class LTIPodmanSpawner(Spawner):
     host_url    = ''
     userdata    = {}
     #
-    ext_user_id     = -1;
-    ext_group_id    = -1;
-    ext_group_name  = '';
+    ext_user_id     = -1
+    ext_group_id    = -1
+    ext_group_name  = ''
     #
     custom_image    = ''
     custom_cpulimit = '0.0'
@@ -575,9 +575,9 @@ class LTIPodmanSpawner(Spawner):
         self.host_url    = 'http://localhost'
         self.userdara    = {}
         #
-        self.ext_user_id     = -1;
-        self.ext_group_id    = -1;
-        self.ext_group_name  = '';
+        self.ext_user_id     = -1
+        self.ext_group_id    = -1
+        self.ext_group_name  = ''
         #
         self.custom_image    = ''
         self.custom_cpulimit = '0.0'
