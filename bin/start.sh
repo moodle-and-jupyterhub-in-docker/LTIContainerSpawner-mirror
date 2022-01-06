@@ -2,7 +2,7 @@
 # Copyright (c) Jupyter Development Team.
 # Distributed under the terms of the Modified BSD License.
 #
-# /usr/local/bin/start.sh   2021 12/04 v0.9.18
+# /usr/local/bin/start.sh   2022 01/07 v0.9.20
 #       This is modified by Fumi.Iseki for LTIDockerSpawner/LTIPodmanSpawner
 #
 
@@ -59,6 +59,8 @@ if [ $(id -u) == 0 ] ; then
         HOME_DIR="$HOME_DIR/$NB_GROUP"
         if [ ! -e "$HOME_DIR" ]; then
             mkdir $HOME_DIR
+            chgrp $NB_GROUP $HOME_DIR
+            chmod 0755 $HOME_DIR
         fi
     fi
     echo "$PRG_NAME: setup home directory to $HOME_DIR"
@@ -72,7 +74,7 @@ if [ $(id -u) == 0 ] ; then
             echo "$PRG_NAME: set username from jovyan to $NB_USER"
             usermod -d $HOME_DIR/$NB_USER -g $NB_GID -l $NB_USER jovyan
         else
-            echo "$PRG_NAME:create user: $NB_USER"
+            echo "$PRG_NAME: create user: $NB_USER"
             useradd --home $HOME_DIR/$NB_USER -u $NB_UID -g $NB_GID -l $NB_USER -s /bin/bash 
         fi
     fi
@@ -319,6 +321,12 @@ if [ $(id -u) == 0 ] ; then
         #
         if [[ "$GRANT_SUDO" == "1" || "$GRANT_SUDO" == 'yes' || "$NB_TEACHER" == "$NB_USER" ]]; then
             echo "$NB_USER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/notebook 
+        fi
+        #
+        chown root.root /etc/sudoers
+        if [ -f /usr/lib/sudo/sudoers.so ]; then
+            chown root.root /usr/lib/sudo/sudoers.so
+            chmod 0400 /usr/lib/sudo/sudoers.so
         fi
     else
         echo "$PRG_NAME: /usr/bin/sudo command is not available!!"

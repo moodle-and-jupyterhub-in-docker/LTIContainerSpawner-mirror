@@ -506,14 +506,15 @@ class LTIPodmanSpawner(Spawner):
 
     #
     #
-    use_group     = Bool(True, config = True)
-    user_home_dir = Unicode('/home/{groupname}/{username}', config = True)
-    projects_dir  = Unicode('jupyter', config = True)
-    works_dir     = Unicode('works', config = True)
-    volumes_dir   = Unicode('.volumes', config = True)
-    teacher_gname = Unicode('TEACHER', config = True)
-    teacher_gid   = Int(7000,  config = True)
-    base_id       = Int(30000, config = True)
+    use_group      = Bool(True, config = True)
+    group_home_dir = Unicode('/home/{groupname}', config = True)
+    user_home_dir  = Unicode('/home/{groupname}/{username}', config = True)
+    projects_dir   = Unicode('jupyter', config = True)
+    works_dir      = Unicode('works', config = True)
+    volumes_dir    = Unicode('.volumes', config = True)
+    teacher_gname  = Unicode('TEACHER', config = True)
+    teacher_gid    = Int(7000,  config = True)
+    base_id        = Int(30000, config = True)
 
     # extension command
     ext_user_id_cmd     = 'user_userid'
@@ -649,6 +650,10 @@ class LTIPodmanSpawner(Spawner):
     @property
     def homedir(self):
         return self.user_home_dir.format(username=self.user.name, groupname=self.get_groupname())
+
+    @property
+    def groupdir(self):
+        return self.group_home_dir.format(groupname=self.get_groupname())
 
 
     def get_args(self):
@@ -906,6 +911,8 @@ class LTIPodmanSpawner(Spawner):
         username  = self.user.name
         groupname = self.get_groupname()    # get self.group_id, too
         hosthome  = self.homedir
+        grouphome = self.groupdir
+        self.notebook_dir = hosthome
         self.volumes = {}
 
         # cpu and memory
@@ -932,7 +939,8 @@ class LTIPodmanSpawner(Spawner):
         # volume
         self.volumes[hosthome] = hosthome
 
-        self.create_dir(hosthome, self.user_id, self.group_id, 0o0700)
+        self.create_dir(grouphome, 0, self.group_id, 0o0755)
+        self.create_dir(hosthome,  self.user_id, self.group_id, 0o0700)
         self.create_dir(hosthome + '/' + self.projects_dir,  self.user_id, self.group_id, 0o0700)
         self.create_dir(hosthome + '/' + self.projects_dir + '/' + self.works_dir, self.user_id, self.group_id, 0o0700)
 
@@ -1122,13 +1130,14 @@ class LTIPodmanSpawner(Spawner):
 c.LTIPodmanSpawner.use_group = True
 
 # Volumes are mounted at /user_home_dir/projects_dir/works_dir/volumes_dir
-user_home_dir = '/home/{groupname}/{username}'
-projects_dir  = 'jupyter'
-works_dir     = 'works'
-volumes_dir   = '.volumes'
+group_home_dir = '/home/{groupname}'
+user_home_dir  = group_home_dir + '/{username}'
+projects_dir   = 'jupyter'
+works_dir      = 'works'
+volumes_dir    = '.volumes'
 #
-teacher_gid   = 7000                        # 1000以上で，システムで使用していないGID
-base_id       = 30000                       # ID 不明の場合に，基底となる ID番号．システムで使用されていない部分．
+teacher_gid    = 7000                        # 1000以上で，システムで使用していないGID
+base_id        = 30000                       # ID 不明の場合に，基底となる ID番号．システムで使用されていない部分．
 
 #
 notebook_dir = user_home_dir
@@ -1253,7 +1262,7 @@ c.JupyterHub.spawner_class = LTIPodmanSpawner
 #c.LTIPodmanSpawner.image = 'jupyterhub/singleuser'
 #c.LTIPodmanSpawner.image = 'docker.io/jupyterhub/singleuser'
 #c.LTIPodmanSpawner.image = 'localhost:5000/jupyterhub/singleuser-ltids'
-c.LTIPodmanSpawner.image = 'jupyterhub/singleuser-ltids'
+c.LTIPodmanSpawner.image = 'jupyterhub-ltids/jupyter-singleuser'
 
 #c.LTIPodmanSpawner.image_whitelist = {
 #    "deepdetect-gpu (Tensorflow+PyTorch)": "jolibrain/jupyter-dd-notebook-gpu",
