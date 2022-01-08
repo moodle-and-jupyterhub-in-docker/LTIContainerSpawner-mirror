@@ -1012,8 +1012,9 @@ class LTIPodmanSpawner(Spawner):
         podman_base_cmd_jupyter_env = []
         jupyter_env = self.get_env()
         for k, v in jupyter_env.items():
-            podman_base_cmd_jupyter_env.append('--env')
-            podman_base_cmd_jupyter_env.append(f'{k}="{v}"')
+            if k != 'JUPYTERHUB_OAUTH_SCOPES' :  # for "[ConfigProxy] error: 503 GET ... socket hang up"
+                podman_base_cmd_jupyter_env.append('--env')
+                podman_base_cmd_jupyter_env.append(f'{k}="{v}"')
 
         podman_base_cmd += podman_base_cmd_jupyter_env
 
