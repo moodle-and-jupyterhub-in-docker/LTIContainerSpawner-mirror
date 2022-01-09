@@ -815,6 +815,8 @@ class LTIDockerSpawner(DockerSpawner):
                         mnt = True
                 elif ('*' in self.custom_users) or (self.user.name in self.custom_users) :  # : によるアクセス制限の指定なし
                     mnt = True
+                elif (self.user.name in self.custom_teachers) :                             # 教師
+                    mnt = True
 
                 if mnt:
                     dirname = key + '_' + self.course_id + '_' + self.host_name
