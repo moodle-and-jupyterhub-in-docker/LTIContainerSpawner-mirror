@@ -1,10 +1,12 @@
+# /usr/lib/systemd/system/jupyterhub.service
+
 [Unit]
 Description=Jupyterhub
 After=network.target
 
 [Service]
 User=root
-PIDFile=/var/run/jupyterhub/jupyterhub.pid
+PIDFile=/var/run/jupyterhub.pid
 ExecStart=/usr/local/bin/jupyterhub -f /usr/local/etc/jupyterhub_docker_config.py
 #ExecStart=/usr/local/bin/jupyterhub -f /usr/local/etc/jupyterhub_podman_config.py
 WorkingDirectory=/var/lib/jupyterhub
