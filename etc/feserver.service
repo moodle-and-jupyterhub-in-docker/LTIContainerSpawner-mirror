@@ -1,0 +1,18 @@
+# /usr/lib/systemd/system/feserver.service
+
+[Unit]
+Description = Feserver
+After = jupyterhub.target
+
+[Service]
+Environment = CPORT=8100
+Environment = SERVER=202.26.150.52:8000
+
+User=root
+PIDFile = /var/run/fesvr.pid
+ExecStart =/usr/local/bin/fesvr -h ${SERVER} -p ${CPORT} -m /usr/local/lib/feplg_nbws.so -c -s --conf /usr/local/etc/nbsw.conf -f /var/run/fesvr.pid
+WorkingDirectory = /tmp
+
+[Install]
+WantedBy = multi-user.target
+
