@@ -309,7 +309,7 @@ c.JupyterHub.db_url = 'sqlite:////var/lib/jupyterhub/jupyterhub.sqlite'
 #  
 #  jupyterhub &>> /var/log/jupyterhub.log
 #  Default: ''
-# c.JupyterHub.extra_log_file = ''
+c.JupyterHub.extra_log_file = '/var/log/jupyterhub.log'
 
 ## Extra log handlers to set on JupyterHub logger
 #  Default: []
@@ -549,8 +549,10 @@ c.JupyterHub.init_spawners_timeout = 30
 # c.JupyterHub.named_server_limit_per_user = 0
 
 ## File to write PID Useful for daemonizing JupyterHub.
-c.JupyterHub.pid_file = '/var/lib/jupyterhub/jupyterhub.pid'
-c.ConfigurableHTTPProxy.pid_file = '/var/lib/jupyterhub/jupyterhub-proxy.pid'
+#c.JupyterHub.pid_file = '/var/lib/jupyterhub/jupyterhub.pid'
+#c.ConfigurablebHTTPProxy.pid_file = '/var/lib/jupyterhub/jupyterhub-proxy.pid'
+c.JupyterHub.pid_file = '/var/run/jupyterhub.pid'
+c.ConfigurableHTTPProxy.pid_file = '/var/run/jupyterhub-proxy.pid'
 
 ## Expiry (in seconds) of OAuth access tokens.
 #  

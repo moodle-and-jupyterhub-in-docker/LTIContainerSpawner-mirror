@@ -244,7 +244,7 @@ c.JupyterHub.db_url = 'sqlite:////var/lib/jupyterhub/jupyterhub.sqlite'
 ## DEPRECATED: use output redirection instead, e.g.
 #  
 #  jupyterhub &>> /var/log/jupyterhub.log
-#c.JupyterHub.extra_log_file = '/tmp/log'
+c.JupyterHub.extra_log_file = '/var/log/jupyterhub.log'
 
 ## Extra log handlers to set on JupyterHub logger
 #c.JupyterHub.extra_log_handlers = []
@@ -393,8 +393,10 @@ c.JupyterHub.init_spawners_timeout = 30
 #c.JupyterHub.named_server_limit_per_user = 0
 
 ## File to write PID Useful for daemonizing JupyterHub.
-c.JupyterHub.pid_file = '/var/lib/jupyterhub/jupyterhub.pid'
-c.ConfigurableHTTPProxy.pid_file = '/var/lib/jupyterhub/jupyterhub-proxy.pid'
+#c.JupyterHub.pid_file = '/var/lib/jupyterhub/jupyterhub.pid'
+#c.ConfigurableHTTPProxy.pid_file = '/var/lib/jupyterhub/jupyterhub-proxy.pid'
+c.JupyterHub.pid_file = '/var/run/jupyterhub.pid'
+c.ConfigurableHTTPProxy.pid_file = '/var/run/jupyterhub-proxy.pid'
 
 ## The public facing port of the proxy.
 #  
