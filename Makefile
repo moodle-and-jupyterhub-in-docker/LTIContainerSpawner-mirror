@@ -6,9 +6,9 @@ all: install
 
 install: 
 	[ -d /var/lib/jupyterhub ] || mkdir /var/lib/jupyterhub
-	install -m 0755 etc/jupyterhub_docker_config.py /usr/local/etc
-	install -m 0755 etc/jupyterhub_podman_config.py /usr/local/etc
-	install -m 0755 etc/jupyterhub_ltids_config.py  /usr/local/etc
+	install -m 0644 etc/jupyterhub_docker_config.py /usr/local/etc
+	install -m 0644 etc/jupyterhub_podman_config.py /usr/local/etc
+	install -m 0644 etc/jupyterhub_ltids_config.py  /usr/local/etc
 	install -m 0644 etc/jupyterhub.service /usr/lib/systemd/system
 	install -m 0755 bin/fesvr /usr/local/bin
 	install -m 0644 bin/feplg_nop.so  /usr/local/bin
