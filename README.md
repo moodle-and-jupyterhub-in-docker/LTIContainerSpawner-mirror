@@ -5,15 +5,24 @@
 
 - Install
     ```
-    # git clone 
+    # git clone https://gitlab.nsl.tuis.ac.jp/iseki/lticontainerspawner.git
     # cd lticontainerspawner
-    # make
+    # make install
     ```
-    - JupyterHub  
-    - vi /usr/local/etc/jupyter_XXX_config.py
-    - vi /usr/lib/systemd/system/jupyterhub.service
-    - vi 
-    - vi /usr/lib/systemd/system/feserver.service
+    - for JupyterHub 
+        ``` 
+        # vi /usr/local/etc/jupyter_XXX_config.py
+        # vi /usr/lib/systemd/system/jupyterhub.service
+        # systemctl enable jupyterhub.service
+        # systemctl start  jupyterhub.service
+        ```
+    - for Feserver
+        ```
+        # vi /usr/local/etc/nbws.conf
+        # vi /usr/lib/systemd/system/feserver.service
+        # systemctl enable feserver.service
+        # systemctl start  feserver.service
+        ```
 
 - Wiki
     - English:  https://gitlab.nsl.tuis.ac.jp/iseki/lticontainerspawner/-/wikis/Moodle---JupyterHub
