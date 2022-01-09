@@ -1,22 +1,22 @@
 # LTIContainerSpawner
 
-#### A Study of Moodle(LMS) - JupyterHub Integration with LTI Custom Parameters.
-##### （LTIカスタムパラメータによる Moodle(LMS) - JupyterHub 連携に関する研究．）
+## A Study of Moodle(LMS) - JupyterHub Integration with LTI Custom Parameters.
+### （LTIカスタムパラメータによる Moodle(LMS) - JupyterHub 連携に関する研究．）
 
-- Install
-    ```
-    # git clone https://gitlab.nsl.tuis.ac.jp/iseki/lticontainerspawner.git
-    # cd lticontainerspawner
-    # make install
-    ```
-    - for JupyterHub 
+#### Install
+```
+# git clone https://gitlab.nsl.tuis.ac.jp/iseki/lticontainerspawner.git
+# cd lticontainerspawner
+# make install
+```
+##### for JupyterHub 
         ``` 
         # vi /usr/local/etc/jupyter_XXX_config.py
         # vi /usr/lib/systemd/system/jupyterhub.service
         # systemctl enable jupyterhub.service
         # systemctl start  jupyterhub.service
         ```
-    - for Feserver
+##### for Feserver
         ```
         # vi /usr/local/etc/nbws.conf
         # vi /usr/lib/systemd/system/feserver.service
@@ -24,10 +24,10 @@
         # systemctl start  feserver.service
         ```
 
-- Wiki
-    - English:  https://gitlab.nsl.tuis.ac.jp/iseki/lticontainerspawner/-/wikis/Moodle---JupyterHub
-    - Japanese: https://gitlab.nsl.tuis.ac.jp/iseki/lticontainerspawner/-/wikis/Moodle---JupyterHub-(J)
+#### Wiki
+- English:  https://gitlab.nsl.tuis.ac.jp/iseki/lticontainerspawner/-/wikis/Moodle---JupyterHub
+- Japanese: https://gitlab.nsl.tuis.ac.jp/iseki/lticontainerspawner/-/wikis/Moodle---JupyterHub-(J)
 
-* Please see also bellow Wiki 
-    * English:  https://gitlab.nsl.tuis.ac.jp/iseki/mod_ltids/-/wikis/mod_ltids
-    * Japanese: https://gitlab.nsl.tuis.ac.jp/iseki/mod_ltids/-/wikis/mod_ltids-(J)
+#### Please see also bellow Wiki 
+- English:  https://gitlab.nsl.tuis.ac.jp/iseki/mod_ltids/-/wikis/mod_ltids
+- Japanese: https://gitlab.nsl.tuis.ac.jp/iseki/mod_ltids/-/wikis/mod_ltids-(J)
