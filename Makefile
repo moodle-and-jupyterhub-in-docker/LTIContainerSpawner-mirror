@@ -13,24 +13,28 @@ install:
 	install -m 0755 bin/fesvr /usr/local/bin
 	install -m 0644 bin/feplg_nop.so  /usr/local/bin
 	install -m 0644 bin/feplg_nbws.so /usr/local/bin
+	install -m 0644 etc/nbws.conf  /usr/local/etc
 	install -m 0644 etc/feserver.service /usr/lib/systemd/system
 
 
 clean:
-	[ -d /var/lib/jupyterhub ] && rm /var/lib/jupyterhub/*
+	rm -f /var/lib/jupyterhub/*
 
 
 uninstall:
-	systemctl stop feserver   || true
-	systemctl stop jupyterhub || true
-	[ -d /var/lib/jupyterhub ] && rm -f /var/lib/jupyterhub/*
-	[ -f /usr/local/etc/jupyterhub_docker_config.py ]  && rm /usr/local/etc/jupyterhub_docker_config.py
-	[ -f /usr/local/etc/jupyterhub_podman_config.py ]  && rm /usr/local/etc/jupyterhub_podman_config.py
-	[ -f /usr/local/etc/jupyterhub_ltids_config.py  ]  && rm /usr/local/etc/jupyterhub_ltids_config.py
-	[ -f /usr/lib/systemd/system/jupyterhub.service ]  && systemctl disable jupyterhub && rm /usr/lib/systemd/system/jupyterhub.service
-	[ -f /usr/lib/systemd/system/feserver.service ]    && systemctl disable feserver   && rm /usr/lib/systemd/system/feserver.service
-	[ -x /usr/local/bin/fesvr ] && rm /usr/local/bin/fesvr
-	[ -f /usr/local/bin/feplg_nop.so  ] && rm /usr/local/bin/feplg_nop.so
-	[ -f /usr/local/bin/feplg_nbws.so ] && rm /usr/local/bin/feplg_nbws.so
+	systemctl stop jupyterhub    || true
+	systemctl stop feserver      || true
+	systemctl disable jupyterhub || true
+	systemctl disable feserver   || true
+	rm -f /var/lib/jupyterhub/*
+	rm -f /usr/local/etc/jupyterhub_docker_config.py
+	rm -f /usr/local/etc/jupyterhub_podman_config.py
+	rm -f /usr/local/etc/jupyterhub_ltids_config.py
+	rm -f /usr/lib/systemd/system/jupyterhub.service
+	rm -f /usr/local/bin/fesvr
+	rm -f /usr/local/bin/feplg_nop.so
+	rm -f /usr/local/bin/feplg_nbws.so
+	rm -f /usr/local/etc/nbws.conf
+	rm -f /usr/lib/systemd/system/feserver.service
 	systemctl daemon-reload
 

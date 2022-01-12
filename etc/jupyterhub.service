@@ -5,8 +5,11 @@ Description = JupyterHub
 After = network-online.target 
 
 [Service]
+#Environment = "PATH="/usr/local/anaconda/envs/jupyterhub/bin:/usr/local/anaconda/condabin:/usr/local/bin:/usr/bin:/bin:/usr/sbin
+#
 User = root
 PIDFile = /var/run/jupyterhub.pid
+#ExecStart = /usr/local/anaconda/envs/jupyterhub/bin/jupyterhub -f /usr/local/etc/jupyterhub_docker_config.py
 ExecStart = /usr/local/bin/jupyterhub -f /usr/local/etc/jupyterhub_docker_config.py
 #ExecStart = /usr/local/bin/jupyterhub -f /usr/local/etc/jupyterhub_podman_config.py
 WorkingDirectory = /var/lib/jupyterhub
