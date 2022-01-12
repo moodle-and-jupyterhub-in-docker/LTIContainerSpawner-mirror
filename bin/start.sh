@@ -322,12 +322,6 @@ if [ $(id -u) == 0 ] ; then
         if [[ "$GRANT_SUDO" == "1" || "$GRANT_SUDO" == 'yes' || "$NB_TEACHER" == "$NB_USER" ]]; then
             echo "$NB_USER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/notebook 
         fi
-        #
-        chown root.root /etc/sudoers
-        if [ -f /usr/lib/sudo/sudoers.so ]; then
-            chown root.root /usr/lib/sudo/sudoers.so
-            chmod 0400 /usr/lib/sudo/sudoers.so
-        fi
     else
         echo "$PRG_NAME: /usr/bin/sudo command is not available!!"
     fi
