@@ -680,6 +680,8 @@ class LTIDockerSpawner(DockerSpawner):
             frame_ancestors = "frame-ancestors 'self' " + self.host_url
             args.append('--NotebookApp.tornado_settings={ "headers":{"Content-Security-Policy": "'+ frame_ancestors + '" }' + cookie_options + '}')
             #get_config().NotebookApp.disable_check_xsrf = True
+        #
+        args.append('--SingleUserNotebookApp.default_url=' + self.default_url)   # for jupyterhub (<2.00) in images
         return args
 
 
