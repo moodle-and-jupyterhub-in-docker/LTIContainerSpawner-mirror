@@ -1990,7 +1990,7 @@ auth_state_hook = LTIDockerSpawner.userdata_hook
 #c.JupyterHub.ssl_cert = '/etc/gitlab/ssl/gitlab.crt'
 #c.JupyterHub.ssl_cert = '/etc/letsencrypt/live/gitlab.nsl.tuis.ac.jp/cert.pem'
 c.JupyterHub.ssl_cert = '/etc/pki/tls/certs/server.pem'
-#c.JupyterHub.ssl_cert = '/etc/pki/ssl/cert2021.pem'
+#c.JupyterHub.ssl_cert = '/etc/pki/ssl/cert.pem'
 
 ## Path to SSL key file for the public facing interface of the proxy
 #  
