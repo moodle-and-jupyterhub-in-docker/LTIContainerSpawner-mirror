@@ -1658,7 +1658,7 @@ class LTIPodmanSpawner(Spawner):
                 #         hostport=self.port, port=self.standard_jupyter_port
                 #         ),
                 #
-                '--name', f'jupyterhub-{username}',
+                '--name', f'jupyterb-{username}',
                 '--net', 'host',
                 #'-w', mountdir,
                 #'-v', '{}:{}'.format(hosthome, hosthome),
