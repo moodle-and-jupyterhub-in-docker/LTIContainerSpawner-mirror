@@ -1133,7 +1133,7 @@ c.DockerSpawner.notebook_dir = notebook_dir
 #  
 #  When setting this, you should also set ssl_key
 #c.JupyterHub.ssl_cert = '/etc/gitlab/ssl/gitlab.crt'
-#c.JupyterHub.ssl_cert = '/etc/letsencrypt/live/gitlab.nsl.tuis.ac.jp/fullchain.pem'
+#c.JupyterHub.ssl_cert = '/etc/letsencrypt/live/gitlab.nsl.tuis.ac.jp/cert.pem'
 c.JupyterHub.ssl_cert = '/etc/pki/tls/certs/server.pem'
 
 ## Path to SSL key file for the public facing interface of the proxy

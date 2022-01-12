@@ -1982,7 +1982,7 @@ auth_state_hook = LTIDockerSpawner.userdata_hook
 #  Default: ''
 # c.JupyterHub.ssl_cert = ''
 #c.JupyterHub.ssl_cert = '/etc/gitlab/ssl/gitlab.crt'
-#c.JupyterHub.ssl_cert = '/etc/letsencrypt/live/gitlab.nsl.tuis.ac.jp/fullchain.pem'
+#c.JupyterHub.ssl_cert = '/etc/letsencrypt/live/gitlab.nsl.tuis.ac.jp/cert.pem'
 c.JupyterHub.ssl_cert = '/etc/pki/tls/certs/server.pem'
 #c.JupyterHub.ssl_cert = '/etc/pki/ssl/cert2021.pem'
 
