@@ -124,7 +124,9 @@ c.LTI11Authenticator.username_key = 'ext_user_username'             # for Moodle
 ##
 # My IP Address
 #my_ip_addr = '172.22.1.75'
-my_ip_addr = '202.26.150.51'
+#my_ip_addr = '202.26.150.51'
+#my_ip_addr = '192.168.27.33'
+my_ip_addr = '202.26.150.52'
 
 ## The public facing URL of the whole JupyterHub application.
 #  
@@ -1157,13 +1159,15 @@ c.LTIPodmanSpawner.base_id       = base_id
 
 #
 c.Spawner.environment = {
-    'GRANT_SUDO': 'no',                     # 通常使用では 'no'
-    'PRJCT_DIR' : projects_dir,
-    'WORK_DIR'  : works_dir,
-    'VOLUME_DIR': volumes_dir,
-    'NB_UMASK'  : '0037',
-    'CONDA_DIR' : '/opt/conda',
-    'TZ'        : 'JST-9',
+    'GRANT_SUDO'      : 'no',                  # 通常使用では 'no'
+    'PRJCT_DIR'       : projects_dir,
+    'WORK_DIR'        : works_dir,
+    'VOLUME_DIR'      : volumes_dir,
+    'NB_UMASK'        : '0037',
+    'CONDA_DIR'       : '/opt/conda',
+    'TZ'              : 'JST-9',
+    'CHOWN_HOME'      : 'yes',
+    'CHOWN_HOME_OPTS' : '-R',
 }
 
 # CHOWN_EXTRA, CHOWN_EXTRA_OPTS
@@ -1312,7 +1316,8 @@ c.LTIPodmanSpawner.notebook_dir = notebook_dir
 #c.JupyterHub.ssl_cert = '/etc/gitlab/ssl/gitlab.crt'
 #c.JupyterHub.ssl_cert = '/etc/letsencrypt/live/gitlab.nsl.tuis.ac.jp/cert.pem'
 #c.JupyterHub.ssl_cert = '/etc/pki/tls/certs/server.pem'
-c.JupyterHub.ssl_cert = '/etc/pki/ssl/cert2021.pem'
+#c.JupyterHub.ssl_cert = '/etc/pki/ssl/cert.pem'
+c.JupyterHub.ssl_cert = '/etc/letsencrypt/live/jupyterhub.nsl.tuis.ac.jp/cert.pem'
 
 ## Path to SSL key file for the public facing interface of the proxy
 #  
@@ -1320,7 +1325,8 @@ c.JupyterHub.ssl_cert = '/etc/pki/ssl/cert2021.pem'
 #c.JupyterHub.ssl_key = '/etc/gitlab/ssl/gitlab.key'
 #c.JupyterHub.ssl_key = '/etc/letsencrypt/live/gitlab.nsl.tuis.ac.jp/privkey.pem'
 #c.JupyterHub.ssl_key = '/etc/pki/tls/private/key.pem'
-c.JupyterHub.ssl_key = '/etc/pki/ssl/private/key.pem'
+#c.JupyterHub.ssl_key = '/etc/pki/ssl/private/key.pem'
+c.JupyterHub.ssl_key = '/etc/letsencrypt/live/jupyterhub.nsl.tuis.ac.jp/privkey.pem'
 
 ## Host to send statsd metrics to. An empty string (the default) disables sending
 #  metrics.

@@ -1854,13 +1854,15 @@ c.LTIPodmanSpawner.notebook_dir  = notebook_dir
 # Environment for start.sh
 #
 c.Spawner.environment = {
-    'GRANT_SUDO': 'no',                     # 通常使用では 'no'
-    'PRJCT_DIR' : projects_dir,
-    'WORK_DIR'  : works_dir,
-    'VOLUME_DIR': volumes_dir,
-    'NB_UMASK'  : '0037',
-    'CONDA_DIR' : '/opt/conda',
-    'TZ'        : 'JST-9',
+    'GRANT_SUDO'      : 'no',                  # 通常使用では 'no'
+    'PRJCT_DIR'       : projects_dir,
+    'WORK_DIR'        : works_dir,
+    'VOLUME_DIR'      : volumes_dir,
+    'NB_UMASK'        : '0037',
+    'CONDA_DIR'       : '/opt/conda',
+    'TZ'              : 'JST-9',
+    'CHOWN_HOME'      : 'yes',
+    'CHOWN_HOME_OPTS' : '-R',
 }
 
 # CHOWN_EXTRA, CHOWN_EXTRA_OPTS
