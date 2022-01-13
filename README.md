@@ -28,5 +28,5 @@
 - Japanese: https://gitlab.nsl.tuis.ac.jp/iseki/lticontainerspawner/-/wikis/Moodle---JupyterHub-(J)
 
 ### Please see also bellow Wiki 
-- English:  https://gitlab.nsl.tuis.ac.jp/iseki/mod_ltids/-/wikis/mod_ltids
-- Japanese: https://gitlab.nsl.tuis.ac.jp/iseki/mod_ltids/-/wikis/mod_ltids-(J)
+- English:  https://gitlab.nsl.tuis.ac.jp/iseki/mod_lticontainer/-/wikis/mod_lticontainer
+- Japanese: https://gitlab.nsl.tuis.ac.jp/iseki/mod_lticontainer/-/wikis/mod_lticontainer-(J)
