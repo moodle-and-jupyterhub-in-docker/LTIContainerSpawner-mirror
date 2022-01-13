@@ -46,7 +46,8 @@ RUN  apt-get update \
      apt-utils \
      binutils \
 #     tini \
-#     g++ \
+     make \
+     g++ \
 #     vim \
      git \
      language-pack-ja-base \
