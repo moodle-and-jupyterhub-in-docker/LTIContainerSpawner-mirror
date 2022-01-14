@@ -1,9 +1,10 @@
 #!/bin/bash
 
 DKRREP="www.nsl.tuis.ac.jp:5000"
+IDSTR="ltictr"
 
 #
-LST=`docker images | grep ltictr | awk -F" " '{print $1":"$2}' | grep -v "$DKRREP" | sed -e "s/localhost\///" `
+LST=`docker images | grep $IDSTR | awk -F" " '{print $1":"$2}' | grep -v "$DKRREP" | sed -e "s/localhost\///" `
 
 echo $LST
 for IMG in $LST ; do
