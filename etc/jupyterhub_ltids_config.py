@@ -1819,6 +1819,8 @@ teacher_gid    = 7000                        # 1000以上で，システムで�
 base_id        = 30000                       # ID 不明の場合に，基底となる ID番号．システムで使用されていない部分．
 notebook_dir   = user_home_dir
 
+time_zone      = 'JST-9'
+
 #
 # for LTIDockerSpawner
 c.LTIDockerSpawner.user_home_dir = user_home_dir
@@ -1860,7 +1862,7 @@ c.Spawner.environment = {
     'VOLUME_DIR'      : volumes_dir,
     'NB_UMASK'        : '0037',
     'CONDA_DIR'       : '/opt/conda',
-    'TZ'              : 'JST-9',
+    'TZ'              : time_zone,
     'CHOWN_HOME'      : 'yes',
     'CHOWN_HOME_OPTS' : '-R',
 }
@@ -1883,7 +1885,7 @@ c.JupyterHub.tornado_settings = { "headers":{ "Content-Security-Policy": "frame-
 
 #
 c.Exchange.timestamp_format = '%Y%m%d %H:%M:%S %Z'
-c.Exchange.timezone = 'JST-9'
+c.Exchange.timezone = time_zone
 
 
 #
