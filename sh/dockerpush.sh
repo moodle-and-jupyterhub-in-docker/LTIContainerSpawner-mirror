@@ -3,7 +3,7 @@
 DKRREP="www.nsl.tuis.ac.jp:5000"
 
 #
-LST=`docker images | grep ltids | awk -F" " '{print $1":"$2}'`
+LST=`docker images | grep ltctr | awk -F" " '{print $1":"$2}' | grep -v "$DKRREP" | sed -e "s/localhost\///" `
 
 for IMG in $LST ; do
     REP=`echo $IMG | awk -F":" '{print $1}'`
