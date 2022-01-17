@@ -14,9 +14,10 @@
 #define  DEFAULT_KEY_FILE   "/etc/pki/tls/private/key.pem"
 
 
-int    DaemonMode = ON;
+int    Nofd, Sofd;
+int    Aofd, Pofd;
+int    Cofd;
 
-int    Nofd, Sofd, Cofd;
 int    Log_Type;
 pid_t  RootPID;
 char*  PIDFile = NULL;
@@ -42,16 +43,14 @@ int main(int argc, char** argv)
     struct passwd*  pw;
 
     Buffer hostname;
-    Buffer modulename;
     Buffer username;
     Buffer pidfile;
     Buffer certfile;
     Buffer keyfile;
     Buffer configfile;
 
-    // 引数処理
+    // for arguments
     hostname   = init_Buffer();
-    modulename = init_Buffer();
     username   = init_Buffer();
     pidfile    = init_Buffer();
     certfile   = init_Buffer();
@@ -61,11 +60,9 @@ int main(int argc, char** argv)
     for (i=1; i<argc; i++) {
         if      (!strcmp(argv[i],"-p")) {if (i!=argc-1) sport = atoi(argv[i+1]);}
         else if (!strcmp(argv[i],"-h")) {if (i!=argc-1) hostname   = make_Buffer_bystr(argv[i+1]);}
-        else if (!strcmp(argv[i],"-m")) {if (i!=argc-1) modulename = make_Buffer_bystr(argv[i+1]);}
         else if (!strcmp(argv[i],"-u")) {if (i!=argc-1) username   = make_Buffer_bystr(argv[i+1]);}
         else if (!strcmp(argv[i],"-f")) {if (i!=argc-1) pidfile    = make_Buffer_bystr(argv[i+1]);}
         else if (!strcmp(argv[i],"-d")) DebugMode  = ON;
-        else if (!strcmp(argv[i],"-i")) DaemonMode = OFF;
         //
         else if (!strcmp(argv[i],"-s")) ClientSSL  = ON;
         else if (!strcmp(argv[i],"-c")) ServerSSL  = ON;
@@ -76,8 +73,8 @@ int main(int argc, char** argv)
         //
         else if (*argv[i]=='-') print_message("unknown argument: %s\n", argv[i]);
     }
-    if (hostname.buf==NULL || modulename.buf==NULL || sport==0) {
-        print_message("Usage... %s -h host_name[:port] -p port -m module_path [-s] [-c] [-i] [-u user] [-f pid_file] [-d] \n", argv[0]);
+    if (hostname.buf==NULL || sport==0) {
+        print_message("Usage... %s -h host_name[:port] -p port [-s] [-c] [-u user] [-f pid_file] [-d] \n", argv[0]);
         print_message("                 [--conf config_file]  [--cert cert_file] [--key key_file]\n");
         exit(1);
     }
@@ -109,34 +106,27 @@ int main(int argc, char** argv)
     }
 
     //
-    // モジュール & syslog の初期化
-    DEBUG_MODE print_message("モジュールの初期化開始．\n");
-    if (modulename.buf[0]!='/') ins_s2Buffer("./", &modulename);
-    if (!load_module((char*)modulename.buf)) {
-        print_message("モジュールの読み込み失敗 [%s]．\n", modulename.buf);
-        exit(1);
-    }
-    //
+    // Initialization
+    DEBUG_MODE print_message("Start initialization.\n");
     Log_Type = init_main(DebugMode, filelist);
     if (Log_Type<0) {
-        print_message("モジュールの初期化失敗．\n");
+        print_message("Initialization failure.\n");
         exit(1);
     }
-    DEBUG_MODE print_message("モジュールの初期化完了．\n");
+    DEBUG_MODE print_message("Initialization is finished.\n");
 
-    // テスト接続
-    DEBUG_MODE print_message("サーバ応答確認開始．\n");
-    Cofd = tcp_client_socket((char*)hostname.buf, cport);
-    if (Cofd<0) {
-        syslog(Log_Type, "tcp_client_socket() error: [%s]", strerror(errno));
-        print_message("サーバポートへのアクセス不能．\n");
-        //exit(1);
-    }
-    socket_close(Cofd);
-    DEBUG_MODE print_message("サーバ応答確認完了．\n");
+    // Server connection test
+    //DEBUG_MODE print_message("Start server response confirmation.\n");
+    //Cofd = tcp_client_socket((char*)hostname.buf, cport);
+    //if (Cofd<0) {
+    //    syslog(Log_Type, "Server port inaccessible: [%s]", strerror(errno));
+    //    DEBUG_MODE print_message("Server port inaccessible.\n");
+    //    //exit(1);
+    //}
+    //socket_close(Cofd);
+    //DEBUG_MODE print_message("Server response confirmation is finished.\n");
 
-    // シグナルハンドリング
-    DEBUG_MODE print_message("シグナル処理定義．\n");
+    // Signal handling
     sa.sa_handler = sig_term;
     sa.sa_flags   = 0;
     sigemptyset(&sa.sa_mask);
@@ -144,20 +134,29 @@ int main(int argc, char** argv)
     sigaction(SIGHUP,  &sa, NULL);
     sigaction(SIGTERM, &sa, NULL);
     #
-    set_sigterm_child(NULL);            // Childプロセスの終了処理設定（デフォルト処理を行う）
+    set_sigterm_child(NULL);            // Setting of child process is terminated
+
+    // Server API port
+    DEBUG_MODE print_message("Port open for api connection.\n");
+    Aofd = tcp_server_socket(8001);
+    if (Aofd<0) {
+        syslog(Log_Type, "Open error of the port for api connection: [%s]", strerror(errno));
+        print_message("Open error of the port for api connection.\n");
+        exit(1);
+    }
 
     // socket open for client
-    DEBUG_MODE print_message("クライアント接続用ポートオープン．\n");
+    DEBUG_MODE print_message("Port open for client connection.\n");
     Nofd = tcp_server_socket(sport);
     if (Nofd<0) {
-        syslog(Log_Type, "tcp_server_socket() error: [%s]", strerror(errno));
-        print_message("クライアント接続用ポートのオープンエラー．\n");
+        syslog(Log_Type, "Open error of the port for client connection: [%s]", strerror(errno));
+        print_message("Open error of the port for client connection.\n");
         exit(1);
     }
     cdlen = sizeof(cl_addr);
 
+    // PID file
     RootPID = getpid();
-    // PIDファイルの作成
     if (pidfile.buf!=NULL) {
         FILE*  fp;
         fp = fopen((char*)pidfile.buf, "w");
@@ -167,11 +166,11 @@ int main(int argc, char** argv)
         }
     }
 
-    // 実効ユーザの変更
+    // Change effective user
     if (username.buf!=NULL) {
         int err = -1;
 
-        DEBUG_MODE print_message("実効ユーザの変更 [%s]．\n", username.buf);
+        DEBUG_MODE print_message("Change effective user (%s)．\n", username.buf);
         if (isdigit(username.buf[0]) || username.buf[0]=='-') {
             err = seteuid(atoi((char*)username.buf));
         }
@@ -181,7 +180,7 @@ int main(int argc, char** argv)
         }
         if (err==-1) {
             syslog(Log_Type, "Cannot change effective user (%s): [%s]", username.buf, strerror(errno));
-            DEBUG_MODE print_message("実効ユーザ [%s] にチェンジできません．\n", username.buf);
+            DEBUG_MODE print_message("Cannot change effective user (%s).\n", username.buf);
         }
     }
 
@@ -195,33 +194,22 @@ int main(int argc, char** argv)
     }
 
     // main loop
-    DEBUG_MODE print_message("メインループ開始．\n");
-    if (DaemonMode==ON) {
-        Loop {
-            Sofd = accept_intr(Nofd, &cl_addr, &cdlen);
-            if (Sofd<0) {
-                syslog(Log_Type, "accept() error: [%s]", strerror(errno));
-                print_message("クライアントからの接続失敗．\n");
-                exit(1);
-            }
-
-            if (fork()==0) receipt((char*)hostname.buf, cport, cl_addr, server_ctx, client_ctx);
-            close(Sofd);
-        }
-    }
-    else {
+    DEBUG_MODE print_message("Start main loop.\n");
+    Loop {
         Sofd = accept_intr(Nofd, &cl_addr, &cdlen);
         if (Sofd<0) {
-            syslog(Log_Type, "accept() error: [%s]", strerror(errno));
-            print_message("クライアントからの接続失敗．\n");
-            exit(1);
+            syslog(Log_Type, "Connection failure from client: [%s]", strerror(errno));
+            print_message("Connection failure from client.\n");
+            //exit(1);
         }
-        receipt((char*)hostname.buf, cport, cl_addr, server_ctx, client_ctx);
+        else {
+            if (fork()==0) receipt((char*)hostname.buf, cport, cl_addr, server_ctx, client_ctx);
+            socket_close(Sofd);
+        }
     }
-    DEBUG_MODE print_message("メインループ終了．\n");
+    DEBUG_MODE print_message("Stop main loop.\n");
 
     //
-    socket_close(Sofd);
     socket_close(Nofd);
     Sofd = Nofd = 0;
 
@@ -230,7 +218,6 @@ int main(int argc, char** argv)
     if (pidfile.buf!=NULL) remove((const char*)pidfile.buf);   
 
     free_Buffer(&hostname);
-    free_Buffer(&modulename);
     free_Buffer(&username);
     free_Buffer(&pidfile);
     free_Buffer(&certfile);
@@ -381,12 +368,10 @@ void  receipt(char* hostname, int cport, struct sockaddr addr, SSL_CTX* server_c
         exit(1);
     }
 
-    if (DaemonMode==ON) {       // child process の終了
-        socket_close(Sofd);
-        DEBUG_MODE print_message("子プロセスの終了．(%d)\n", getpid());
-        exit(0);
-    }
-    return;
+    socket_close(Sofd);
+    DEBUG_MODE print_message("子プロセスの終了．(%d)\n", getpid());
+
+    exit(0);
 }
  
 
@@ -431,46 +416,5 @@ void  sig_child(int signal)
     } while(pid>0);
 }
 
-
-
-int  load_module(char* mname)
-{
-    void* moduleh = NULL;
-
-    moduleh = dlopen(mname, RTLD_LAZY);
-    //moduleh = dlopen(mname, RTLD_NOW);
-    if (moduleh!=NULL) {
-        init_main    = load_function(moduleh, "init_main");
-        term_main    = load_function(moduleh, "term_main");
-        init_process = load_function(moduleh, "init_process");
-        term_process = load_function(moduleh, "term_process");
-        fe_server    = load_function(moduleh, "fe_server");
-        fe_client    = load_function(moduleh, "fe_client");
-        if (init_main==NULL || term_main == NULL  || init_process==NULL 
-                            || term_process==NULL || fe_server == NULL  || fe_client==NULL) return FALSE;
-    }
-    else {
-        print_message("外部モジュールの読み込み失敗 [%s]．\n", mname);
-        print_message("%s\n", dlerror ());
-        return FALSE;
-    }
-
-    return TRUE;
-}
-
-
-
-void*  load_function(void* mh, char* fname)
-{
-    void* func;
-
-    func = dlsym(mh, fname);
-    if (func==NULL) {
-        print_message("共有ライブラリ中に，関数[%s] が見つかりません．\n", fname);
-        return NULL;
-    }
-
-    return func;
-}
 
 

@@ -6,7 +6,6 @@ VERSION = 0.1.0
 #
 #
 SUBJ = ltictr_proxy 
-SUBJ += ltictr_nbws.so 
 #
 all: $(SUBJ)
 
@@ -26,7 +25,7 @@ LIB_EXT = $(LIB_EXT_DIR)/libextend.a
 
 CFLAGS  = -fPIC -W -Wall -DHAVE_CONFIG_H -DENABLE_SSL -I/usr/include -I$(LIB_DIR) -I$(LIB_BSC_DIR) -I$(LIB_EXT_DIR) $(DEBUG) 
 
-SLIB = -L$(LIB_BSC_DIR) -L/usr/local/ssl/lib -lbasic -lssl -lm -lcrypto -lcrypt
+SLIB = -L$(LIB_BSC_DIR) -L/usr/local/ssl/lib -lbasic -lssl -lm -lcrypto -lcrypt -lz
 ELIB = -L$(LIB_EXT_DIR) -lextend
 #
 #
@@ -44,11 +43,8 @@ ELIB = -L$(LIB_EXT_DIR) -lextend
 #
 #
 #
-ltictr_proxy: ltictr_proxy.o  $(LIB_BSC) $(LIB_EXT)
-	$(CC) $(@).o -ldl $(ELIB) $(SLIB) -O2 -o $@ 
-
-ltictr_nbws.so: ltictr_nbws.o $(LIB_BSC) $(LIB_EXT)
-	$(CC) ltictr_nbws.o -shared $(ELIB) $(SLIB) -O2 -o $@ 
+ltictr_proxy: ltictr_proxy.o ltictr_nbws.o $(LIB_BSC) $(LIB_EXT)
+	$(CC) $(@).o ltictr_nbws.o $(ELIB) $(SLIB) -O2 -o $@ 
 
 
 $(LIB_BSC):

@@ -7,7 +7,7 @@
 */
 
 
-#include "ltictr_nbws.h"
+#include "ltictr_proxy.h"
 #include "tjson.h"
 #include "https_tool.h"
 
