@@ -32,6 +32,11 @@ tList*   flist        = NULL;
 #define  MOODLE_TLS_KEY      "Moodle_TLS"
 #define  MOODLE_HTTP_KEY     "Moodle_HTTP"
 
+#define  NO_SYSLOG          999
+#define  ALLOW_FILE         "/usr/local/etc/ltictr_allow.list"
+#define  TIME_OUT           600
+
+
 char*    Moodle_Host    = "localhost";
 char*    Moodle_URL     = "/webservice/xmlrpc/server.php";
 char*    Moodle_Token   = "";
@@ -40,6 +45,24 @@ char*    Moodle_HTTP    = "1.1";
 int      Moodle_Port    = 80;
 int      Moodle_DBAns   = FALSE;
 int      Moodle_TLS     = FALSE;
+
+
+
+struct  ws_info {
+    char*  host;
+    char*  inst_id;
+    char*  lti_id;
+    //
+    char*  session;
+    char*  message;
+    char*  status;
+    char*  username;
+    char*  cell_id;
+    char*  tags;
+    char*  date;
+};
+
+
 
 
 
