@@ -43,8 +43,8 @@ ELIB = -L$(LIB_EXT_DIR) -lextend
 #
 #
 #
-ltictr_proxy: ltictr_proxy.o ltictr_nbws.o $(LIB_BSC) $(LIB_EXT)
-	$(CC) $(@).o ltictr_nbws.o $(ELIB) $(SLIB) -O2 -o $@ 
+ltictr_proxy: ltictr_proxy.o ltictr_api.o ltictr_https.o ltictr_nbws.o $(LIB_BSC) $(LIB_EXT)
+	$(CC) $(@).o ltictr_api.o ltictr_https.o ltictr_nbws.o $(ELIB) $(SLIB) -O2 -o $@ 
 
 
 $(LIB_BSC):

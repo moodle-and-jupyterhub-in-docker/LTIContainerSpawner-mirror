@@ -33,6 +33,8 @@ char*  ClientName    = NULL;
 unsigned char*  ClientIPaddr_num  = NULL;
 
 
+tList*  ProsyList = NULL;
+
 
 int main(int argc, char** argv)
 {
@@ -79,17 +81,12 @@ int main(int argc, char** argv)
         exit(1);
     }
 
-    //i = 0;
-    //while(hostname.buf[i]!='\0' && hostname.buf[i]!=':') i++;
-    //if (hostname.buf[i]==':') {
-    //    cport = atoi((char*)&(hostname.buf[i+1]));
-    //    hostname.buf[i] = '\0';
-    //}
-    //else cport = sport;
-
     if (pidfile.buf==NULL) copy_s2Buffer(DEFAULT_PID_FILE, &pidfile);
     PIDFile = (char*)pidfile.buf;
+    //
+    ProxyList = add_tlist_node_anchor();
 
+    //
     // Config File
     tList* filelist = NULL;
     if (configfile.buf!=NULL) filelist = read_index_tList_file((char*)configfile.buf, '=');
@@ -115,6 +112,7 @@ int main(int argc, char** argv)
     }
     DEBUG_MODE print_message("Initialization is finished.\n");
 
+    //
     // Signal handling
     sa.sa_handler = sig_term;
     sa.sa_flags   = 0;
@@ -125,6 +123,7 @@ int main(int argc, char** argv)
     #
     set_sigterm_child(NULL);            // Setting of child process is terminated
 
+    //
     // PID file
     RootPID = getpid();
     if (pidfile.buf!=NULL) {
@@ -136,6 +135,7 @@ int main(int argc, char** argv)
         }
     }
 
+    //
     // Change effective user
     if (username.buf!=NULL) {
         int err = -1;
@@ -154,7 +154,8 @@ int main(int argc, char** argv)
         }
     }
 
-    ////////////////////////////////////
+    //
+    // Network
     // Server API port
     DEBUG_MODE print_message("Port open for api connection.\n");
     Aofd = tcp_server_socket(-8001);    // non block socket
@@ -182,12 +183,12 @@ int main(int argc, char** argv)
         if (ClientSSL==ON) client_ctx = ssl_client_setup(NULL);
     }
 
+    //
     // main loop
     DEBUG_MODE print_message("Start main loop.\n");
     cdlen = sizeof(cl_addr);
     pdlen = sizeof(pl_addr);
     //
-
     int port = 0;
     Sofd = Pofd = 0;
 
@@ -196,7 +197,8 @@ int main(int argc, char** argv)
         if (Pofd==0) Pofd = accept(Aofd, &pl_addr, &pdlen);
         //
         if (Sofd>0 || port>0) {
-            if (fork()==0) receipt("127.0.0.1", port, cl_addr, server_ctx, client_ctx);
+
+            receipt("127.0.0.1", port, cl_addr, server_ctx, client_ctx);
             close(Sofd);    // don't use socket_close() !
             Sofd = 0;
             port = 0;
@@ -231,165 +233,45 @@ int main(int argc, char** argv)
     free_Buffer(&configfile);
     del_tList(&filelist);
 
+    del_all_tList(&ProxyList);
+
     exit(0);
 }
 
 
 
-
-int  server_api(int sock)
+//
+SSL*  first_request_recv(int socket, SSL_CTX* server_ctx)
 {
-    int   cc, len, hsz, csz;
-    int   port;
-    int   connect;
-    int   tsecond = 30;
+    //int    cc, nd;
+    //fd_set mask;
+    char msg[RECVBUFSZ];
+    //struct timeval timeout;
 
-    static int lport = 4900;
+    Sssl = NULL;
+
+    // for Client SSL Connection
+    if (ServerSSL==ON && server_ctx!=NULL) {
+        Sssl = ssl_server_socket(socket, server_ctx);
+        if (Sssl==NULL) {
+            sleep(1);
+            Sssl = ssl_server_socket(socket, server_ctx);
+            if (Sssl==NULL) {
+                print_message("Failure to create SSL socket for client. (%d)\n", getpid());
+                exit(1);
+            }
+        }
+        DEBUG_MODE print_message("Oepned SSL socket for client. (%d)\n", getpid());
+    }
 
     tList* lst = NULL;
-    Buffer buf, cnt;
 
-    // ヘッダの受信
-    hsz = recv_http_header(sock, &lst, &len, NULL, &connect);
-    if (hsz<=0 || len==0 || len==HTTP_HEADER_UNKNOWN_LEN) {
-        send_http_error(sock, 400);
-        del_tList(&lst);
-        return -1;
-    }
+    cc = recv_https_header(sock, Sssl, &lst, &len, NULL, int* state);
 
-    // ヘッダ中に紛れ込んだコンテンツの取り出し
-    buf = make_Buffer(RECVBUFSZ);
-    cnt = search_protocol_header(lst, (char*)HDLIST_CONTENTS_KEY, 1);
-    if (cnt.buf!=NULL) {
-        csz = cnt.vldsz;
-        hsz = hsz - csz;
-        copy_Buffer(&cnt, &buf);
-        free_Buffer(&cnt);
-    }
-    
-    // コンテンツの受信
-    if (connect) {
-        if (len>0) {
-            cc = recv_http_content(sock, &buf, len, tsecond, NULL, &connect);
-        }
-        else if (len==HTTP_HEADER_CHUNKED) {
-            cc = recv_http_chunked(sock, &buf, tsecond, NULL, &connect);
-        }
-        else { //if (len==HTTP_HEADER_CLOSED_SESSION) {
-            cc = recv_http_closed(sock, &buf, tsecond, NULL);
-            connect = FALSE;
-        }
-    }
-    //
-    if (cc<0 || !connect) {
-        send_http_error(sock, 400);
-        del_tList(&lst);
-        free_Buffer(&buf);
-        return -1;
-    }
 
-    //
-    port = -1;
-    int com = get_http_header_method(lst);
-    
-    if      (com==HTTP_GET_METHOD) {
-
-    }
-    else if (com==HTTP_POST_METHOD) {
-        port = get_notused_tcp_port(lport);
-        if (port>0) lport = port + 1;
-    }
-    else if (com==HTTP_DELETE_METHOD) {
-    }
-    else {
-        print_message("Not Supported Method : %d \n", com);
-        print_tList(stderr, lst);
-        print_message("%s\n", buf.buf);
-        send_http_error(sock, 400);
-    }
-
-    free_Buffer(&buf);
-    del_tList(&lst);
-    //
-    return port;
+    exit(0);
 }
-
-
-
-
-int  send_http_error(int sock, int err)
-{
-    tList* hdr = NULL;
-    tList* lst = NULL;
-
-    if (err==404) {
-        lst = add_tList_node_str(NULL, HDLIST_FIRST_LINE_KEY, "HTTP/1.1 404 Not Found");
-    }
-    else {
-        lst = add_tList_node_str(NULL, HDLIST_FIRST_LINE_KEY, "HTTP/1.1 400 Bad Request");
-    }
-
-    hdr = lst;
-    hdr = add_tList_node_str(hdr, "Connection", "close");
-
-    int cc = send_http_header(sock, lst, OFF);
-    del_tList(&lst);
-
-    return cc;
-}
-
-
-
-
-int  send_http_resp(int sock, int num, Buffer* buf)
-{
-    tList* hdr = NULL;
-    tList* lst = NULL;
-
-    if (num==200) {
-        lst = hdr = add_tList_node_str(NULL, HDLIST_FIRST_LINE_KEY, "HTTP/1.1 200 OK");
-        hdr = add_tList_node_str(hdr, "Content-Type", "application/json");
-        hdr = add_tList_node_str(hdr, "Content-Length", "0");
-    }
-    else if (num==201) {
-        lst = hdr = add_tList_node_str(NULL, HDLIST_FIRST_LINE_KEY, "HTTP/1.1 201 Created");
-    }
-    else if (num==204) {
-        lst = hdr = add_tList_node_str(NULL, HDLIST_FIRST_LINE_KEY, "HTTP/1.1 204 Not Content");
-    }
-
-    hdr = add_tList_node_str(hdr, "Connection", "keep-alive");
-    char* date = get_http_header_date(time(0));
-    if (date!=NULL) {
-        hdr = add_tList_node_str(hdr, "Date", date);
-        free(date);
-    }
-
-    int cc = send_http_Buffer(sock, lst, buf);
-    del_tList(&lst);
-
-    return cc;
-}
-
-
-
-
-int  get_notused_tcp_port(int port)
-{
-    do {
-        int sock = tcp_server_socket(port);
-        if (sock>0) {
-            socket_close(sock);
-            port++;
-        }
-    } while (sock<0 && port<65536);
-
-    if (port==65536) port = -1;
-
-    return port;
-}
-
-
+ 
 
 
 
