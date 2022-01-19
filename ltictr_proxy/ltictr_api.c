@@ -7,55 +7,40 @@
 #define  LTICTR_API_USER    "/api/routes/user/"
 
 
-int  https_recv_get_user(int sock, SSL* ssl, tList** lst, Buffer* buf, char** uname, int* com)
-{
-    if (lst==NULL || buf==NULL || uname==NULL || com==NULL) return -1;
-
-    char* path = NULL;     // ex. /api/routes/user/bob
-    //
-    int err = recv_https_request(sock, ssl, lst, buf);
-    //
-    DEBUG_MODE {
-        print_message("\n=== HTTP RECV ===\n");
-        print_tList(stderr, *lst);
-        print_message("%s\n", buf->buf);
-    }
-    if (err>0) {
-        del_tList(lst);
-        free_Buffer(buf);
-        return err;
-    }
-
-    //
-    *com   = get_http_header_method(*lst, &path);   // get http command and path
-    *uname = get_username_api(path);                // get user name from path
-    if (uname==NULL) err = 400;
-
-    free_Buffer(buf);
-    del_tList(lst);
-    if (path!=NULL) free(path);
-
-    return err;
-}
-
-        
-
 
 void  api_process(int sock, SSL* ssl, tList* lprxy)
 {
     tList* lst  = NULL;     // 受信ヘッダ
     Buffer buf;             // 受信ボディ
     char* uname = NULL;     // ex. bob
+    char* path  = NULL;     // ex. /api/routes/user/bob
     int   com;
 
     //
-    int err = https_recv_get_user(sock, ssl, &lst, &buf, &uname, &com);
+    int err = recv_https_request(sock, ssl, &lst, &buf);
+    //
+    DEBUG_MODE {
+        print_message("\n=== API RECV ===\n");
+        print_tList(stderr, lst);
+        print_message("%s\n", buf.buf);
+    }
     if (err>0) {
-        free_Buffer(&buf);
         del_tList(&lst);
+        free_Buffer(&buf);
         send_https_error(sock, ssl, err);
         return;
     }
+
+    //
+    com   = get_http_header_method(lst, &path);    // get http command and path
+    uname = get_username_api(path);                // get user name from path
+    if (uname==NULL) err = 400;
+    if (err>0) send_https_error(sock, ssl, err);
+
+    free_Buffer(&buf);
+    del_tList(&lst);
+    if (path!=NULL) free(path);
+
 
     //
     // GET
@@ -89,6 +74,7 @@ void  api_process(int sock, SSL* ssl, tList* lprxy)
     //
     return;
 }
+
 
 
 

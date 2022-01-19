@@ -257,7 +257,7 @@ void  receipt(char* hostname, int cport, SSL_CTX* server_ctx, SSL_CTX* client_ct
     tList* lst  = NULL;     // 受信ヘッダ
     Buffer buf;             // 受信ボディ
     char* uname = NULL;     // ex. bob
-    int   com;
+    char* path  = NULL;     // ex. /api/routes/user/bob
 
     Sssl = NULL;
     Cssl = NULL;
@@ -276,7 +276,14 @@ void  receipt(char* hostname, int cport, SSL_CTX* server_ctx, SSL_CTX* client_ct
         DEBUG_MODE print_message("クライアント用SSLサーバソケットのオープン．(%d)\n", getpid());
     }
     
-    int err = https_recv_get_user(Sofd, Sssl, &lst, &buf, &uname, &com);
+    //
+    int err = recv_https_request(Sofd, Sssl, &lst, &buf);
+    //
+    DEBUG_MODE {
+        print_message("\n=== HTTP RECV ===\n");
+        print_tList(stderr, lst);
+        print_message("%s\n", buf.buf);
+    }
     if (err>0) {
         free_Buffer(&buf);
         del_tList(&lst);
@@ -284,6 +291,19 @@ void  receipt(char* hostname, int cport, SSL_CTX* server_ctx, SSL_CTX* client_ct
         print_message("クライアント用SSLサーバソケットで受信失敗．(%d)\n", getpid());
         exit(1);
     }
+
+    get_http_header_method(lst, &path);    // get http command and path
+    uname = get_username_api(path);                // get user name from path
+    if (path!=NULL) free(path);
+    if (uname==NULL) err = 400;
+    if (err>0) {
+        free_Buffer(&buf);
+        del_tList(&lst);
+        send_https_error(Sofd, Sssl, err);
+        print_message("クライアント用SSLサーバソケットで処理失敗．(%d)\n", getpid());
+        exit(1);
+    }
+
 
     tList* pp = strncasecmp_tList(lst, uname, 0, 1);
     if (pp!=NULL) cport = (int)pp->ldat.id;
