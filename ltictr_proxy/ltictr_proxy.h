@@ -28,7 +28,8 @@
 ///////////////////////////////////////////////////////////////////////////////////
 
 int   main(int argc, char** argv);
-void  receipt(char* hostname, int cport, struct sockaddr addr, SSL_CTX* s_ctx, SSL_CTX* c_ctx);
+//void  receipt(char* hostname, int cport, struct sockaddr addr, SSL_CTX* s_ctx, SSL_CTX* c_ctx);
+void  receipt(char* hostname, int cport, SSL_CTX* s_ctx, SSL_CTX* c_ctx);
 void  sig_term(int signal);
 void  sig_child(int signal);
 

@@ -14,13 +14,13 @@ int  recv_https_request(int sock, SSL* ssl, tList** lst, Buffer* buf)
     int   tsecond = 30;
     Buffer cnt;
 
-    if (lst==NULL || buf==NULL) return 0;
+    if (lst==NULL || buf==NULL) return 400;
 
     // Receive Header
     hsz = recv_https_header(sock, ssl, lst, &len, NULL, &connect);
     if (hsz<=0 || len==0 || len==HTTP_HEADER_UNKNOWN_LEN) {
         del_tList(lst);
-        return -400;        // 400: Bad Request
+        return 400;        // 400: Bad Request
     }
 
     // ヘッダ中に紛れ込んだコンテンツの取り出し
@@ -51,10 +51,10 @@ int  recv_https_request(int sock, SSL* ssl, tList** lst, Buffer* buf)
     if (cc<0 || connect) {
         del_tList(lst);
         free_Buffer(buf);
-        return -400;        // 400: Bad Request
+        return 400;        // 400: Bad Request
     }
 
-    return buf->vldsz;
+    return 0;
 }
 
 

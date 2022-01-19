@@ -7,81 +7,85 @@
 #define  LTICTR_API_USER    "/api/routes/user/"
 
 
+int  https_recv_get_user(int sock, SSL* ssl, tList** lst, Buffer* buf, char** uname, int* com)
+{
+    if (lst==NULL || buf==NULL || uname==NULL || com==NULL) return -1;
+
+    char* path = NULL;     // ex. /api/routes/user/bob
+    //
+    int err = recv_https_request(sock, ssl, lst, buf);
+    //
+    DEBUG_MODE {
+        print_message("\n=== HTTP RECV ===\n");
+        print_tList(stderr, *lst);
+        print_message("%s\n", buf->buf);
+    }
+    if (err>0) {
+        del_tList(lst);
+        free_Buffer(buf);
+        return err;
+    }
+
+    //
+    *com   = get_http_header_method(*lst, &path);   // get http command and path
+    *uname = get_username_api(path);                // get user name from path
+    if (uname==NULL) err = 400;
+
+    free_Buffer(buf);
+    del_tList(lst);
+    if (path!=NULL) free(path);
+
+    return err;
+}
+
+        
 
 
 void  api_process(int sock, SSL* ssl, tList* lprxy)
 {
-    int   cc;
     tList* lst  = NULL;     // 受信ヘッダ
     Buffer buf;             // 受信ボディ
-    char* path  = NULL;     // ex. /api/routes/user/bob
     char* uname = NULL;     // ex. bob
+    int   com;
 
     //
-    cc = recv_https_request(sock, ssl, &lst, &buf);
-    //
-    DEBUG_MODE {
-        print_message("\n=== API RECV ===\n");
-        print_tList(stderr, lst);
-        print_message("%s\n", buf.buf);
-    }
-    //
-    if (cc<0 || lst==NULL ) {
+    int err = https_recv_get_user(sock, ssl, &lst, &buf, &uname, &com);
+    if (err>0) {
         free_Buffer(&buf);
-        if (cc<0) send_https_error(sock, ssl, -cc);
-        else      send_https_error(sock, ssl, 400);
+        del_tList(&lst);
+        send_https_error(sock, ssl, err);
         return;
     }
 
-    //
-    int com = get_http_header_method(lst, &path);   // get http command and path
-    if (path==NULL) {
-        free_Buffer(&buf);
-        del_tList(&lst);
-        send_https_error(sock, ssl, 400);               // Bad Request
-        return;
-    }
-    uname = get_username_api(path);                 // get user name from path
-    if (uname==NULL) {
-        free_Buffer(&buf);
-        del_tList(&lst);
-        free(path);
-        send_https_error(sock, ssl, 400);               // Bad Request
-        return;
-    }
-        
     //
     // GET
     if (com==HTTP_GET_METHOD) {
         Buffer res = get_info_api(uname, lprxy);
         if (res.state>=0) send_https_response(sock, ssl, 200, &res);
-        else              send_https_error(sock, ssl, -res.state);
+        else              send_https_error(sock, ssl, res.state);
         free_Buffer(&res);
     }
     // POST
     else if (com==HTTP_POST_METHOD) {
-        int ret = add_user_api(uname, buf, lprxy);
-        if (ret>=0) send_https_response(sock, ssl, 201, NULL);
-        else        send_https_error(sock, ssl, -ret);
+        err = add_user_api(uname, buf, lprxy);
+        if (err==0) send_https_response(sock, ssl, 201, NULL);
+        else        send_https_error(sock, ssl, err);
     }
     // DELETE
     else if (com==HTTP_DELETE_METHOD) {
-        int ret = del_user_api(uname, lprxy);
-        if (ret>=0) send_https_response(sock, ssl, 204, NULL);
-        else        send_https_error(sock, ssl, -ret);
+        err = del_user_api(uname, lprxy);
+        if (err==0) send_https_response(sock, ssl, 204, NULL);
+        else        send_https_error(sock, ssl, err);
     }
     else {
         print_message("Not Supported Method : %d \n", com);
-        print_tList(stderr, lst);
-        print_message("%s\n", buf.buf);
         send_https_error(sock, ssl, 400);
     }
 
     //
-    free(path);
     free(uname);
     free_Buffer(&buf);
-    del_tList(&lst);
+    //del_tList(&lst);
     //
     return;
 }
@@ -90,8 +94,9 @@ void  api_process(int sock, SSL* ssl, tList* lprxy)
 
 char*  get_username_api(char* path)
 {
-    char* str = NULL;
+    if (path==NULL) return NULL;
 
+    char* str = NULL;
     char* pp = strstr(LTICTR_API_ROUTES, path);
     if (pp == NULL) return NULL;
 
@@ -177,44 +182,45 @@ int  add_user_api(char* uname, Buffer buf, tList* lst)
     Buffer target = init_Buffer();
     Buffer user   = init_Buffer();
     Buffer protocol, srvfqdn;
-    unsigned short port;
+    unsigned short int port;
 
     tList* pp = strncasecmp_tList(lst, uname, 0, 1);
-    if (pp!=NULL) return -400;      // already exist user
+    if (pp!=NULL) return 400;      // already exist user
 
     tJson* json = json_parse_prop(NULL, (char*)buf.buf, 2);
-    if (json==NULL) return -400;    // analyze error
+    if (json==NULL) return 400;    // analyze error
 
     user = get_key_json_val(json, "user", 1);
     if (user.buf==NULL || strcmp((char*)uname, (char *)user.buf)) {
         del_json(&json);
         free_Buffer(&user);
-        return -400;                // not match
+        return 400;                // not match
     }
     free_Buffer(&user);
                 
     target = get_key_json_val(json, "target", 1);
     del_json(&json);
-    if (target.buf==NULL) return -400;
+    if (target.buf==NULL) return 400;
 
     decomp_url(target, NULL, &protocol, &srvfqdn, &port, NULL);
     free_Buffer(&target);
 
-    int jport = (int)port;
-    if (!strcmp("https", (char*)protocol.buf)) jport = -jport; // for SSL/TLS
-    free_Buffer(&protocol);
-
-    int sock = tcp_client_socket((char*)srvfqdn.buf, port);
+    int sock = tcp_client_socket((char*)srvfqdn.buf, (int)port);
     if (sock<=0) {
         free_Buffer(&srvfqdn);
-        return -500;
+        return 500;
     }
+
+    cat_s2Buffer("://",  &protocol);
+    cat_Buffer(&srvfqdn, &protocol);
+    free_Buffer(&srvfqdn);
 
     lst = find_tList_end(lst);
     char* lasttime = get_local_timestamp(time(0), "%Y-%b-%dT%H:%M:%SZ");
-    add_tList_node_bystr(lst, sock, jport, uname, (char*)srvfqdn.buf, lasttime, strlen(lasttime)+1);
+    //
+    add_tList_node_bystr(lst, sock, (int)port, uname, (char*)protocol.buf, lasttime, strlen(lasttime)+1);
     free(lasttime);
-    free_Buffer(&srvfqdn);
+    free_Buffer(&protocol);
 
     //
     DEBUG_MODE {
@@ -230,7 +236,7 @@ int  add_user_api(char* uname, Buffer buf, tList* lst)
 int  del_user_api(char* uname, tList* lst)
 {
     tList* pp = strncasecmp_tList(lst, uname, 0, 1);
-    if (pp==NULL) return -400;      // not exist user
+    if (pp==NULL) return 400;      // not exist user
 
     socket_close(pp->ldat.id);
     del_tList_node(&pp);

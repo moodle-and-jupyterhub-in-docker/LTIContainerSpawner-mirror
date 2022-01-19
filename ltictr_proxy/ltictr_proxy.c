@@ -21,7 +21,7 @@
 
 
 int    Nofd, Sofd;
-int    Aofd, Pofd;
+int    Mofd, Aofd;
 int    Cofd;
 
 int    Log_Type;
@@ -43,13 +43,13 @@ tList*  ProxyList = NULL;
 
 int main(int argc, char** argv)
 {
-    int  sport=0;
+    int  sport=0, cport;
     socklen_t cdlen, pdlen;
     struct sockaddr  cl_addr, pl_addr;
     struct sigaction sa;
     struct passwd*  pw;
 
-    //Buffer hostname;
+    Buffer hostname;
     Buffer username;
     Buffer pidfile;
     Buffer certfile;
@@ -57,7 +57,7 @@ int main(int argc, char** argv)
     Buffer configfile;
 
     // for arguments
-    //hostname   = init_Buffer();
+    hostname   = init_Buffer();
     username   = init_Buffer();
     pidfile    = init_Buffer();
     certfile   = init_Buffer();
@@ -66,7 +66,7 @@ int main(int argc, char** argv)
 
     for (int i=1; i<argc; i++) {
         if      (!strcmp(argv[i],"-p")) {if (i!=argc-1) sport = atoi(argv[i+1]);}
-        //else if (!strcmp(argv[i],"-h")) {if (i!=argc-1) hostname = make_Buffer_bystr(argv[i+1]);}
+        else if (!strcmp(argv[i],"-h")) {if (i!=argc-1) hostname = make_Buffer_bystr(argv[i+1]);}
         else if (!strcmp(argv[i],"-u")) {if (i!=argc-1) username = make_Buffer_bystr(argv[i+1]);}
         else if (!strcmp(argv[i],"-f")) {if (i!=argc-1) pidfile  = make_Buffer_bystr(argv[i+1]);}
         else if (!strcmp(argv[i],"-d")) DebugMode  = ON;
@@ -80,16 +80,24 @@ int main(int argc, char** argv)
         //
         else if (*argv[i]=='-') print_message("unknown argument: %s\n", argv[i]);
     }
-    if (sport==0) {
-        print_message("Usage... %s -p port [-s] [-c] [-u user] [-f pid_file] [-d] \n", argv[0]);
+    if (hostname.buf==NULL || sport==0) {
+        print_message("Usage... %s -h host_name[:port] -p port [-s] [-c] [-i] [-u user] [-f pid_file] [-d] \n", argv[0]);
         print_message("                 [--conf config_file]  [--cert cert_file] [--key key_file]\n");
         exit(1);
     }
+    //
+    ProxyList = add_tList_node_anchor();
+
+    int i = 0;
+    while(hostname.buf[i]!='\0' && hostname.buf[i]!=':') i++;
+    if (hostname.buf[i]==':') {
+        cport = atoi((char*)&(hostname.buf[i+1]));
+        hostname.buf[i] = '\0';
+    }
+    else cport = sport;
 
     if (pidfile.buf==NULL) copy_s2Buffer(DEFAULT_PID_FILE, &pidfile);
     PIDFile = (char*)pidfile.buf;
-    //
-    ProxyList = add_tList_node_anchor();
 
     //
     // Config File
@@ -163,8 +171,8 @@ int main(int argc, char** argv)
     // Network
     // Server API port
     DEBUG_MODE print_message("Port open for api connection.\n");
-    Aofd = tcp_server_socket(-8001);    // non block socket
-    if (Aofd<0) {
+    Mofd = tcp_server_socket(-8001);    // non block socket
+    if (Mofd<0) {
         syslog(Log_Type, "Open error of the port for api connection: [%s]", strerror(errno));
         print_message("Open error of the port for api connection.\n");
         exit(1);
@@ -194,38 +202,35 @@ int main(int argc, char** argv)
     cdlen = sizeof(cl_addr);
     pdlen = sizeof(pl_addr);
     //
-    int port = 0;
-    Sofd = Pofd = 0;
+    Sofd = Aofd = 0;
 
     Loop {
         if (Sofd==0) Sofd = accept(Nofd, &cl_addr, &cdlen);
-        if (Pofd==0) Pofd = accept(Aofd, &pl_addr, &pdlen);
+        if (Aofd==0) Aofd = accept(Mofd, &pl_addr, &pdlen);
         //
-        if (Sofd>0 || port>0) {
-
-            receipt("127.0.0.1", port, cl_addr, server_ctx, client_ctx);
+        if (Sofd>0) {
+            //receipt((char*)hostname.buf, cport, cl_addr, server_ctx, client_ctx);
+            if (fork()==0) receipt((char*)hostname.buf, cport, server_ctx, client_ctx);
             close(Sofd);    // don't use socket_close() !
             Sofd = 0;
-            port = 0;
         }
         //
-        if (Pofd>0) {
-            api_process(Pofd, NULL, ProxyList);
+        if (Aofd>0) {
+            api_process(Aofd, NULL, ProxyList);
         }
     }
     DEBUG_MODE print_message("Stop main loop.\n");
 
     //
     socket_close(Nofd);
-    socket_close(Aofd);
-    Sofd = Nofd = 0;
-    Pofd = Aofd = 0;
+    socket_close(Mofd);
+    Sofd = Aofd = 0;
 
     if (server_ctx!=NULL)  SSL_CTX_free(server_ctx);
     if (client_ctx!=NULL)  SSL_CTX_free(client_ctx);
     if (pidfile.buf!=NULL) remove((char*)pidfile.buf);   
 
-    //free_Buffer(&hostname);
+    free_Buffer(&hostname);
     free_Buffer(&username);
     free_Buffer(&pidfile);
     free_Buffer(&certfile);
@@ -240,19 +245,51 @@ int main(int argc, char** argv)
 
 
 
-
 //
-void  receipt(char* hostname, int cport, struct sockaddr addr, SSL_CTX* server_ctx, SSL_CTX* client_ctx)
+//void  receipt(char* hostname, int cport, struct sockaddr addr, SSL_CTX* server_ctx, SSL_CTX* client_ctx)
+void  receipt(char* hostname, int cport, SSL_CTX* server_ctx, SSL_CTX* client_ctx)
 {
     int    cc, nd;
     fd_set mask;
     char msg[RECVBUFSZ];
     struct timeval timeout;
 
-    DEBUG_MODE print_message("Start child process. (%d)\n", getpid());
+    tList* lst  = NULL;     // 受信ヘッダ
+    Buffer buf;             // 受信ボディ
+    char* uname = NULL;     // ex. bob
+    int   com;
 
-    init_rand();
+    Sssl = NULL;
+    Cssl = NULL;
 
+    // for Client SSL Connection
+    if (ServerSSL==ON && server_ctx!=NULL) {
+        Sssl = ssl_server_socket(Sofd, server_ctx);
+        if (Sssl==NULL) {
+            sleep(1);
+            Sssl = ssl_server_socket(Sofd, server_ctx);
+            if (Sssl==NULL) {
+                print_message("クライアント用SSLサーバソケットの作成失敗．(%d)\n", getpid());
+                exit(1);
+            }
+        }
+        DEBUG_MODE print_message("クライアント用SSLサーバソケットのオープン．(%d)\n", getpid());
+    }
+    
+    int err = https_recv_get_user(Sofd, Sssl, &lst, &buf, &uname, &com);
+    if (err>0) {
+        free_Buffer(&buf);
+        del_tList(&lst);
+        send_https_error(Sofd, Sssl, err);
+        print_message("クライアント用SSLサーバソケットで受信失敗．(%d)\n", getpid());
+        exit(1);
+    }
+
+    tList* pp = strncasecmp_tList(lst, uname, 0, 1);
+    if (pp!=NULL) cport = (int)pp->ldat.id;
+
+
+/*
     struct sockaddr_in* addr_ptr = (struct sockaddr_in*)&addr;
     
     // モジュールの開始処理
@@ -268,23 +305,7 @@ void  receipt(char* hostname, int cport, struct sockaddr addr, SSL_CTX* server_c
         exit(1);
     }
     DEBUG_MODE print_message("モジュールの初期処理完了．(%d)\n", getpid());
-
-    Sssl = NULL;
-    Cssl = NULL;
-
-    // for Client SSL Connection
-    if (ServerSSL==ON && server_ctx!=NULL) {
-        Sssl = ssl_server_socket(Sofd, server_ctx);
-        if (Sssl==NULL) {
-            sleep(1);
-            Sssl = ssl_server_socket(Sofd, server_ctx);
-            if (Sssl==NULL) {
-                print_message("クライアント用SSLソケットの作成失敗．(%d)\n", getpid());
-                exit(1);
-            }
-        }
-        DEBUG_MODE print_message("クライアント用SSLソケットのオープン．(%d)\n", getpid());
-    }
+*/
 
     // for Server Connection
     Cofd = tcp_client_socket(hostname, cport);
@@ -299,7 +320,19 @@ void  receipt(char* hostname, int cport, struct sockaddr addr, SSL_CTX* server_c
             DEBUG_MODE print_message("サーバへのSSL接続の失敗．(%d)\n", getpid());
         }
     }
- 
+
+    send_https_Buffer(Cofd, Cssl, lst, &buf); 
+
+
+
+
+
+
+
+
+
+
+
     int range = Max(Sofd, Cofd) + 1;
 
     //
@@ -404,7 +437,7 @@ void  sig_term(int signal)
     if (Sofd>0) { close(Sofd); Sofd = 0;}
     if (Aofd>0) { close(Aofd); Aofd = 0;}
     if (Nofd>0) { close(Nofd); Nofd = 0;}
-    if (Pofd>0) { close(Pofd); Pofd = 0;}
+    if (Mofd>0) { close(Mofd); Mofd = 0;}
     if (PIDFile!=NULL) remove(PIDFile);
 
     closelog(); // close syslog 
