@@ -5,7 +5,12 @@
 */
 
 #include "ltictr_proxy.h"
+#include "ltictr_api.h"
+#include "ltictr_https.h"
+#include "ltictr_nbws.h"
+
 #include "jbxl_state.h"
+#include "tjson.h"
 #include "http_tool.h"
 
 #define  LTICTRPROXY_TIMEOUT   900       // 15m
@@ -33,7 +38,7 @@ char*  ClientName    = NULL;
 unsigned char*  ClientIPaddr_num  = NULL;
 
 
-tList*  ProsyList = NULL;
+tList*  ProxyList = NULL;
 
 
 int main(int argc, char** argv)
@@ -84,7 +89,7 @@ int main(int argc, char** argv)
     if (pidfile.buf==NULL) copy_s2Buffer(DEFAULT_PID_FILE, &pidfile);
     PIDFile = (char*)pidfile.buf;
     //
-    ProxyList = add_tlist_node_anchor();
+    ProxyList = add_tList_node_anchor();
 
     //
     // Config File
@@ -205,12 +210,7 @@ int main(int argc, char** argv)
         }
         //
         if (Pofd>0) {
-            port = server_api(Pofd);
-            if (port<=0) {
-                close(Pofd);
-                Pofd = 0;
-                port = 0;
-            }
+            api_process(Pofd, NULL, ProxyList);
         }
     }
     DEBUG_MODE print_message("Stop main loop.\n");
@@ -223,7 +223,7 @@ int main(int argc, char** argv)
 
     if (server_ctx!=NULL)  SSL_CTX_free(server_ctx);
     if (client_ctx!=NULL)  SSL_CTX_free(client_ctx);
-    if (pidfile.buf!=NULL) remove((const char*)pidfile.buf);   
+    if (pidfile.buf!=NULL) remove((char*)pidfile.buf);   
 
     //free_Buffer(&hostname);
     free_Buffer(&username);
@@ -237,42 +237,6 @@ int main(int argc, char** argv)
 
     exit(0);
 }
-
-
-
-//
-SSL*  first_request_recv(int socket, SSL_CTX* server_ctx)
-{
-    //int    cc, nd;
-    //fd_set mask;
-    char msg[RECVBUFSZ];
-    //struct timeval timeout;
-
-    Sssl = NULL;
-
-    // for Client SSL Connection
-    if (ServerSSL==ON && server_ctx!=NULL) {
-        Sssl = ssl_server_socket(socket, server_ctx);
-        if (Sssl==NULL) {
-            sleep(1);
-            Sssl = ssl_server_socket(socket, server_ctx);
-            if (Sssl==NULL) {
-                print_message("Failure to create SSL socket for client. (%d)\n", getpid());
-                exit(1);
-            }
-        }
-        DEBUG_MODE print_message("Oepned SSL socket for client. (%d)\n", getpid());
-    }
-
-    tList* lst = NULL;
-
-    cc = recv_https_header(sock, Sssl, &lst, &len, NULL, int* state);
-
-
-    exit(0);
-}
- 
-
 
 
 

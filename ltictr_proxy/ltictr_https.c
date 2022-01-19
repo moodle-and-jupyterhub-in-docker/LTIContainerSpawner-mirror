@@ -66,8 +66,8 @@ int  send_https_response(int sock, SSL* ssl, int num, Buffer* buf)
 
     if (num==200) {
         lst = hdr = add_tList_node_str(NULL, HDLIST_FIRST_LINE_KEY, "HTTP/1.1 200 OK");
-        hdr = add_tList_node_str(hdr, "Content-Type", "application/json");
-        hdr = add_tList_node_str(hdr, "Content-Length", "0");
+        lst = add_tList_node_str(lst, "Content-Type", "application/json");
+        lst = add_tList_node_str(lst, "Content-Length", "0");
     }
     else if (num==201) {
         lst = hdr = add_tList_node_str(NULL, HDLIST_FIRST_LINE_KEY, "HTTP/1.1 201 Created");
@@ -76,16 +76,16 @@ int  send_https_response(int sock, SSL* ssl, int num, Buffer* buf)
         lst = hdr = add_tList_node_str(NULL, HDLIST_FIRST_LINE_KEY, "HTTP/1.1 204 Not Content");
     }
 
-    hdr = add_tList_node_str(hdr, "Connection", "keep-alive");
+    lst = add_tList_node_str(lst, "Connection", "keep-alive");
     char* date = get_http_header_date(time(0));
     if (date!=NULL) {
-        hdr = add_tList_node_str(hdr, "Date", date);
+        lst = add_tList_node_str(lst, "Date", date);
         free(date);
     }
 
-    int cc = send_https_Buffer(sock, ssl, lst, buf);
+    int cc = send_https_Buffer(sock, ssl, hdr, buf);
 
-    del_tList(&lst);
+    del_tList(&hdr);
     return cc;
 }
 
@@ -99,17 +99,20 @@ int  send_https_error(int sock, SSL* ssl, int err)
     if (err<0) err = -err;
 
     if (err==404) {
-        lst = add_tList_node_str(NULL, HDLIST_FIRST_LINE_KEY, "HTTP/1.1 404 Not Found");
+        hdr = add_tList_node_str(NULL, HDLIST_FIRST_LINE_KEY, "HTTP/1.1 404 Not Found");
+    }
+    else if (err==500) {
+        hdr = add_tList_node_str(NULL, HDLIST_FIRST_LINE_KEY, "HTTP/1.1 500 Internal Server Error");
     }
     else {
-        lst = add_tList_node_str(NULL, HDLIST_FIRST_LINE_KEY, "HTTP/1.1 400 Bad Request");
+        hdr = add_tList_node_str(NULL, HDLIST_FIRST_LINE_KEY, "HTTP/1.1 400 Bad Request");
     }
 
-    hdr = lst;
-    hdr = add_tList_node_str(hdr, "Connection", "close");
+    lst = hdr;
+    lst = add_tList_node_str(lst, "Connection", "close");
 
-    int cc = send_https_header(sock, ssl, lst, OFF);
-    del_tList(&lst);
+    int cc = send_https_header(sock, ssl, hdr, OFF);
+    del_tList(&hdr);
 
     return cc;
 }

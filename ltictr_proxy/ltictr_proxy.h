@@ -38,12 +38,12 @@ int   get_notused_tcp_port(int port);
 
 ///////////////////////////////////////////////////////////////////////////////////
 
-int  fe_server(int csofd, int nsofd, SSL* cssl, SSL* sssl, char* msg, int cc);  // S -> C   fesrv is C
-int  fe_client(int nsofd, int csofd, SSL* sssl, SSL* cssl, char* msg, int cc);  // C -> S   fesrv is S
-int  init_main(int mode, tList* file);
-int  term_main(void);
-int  init_process(int, char*);
-int  term_process(int);
+//int  fe_server(int csofd, int nsofd, SSL* cssl, SSL* sssl, char* msg, int cc);  // S -> C   fesrv is C
+//int  fe_client(int nsofd, int csofd, SSL* sssl, SSL* cssl, char* msg, int cc);  // C -> S   fesrv is S
+//int  init_main(int mode, tList* file);
+//int  term_main(void);
+//int  init_process(int, char*);
+//int  term_process(int);
 
 
 

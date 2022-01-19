@@ -7,9 +7,7 @@
 */
 
 
-#include "ltictr_proxy.h"
-#include "tjson.h"
-#include "https_tool.h"
+#include "ltictr_nbws.h"
 
 int      Logtype;
 tList*   Allow_IPaddr = NULL;
@@ -45,24 +43,6 @@ char*    Moodle_HTTP    = "1.1";
 int      Moodle_Port    = 80;
 int      Moodle_DBAns   = FALSE;
 int      Moodle_TLS     = FALSE;
-
-
-
-struct  ws_info {
-    char*  host;
-    char*  inst_id;
-    char*  lti_id;
-    //
-    char*  session;
-    char*  message;
-    char*  status;
-    char*  username;
-    char*  cell_id;
-    char*  tags;
-    char*  date;
-};
-
-
 
 
 
@@ -221,7 +201,7 @@ char*  get_info_from_sessioninfo(char* mesg)
     if (mesg==NULL) return NULL;
 
     char* pp = mesg;
-    if (ex_strcmp("POST ", (const char*)mesg)){
+    if (ex_strcmp("POST ", (char*)mesg)){
         pp = strstr(mesg, "\r\n\r\n");    // Body
         if (pp==NULL) return NULL; 
     }
@@ -379,13 +359,13 @@ void  init_xml_rpc_header(void)
     snprintf(url, LMESG-1, "POST %s?wstoken=%s HTTP/%s", Moodle_URL, Moodle_Token, Moodle_HTTP);
 
     tList* pp = NULL;
-    pp = HTTP_Header = add_tList_node_bystr(pp, 0, 0, HDLIST_FIRST_LINE_KEY, url, NULL, 0);
-    pp               = add_tList_node_bystr(pp, 0, 0, "Host", Moodle_Host, NULL, 0);
-    pp               = add_tList_node_bystr(pp, 0, 0, "Content-Type", "text/html", NULL, 0);
-    pp = HTTP_Length = add_tList_node_bystr(pp, 0, 0, "Content-Length", "", NULL, 0);
-    pp               = add_tList_node_bystr(pp, 0, 0, "Connection", "close",  NULL, 0);
-    pp               = add_tList_node_bystr(pp, 0, 0, HDLIST_END_KEY, "",  NULL, 0);
-    pp = HTTP_Data   = add_tList_node_bystr(pp, 0, 0, HDLIST_CONTENTS_KEY,  "", NULL, 0);
+    pp = HTTP_Header = add_tList_node_str(pp, HDLIST_FIRST_LINE_KEY, url);
+    pp               = add_tList_node_str(pp, "Host", Moodle_Host);
+    pp               = add_tList_node_str(pp, "Content-Type", "text/html");
+    pp = HTTP_Length = add_tList_node_str(pp, "Content-Length", "");
+    pp               = add_tList_node_str(pp, "Connection", "close");
+    pp               = add_tList_node_str(pp, HDLIST_END_KEY, "");
+    pp = HTTP_Data   = add_tList_node_str(pp, HDLIST_CONTENTS_KEY,  "");
 
     return;
 }
@@ -519,7 +499,7 @@ int   fe_server(int dummy1, int sofd, SSL* dummy2, SSL* ssl, char* mesg, int cc)
 
     // add cookie
     // Session Info を lms_sessioninfo の値として cookie に追加
-    if (SessionInfo!=NULL && ex_strcmp("HTTP/", (const char*)mesg)){
+    if (SessionInfo!=NULL && ex_strcmp("HTTP/", (char*)mesg)){
         http_res = 1;
         //
         Buffer buf = make_Buffer_bystr(mesg);
@@ -624,7 +604,7 @@ int   fe_client(int dummy1, int cofd, SSL* dummy2, SSL* ssl, char* mesg, int cc)
 
     //
     // GET session_id と cookie の lms_sessionifo (course_id+%2C+lti_id) を関連付けて DB に登録．
-    if (ex_strcmp("GET ", (const char*)mesg)) {
+    if (ex_strcmp("GET ", (char*)mesg)) {
         http_com = 1;
         content_length = 0;
         recv_buffer = init_Buffer();
@@ -656,7 +636,7 @@ int   fe_client(int dummy1, int cofd, SSL* dummy2, SSL* ssl, char* mesg, int cc)
     }
 
     //
-    else if (ex_strcmp("POST ", (const char*)mesg)) {
+    else if (ex_strcmp("POST ", (char*)mesg)) {
         http_com = 2;
         content_length = 0;
         recv_buffer = init_Buffer();
@@ -683,13 +663,13 @@ int   fe_client(int dummy1, int cofd, SSL* dummy2, SSL* ssl, char* mesg, int cc)
             recv_buffer = set_Buffer(pp, l);
         }
     }
-    else if (ex_strcmp("PUT ", (const char*)mesg)) {
+    else if (ex_strcmp("PUT ", (char*)mesg)) {
         http_com = 3;
     }
-    else if (ex_strcmp("DELETE ", (const char*)mesg)) {
+    else if (ex_strcmp("DELETE ", (char*)mesg)) {
         http_com = 4;
     }
-    else if (ex_strcmp("PATCH ", (const char*)mesg)) {
+    else if (ex_strcmp("PATCH ", (char*)mesg)) {
         http_com = 5;
     }
     else if (content_length>0) {
@@ -702,7 +682,7 @@ int   fe_client(int dummy1, int cofd, SSL* dummy2, SSL* ssl, char* mesg, int cc)
         mesg = (char*)recv_buffer.buf;
         //
         if (SessionInfo==NULL) {
-            if (ex_strcmp("oauth_version", (const char*)mesg)) {
+            if (ex_strcmp("oauth_version", (char*)mesg)) {
                 SessionInfo = get_info_from_sessioninfo(mesg);  
             }
             // 
