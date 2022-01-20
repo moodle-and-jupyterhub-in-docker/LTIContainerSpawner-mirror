@@ -2,5 +2,5 @@ JunkBox_Lib
 ltictr_proxy/ltictr_proxy
 ltictr_proxy/ltictr_proxy.o
 ltictr_proxy/ltictr_api.o
-ltictr_proxy/ltictr_http.o
+ltictr_proxy/ltictr_https.o
 ltictr_proxy/ltictr_nbws.o

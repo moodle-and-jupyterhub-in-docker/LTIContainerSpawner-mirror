@@ -197,33 +197,51 @@ int main(int argc, char** argv)
     }
 
     //
-    // main loop
     DEBUG_MODE print_message("Start main loop.\n");
     cdlen = sizeof(cl_addr);
     pdlen = sizeof(pl_addr);
     //
-    Sofd = Aofd = 0;
+    fd_set mask;
+    struct timeval timeout;
 
+    Sofd = Aofd = 0;
+    timeout.tv_sec  = 0;
+    timeout.tv_usec = 0;
+
+    // main loop
     Loop {
-        if (Sofd==0) Sofd = accept(Nofd, &cl_addr, &cdlen);
-        if (Aofd==0) Aofd = accept(Mofd, &pl_addr, &pdlen);
+        if (Sofd<=0) Sofd = accept(Nofd, &cl_addr, &cdlen);
+        if (Aofd<=0) Aofd = accept(Mofd, &pl_addr, &pdlen);
+        int range = Max(Sofd, Aofd) + 1;
+
+        FD_ZERO(&mask); 
+        if (Sofd>0) FD_SET(Sofd, &mask);
+        if (Aofd>0) FD_SET(Aofd, &mask);
+        if (Aofd>0 || Sofd>0) select(range, &mask, NULL, NULL, &timeout);
+
         //
-        if (Sofd>0) {
-            //receipt((char*)hostname.buf, cport, cl_addr, server_ctx, client_ctx);
+        if (Sofd>0 && FD_ISSET(Sofd, &mask)) {
             if (fork()==0) receipt((char*)hostname.buf, cport, server_ctx, client_ctx);
             close(Sofd);    // don't use socket_close() !
             Sofd = 0;
         }
         //
-        if (Aofd>0) {
-            api_process(Aofd, NULL, ProxyList);
+        if (Aofd>0 && FD_ISSET(Aofd, &mask)) {
+            int ret = api_process(Aofd, NULL, ProxyList);
+            if (ret<0) {
+                socket_close(Aofd);
+                Aofd = 0;
+                DEBUG_MODE print_message("End of API session.\n");
+            }
         }
     }
-    DEBUG_MODE print_message("Stop main loop.\n");
 
+    // Unreachable
+    DEBUG_MODE print_message("Stop main loop.\n");
     //
     socket_close(Nofd);
     socket_close(Mofd);
+    //close_all_socket(ProxyList);
     Sofd = Aofd = 0;
 
     if (server_ctx!=NULL)  SSL_CTX_free(server_ctx);
@@ -236,9 +254,9 @@ int main(int argc, char** argv)
     free_Buffer(&certfile);
     free_Buffer(&keyfile);
     free_Buffer(&configfile);
-    del_tList(&filelist);
 
-    del_all_tList(&ProxyList);
+    del_tList(&filelist);
+    del_tList(&ProxyList);
 
     exit(0);
 }
@@ -246,18 +264,16 @@ int main(int argc, char** argv)
 
 
 //
-//void  receipt(char* hostname, int cport, struct sockaddr addr, SSL_CTX* server_ctx, SSL_CTX* client_ctx)
 void  receipt(char* hostname, int cport, SSL_CTX* server_ctx, SSL_CTX* client_ctx)
 {
     int    cc, nd;
-    fd_set mask;
     char msg[RECVBUFSZ];
+    fd_set mask;
     struct timeval timeout;
 
-    tList* lst  = NULL;     // 受信ヘッダ
-    Buffer buf;             // 受信ボディ
-    char* uname = NULL;     // ex. bob
-    char* path  = NULL;     // ex. /api/routes/user/bob
+    Buffer buf   = init_Buffer();   // 受信ボディ
+    tList* lst   = NULL;            // 受信ヘッダ
+    char*  uname = NULL;            // ex. bob
 
     Sssl = NULL;
     Cssl = NULL;
@@ -277,36 +293,40 @@ void  receipt(char* hostname, int cport, SSL_CTX* server_ctx, SSL_CTX* client_ct
     }
     
     //
-    int err = recv_https_request(Sofd, Sssl, &lst, &buf);
-    //
+    buf = make_Buffer(RECVBUFSZ);
+    int ret = recv_https_Buffer(Sofd, Sssl, &lst, &buf, 0, NULL, NULL);
+    if (ret<=0) {           // 0 は正常切断
+        del_tList(&lst);
+        free_Buffer(&buf);
+        if (ret<0) {
+            send_https_error(Sofd, Sssl, 400);
+            exit(1);
+        }
+        else {
+            exit(0);
+        }
+    }
+
     DEBUG_MODE {
         print_message("\n=== HTTP RECV ===\n");
         print_tList(stderr, lst);
         print_message("%s\n", buf.buf);
     }
-    if (err>0) {
-        free_Buffer(&buf);
-        del_tList(&lst);
-        send_https_error(Sofd, Sssl, err);
-        print_message("クライアント用SSLサーバソケットで受信失敗．(%d)\n", getpid());
-        exit(1);
-    }
 
-    get_http_header_method(lst, &path);    // get http command and path
-    uname = get_username_api(path);                // get user name from path
+    char*  path  = NULL;                            // ex. /api/routes/user/bob
+    get_http_header_method(lst, &path);             // get http command and path
+    uname = get_username_api(path);                 // get user name from path
     if (path!=NULL) free(path);
-    if (uname==NULL) err = 400;
-    if (err>0) {
-        free_Buffer(&buf);
+    if (uname==NULL) {
         del_tList(&lst);
-        send_https_error(Sofd, Sssl, err);
-        print_message("クライアント用SSLサーバソケットで処理失敗．(%d)\n", getpid());
+        free_Buffer(&buf);
+        send_https_error(Sofd, Sssl, 404);
         exit(1);
     }
 
-
+    int csock = 0;
     tList* pp = strncasecmp_tList(lst, uname, 0, 1);
-    if (pp!=NULL) cport = (int)pp->ldat.id;
+    if (pp!=NULL) csock = (int)pp->ldat.id;
 
 
 /*
@@ -328,28 +348,19 @@ void  receipt(char* hostname, int cport, SSL_CTX* server_ctx, SSL_CTX* client_ct
 */
 
     // for Server Connection
-    Cofd = tcp_client_socket(hostname, cport);
-    if (Cofd<0) {
+    //Cofd = tcp_client_socket(hostname, cport);
+    if (csock<=0) {
         syslog(Log_Type, "tcp_client_socket() error: [%s]", strerror(errno));
         print_message("サーバへの接続に失敗．(%d)\n", getpid());
         exit(1);
     }
-    if (ClientSSL==ON && client_ctx!=NULL && Sssl!=NULL) {
-        Cssl = ssl_client_socket(Cofd, client_ctx, OFF);
+    if (ClientSSL==ON && client_ctx!=NULL /*&& Sssl!=NULL*/) {
+        Cssl = ssl_client_socket(csock, client_ctx, OFF);
         if (Cssl==NULL) {
             DEBUG_MODE print_message("サーバへのSSL接続の失敗．(%d)\n", getpid());
         }
     }
-
-    send_https_Buffer(Cofd, Cssl, lst, &buf); 
-
-
-
-
-
-
-
-
+    send_https_Buffer(csock, Cssl, lst, &buf); 
 
 
 

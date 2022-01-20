@@ -7,6 +7,7 @@
 
 
 
+/*
 int  recv_https_request(int sock, SSL* ssl, tList** lst, Buffer* buf)
 {
     int   len, hsz, csz;
@@ -18,10 +19,11 @@ int  recv_https_request(int sock, SSL* ssl, tList** lst, Buffer* buf)
 
     // Receive Header
     hsz = recv_https_header(sock, ssl, lst, &len, NULL, &connect);
-    if (hsz<=0 || len==0 || len==HTTP_HEADER_UNKNOWN_LEN) {
+    if (hsz<=0 || len==HTTP_HEADER_UNKNOWN_LEN) {
         del_tList(lst);
-        return 400;        // 400: Bad Request
+        return 400;         // 400: Bad Request
     }
+    if (len==0) return 0;   // non Body
 
     // ヘッダ中に紛れ込んだコンテンツの取り出し
     *buf = make_Buffer(RECVBUFSZ);
@@ -56,6 +58,7 @@ int  recv_https_request(int sock, SSL* ssl, tList** lst, Buffer* buf)
 
     return 0;
 }
+*/
 
 
 
@@ -71,6 +74,7 @@ int  send_https_response(int sock, SSL* ssl, int num, Buffer* buf)
     }
     else if (num==201) {
         lst = hdr = add_tList_node_str(NULL, HDLIST_FIRST_LINE_KEY, "HTTP/1.1 201 Created");
+        lst = add_tList_node_str(lst, "Content-Length", "0");
     }
     else if (num==204) {
         lst = hdr = add_tList_node_str(NULL, HDLIST_FIRST_LINE_KEY, "HTTP/1.1 204 Not Content");
@@ -85,6 +89,12 @@ int  send_https_response(int sock, SSL* ssl, int num, Buffer* buf)
 
     int cc = send_https_Buffer(sock, ssl, hdr, buf);
 
+    DEBUG_MODE {
+        print_message("\n=== HTTPS SEND ===\n");
+        print_tList(stderr, hdr);
+        if (buf!=NULL) print_message("%s\n", buf->buf);
+    }
+
     del_tList(&hdr);
     return cc;
 }
@@ -96,9 +106,10 @@ int  send_https_error(int sock, SSL* ssl, int err)
     tList* hdr = NULL;
     tList* lst = NULL;
 
-    if (err<0) err = -err;
-
-    if (err==404) {
+    if      (err==400) {
+        hdr = add_tList_node_str(NULL, HDLIST_FIRST_LINE_KEY, "HTTP/1.1 400 Bad Request");
+    }
+    else if (err==404) {
         hdr = add_tList_node_str(NULL, HDLIST_FIRST_LINE_KEY, "HTTP/1.1 404 Not Found");
     }
     else if (err==500) {
@@ -107,10 +118,10 @@ int  send_https_error(int sock, SSL* ssl, int err)
     else {
         hdr = add_tList_node_str(NULL, HDLIST_FIRST_LINE_KEY, "HTTP/1.1 400 Bad Request");
     }
-
+    //
     lst = hdr;
     lst = add_tList_node_str(lst, "Connection", "close");
-
+ 
     int cc = send_https_header(sock, ssl, hdr, OFF);
     del_tList(&hdr);
 
@@ -119,6 +130,7 @@ int  send_https_error(int sock, SSL* ssl, int err)
 
 
 
+/*
 int  get_tcp_socket(int* port)
 {
     int sock = tcp_server_socket(*port);
@@ -139,4 +151,5 @@ int  get_tcp_socket(int* port)
 
     return sock;
 }
-
+*/
+          
