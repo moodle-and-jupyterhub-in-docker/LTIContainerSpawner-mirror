@@ -1,7 +1,7 @@
 /*  
     Proxy Server for JupyterHub and LTIConrainerSpawner
         
-                by Fumi.Iseki '22 01/16   BSD License.
+                by Fumi.Iseki '22 01/22   BSD License.
 */
 
 #include "ltictr_proxy.h"
@@ -61,10 +61,6 @@ int      Moodle_TLS     = FALSE;
 
 
 
-//char*  ClientIPaddr  = NULL;
-//char*  ClientName    = NULL;
-//unsigned char*  ClientIPaddr_num  = NULL;
-
 //
 int main(int argc, char** argv)
 {
@@ -110,7 +106,7 @@ int main(int argc, char** argv)
         //
         else if (*argv[i]=='-') print_message("unknown argument: %s\n", argv[i]);
     }
-    if (hostname.buf==NULL || sport==0) {
+    if (sport==0) {
         print_message("Usage... %s [-h host_name[:port]] -p client_side_port [-a api_port] [-s] [-c] [-i] [-u user] [-d] \n", argv[0]);
         print_message("            [--allow allow_file] [--pid pid_file] [--conf config_file]  [--cert cert_file] [--key key_file]\n");
         sig_term(-1);
@@ -213,14 +209,6 @@ int main(int argc, char** argv)
         if (APIPortSSL==ON) APIPort_CTX = ssl_server_setup(TLS_CertPem, TLS_KeyPem);
     }
 
-    SSL* assl = NULL;
-    if (APIPort_CTX!=NULL) {
-        assl = ssl_client_socket(Aofd, APIPort_CTX, OFF);
-        if (assl==NULL) {
-            DEBUG_MODE print_message("Failure to create SSL socket for API server port. (%d)\n", getpid());
-        }
-    }
-
     //
     DEBUG_MODE print_message("Start main loop.\n");
     cdlen = sizeof(cl_addr);
@@ -230,6 +218,7 @@ int main(int argc, char** argv)
     struct timeval timeout;
 
     Sofd = Aofd = 0;
+    SSL* assl = NULL;
     timeout.tv_sec  = 0;
     timeout.tv_usec = 0;
 
@@ -252,10 +241,21 @@ int main(int argc, char** argv)
         }
         //
         if (Aofd>0 && FD_ISSET(Aofd, &mask)) {
+            if (assl==NULL && APIPort_CTX!=NULL) {
+                assl = ssl_server_socket(Aofd, APIPort_CTX);
+                if (assl==NULL) {
+                    socket_close(Aofd);
+                    Aofd = 0;
+                    DEBUG_MODE print_message("Failure to create SSL socket for API port. \n");
+                    continue;
+                }
+            }
             int ret = api_process(Aofd, assl, ProxyList);
             if (ret<0) {
+                ssl_close(assl);
                 socket_close(Aofd);
                 Aofd = 0;
+                assl = NULL;
                 DEBUG_MODE print_message("End of API session.\n");
             }
         }
@@ -263,7 +263,7 @@ int main(int argc, char** argv)
 
     // Unreachable
     DEBUG_MODE print_message("Stop main loop.\n");
-    term_main(0);
+    term_main(99999);
     //
     exit(0);
 }
@@ -350,11 +350,11 @@ void  term_main(int code)
     if (pid==RootPID) {
         closelog(); // close syslog 
         if (PIDFile!=NULL) remove(PIDFile);
-        syslog(LogType, "Shutdown root ltictr_proxy process with code = (%d): [%s]", code, strerror(errno));
-        print_message("Shutdown root ltictr_proxy process with code = (%d): [%s]", code, strerror(errno));
+        //syslog(LogType, "Shutdown root ltictr_proxy process with code = (%d): [%s]", code, strerror(errno));
+        print_message("Shutdown root ltictr_proxy process with code = (%d)\n", code);
     }
     else {
-        DEBUG_MODE print_message("Shutdown child ltictr_proxy process with code = (%d): [%s]", code, strerror(errno));
+        DEBUG_MODE print_message("Shutdown child ltictr_proxy process with code = (%d)\n", code);
     }
     return;
 }
@@ -385,7 +385,7 @@ void  sig_term(int signal)
     term_main(signal);
     
     pid_t pid = getpid();
-    print_message("\nExit program with signal = %d (%d)\n", signal, pid);
+    print_message("sig_term: Exit program with signal = %d (%d)\n", signal, pid);
     if (signal<0) exit(-signal);
     exit(signal);
 }
