@@ -7,72 +7,102 @@
 #include "ltictr_proxy.h"
 #include "ltictr_api.h"
 #include "ltictr_https.h"
-#include "ltictr_nbws.h"
-
-#include "jbxl_state.h"
-#include "tjson.h"
-#include "http_tool.h"
-
-#define  LTICTRPROXY_TIMEOUT   900       // 15m
-
-#define  DEFAULT_PID_FILE   "/var/run/ltictr_proxy.pid"
-#define  DEFAULT_CERT_FILE  "/etc/pki/tls/certs/server.pem"
-#define  DEFAULT_KEY_FILE   "/etc/pki/tls/private/key.pem"
+#include "ltictr_child.h"
 
 
-int    Nofd, Sofd;
-int    Mofd, Aofd;
-int    Cofd;
+#define  NO_SYSLOG          999
 
-int    Log_Type;
-pid_t  RootPID;
-char*  PIDFile = NULL;
+#define  LTICTR_ALLOW_FILE  "LTICTR_Allow_File"
+#define  LTICTR_PID_FILE    "LTICTR_Pid_File"
+#define  LTICTR_SERVER_CERT "LTICTR_Server_Cert"
+#define  LTICTR_PRIVATE_KEY "LTICTR_Private_Key"
 
-SSL*   Sssl = NULL;
-SSL*   Cssl = NULL;
-int    ClientSSL = OFF;     // サーバ側（自身はクライアント）とのSSL 接続
-int    ServerSSL = OFF;     // クライアント側（自身はサーバ）とのSSL 接続
-
-char*  ClientIPaddr  = NULL;
-char*  ClientName    = NULL;
-unsigned char*  ClientIPaddr_num  = NULL;
-
-
-tList*  ProxyList = NULL;
+#define  MOODLE_HOST_KEY    "Moodle_Host"
+#define  MOODLE_PORT_KEY    "Moodle_Port"
+#define  MOODLE_URL_KEY     "Moodle_URL"
+#define  MOODLE_TOKEN_KEY   "Moodle_Token"
+#define  MOODLE_SERVICE_KEY "Moodle_Servide"
+#define  MOODLE_DBANS_KEY   "Moodle_DBAns"
+#define  MOODLE_TLS_KEY     "Moodle_TLS"
+#define  MOODLE_HTTP_KEY    "Moodle_HTTP"
 
 
+int      LogType;
+pid_t    RootPID;
+
+int      Nofd, Sofd;
+int      Mofd, Aofd;
+
+int      ClientSSL      = OFF;     // サーバ側（自身はクライアント）とのSSL 接続
+int      ServerSSL      = OFF;     // クライアント側（自身はサーバ）とのSSL 接続
+int      APIPortSSL     = OFF;     // APIポートのSSL 接続
+
+SSL_CTX* Server_CTX     = NULL;
+SSL_CTX* Client_CTX     = NULL;
+SSL_CTX* APIPort_CTX    = NULL;
+
+tList*   ProxyList      = NULL;
+tList*   AllowList      = NULL;
+
+// config file
+char*    AllowFile      = "/usr/local/etc/ltictr_allow.list";
+char*    PIDFile        = "/var/run/ltictr_proxy.pid";
+char*    TLS_CertPem    = "/etc/pki/tls/certs/server.pem";
+char*    TLS_KeyPem     = "/etc/pki/tls/private/key.pem";
+
+char*    Moodle_Host    = "localhost";
+char*    Moodle_URL     = "/webservice/xmlrpc/server.php";
+char*    Moodle_Token   = "";
+char*    Moodle_Service = "mod_lticontainer_write_nbdata";
+char*    Moodle_HTTP    = "1.1";
+int      Moodle_Port    = 80;
+int      Moodle_DBAns   = FALSE;
+int      Moodle_TLS     = FALSE;
+
+
+
+//char*  ClientIPaddr  = NULL;
+//char*  ClientName    = NULL;
+//unsigned char*  ClientIPaddr_num  = NULL;
+
+//
 int main(int argc, char** argv)
 {
-    int  sport=0, cport;
+    int  sport=0, cport=0, aport=0;
     socklen_t cdlen, pdlen;
     struct sockaddr  cl_addr, pl_addr;
     struct sigaction sa;
     struct passwd*  pw;
 
     Buffer hostname;
-    Buffer username;
+    Buffer efctvuser;
     Buffer pidfile;
     Buffer certfile;
     Buffer keyfile;
+    Buffer allowfile;
     Buffer configfile;
 
     // for arguments
     hostname   = init_Buffer();
-    username   = init_Buffer();
+    efctvuser  = init_Buffer();
     pidfile    = init_Buffer();
     certfile   = init_Buffer();
     keyfile    = init_Buffer();
     configfile = init_Buffer();
+    allowfile  = init_Buffer();
 
     for (int i=1; i<argc; i++) {
         if      (!strcmp(argv[i],"-p")) {if (i!=argc-1) sport = atoi(argv[i+1]);}
-        else if (!strcmp(argv[i],"-h")) {if (i!=argc-1) hostname = make_Buffer_bystr(argv[i+1]);}
-        else if (!strcmp(argv[i],"-u")) {if (i!=argc-1) username = make_Buffer_bystr(argv[i+1]);}
-        else if (!strcmp(argv[i],"-f")) {if (i!=argc-1) pidfile  = make_Buffer_bystr(argv[i+1]);}
-        else if (!strcmp(argv[i],"-d")) DebugMode  = ON;
-        //
+        else if (!strcmp(argv[i],"-a")) {if (i!=argc-1) aport = atoi(argv[i+1]);}
+        else if (!strcmp(argv[i],"-h")) {if (i!=argc-1) hostname  = make_Buffer_bystr(argv[i+1]);}
+        else if (!strcmp(argv[i],"-u")) {if (i!=argc-1) efctvuser = make_Buffer_bystr(argv[i+1]);}
         else if (!strcmp(argv[i],"-s")) ClientSSL  = ON;
         else if (!strcmp(argv[i],"-c")) ServerSSL  = ON;
+        else if (!strcmp(argv[i],"-i")) APIPortSSL = ON;
+        else if (!strcmp(argv[i],"-d")) DebugMode  = ON;
+        //
+        else if (!strcmp(argv[i],"--allow"))  {if (i!=argc-1) allowfile  = make_Buffer_bystr(argv[i+1]);}
+        else if (!strcmp(argv[i],"--pid"))    {if (i!=argc-1) pidfile    = make_Buffer_bystr(argv[i+1]);}
         else if (!strcmp(argv[i],"--cert"))   {if (i!=argc-1) certfile   = make_Buffer_bystr(argv[i+1]);}
         else if (!strcmp(argv[i],"--key"))    {if (i!=argc-1) keyfile    = make_Buffer_bystr(argv[i+1]);}
         else if (!strcmp(argv[i],"--conf"))   {if (i!=argc-1) configfile = make_Buffer_bystr(argv[i+1]);}
@@ -81,48 +111,38 @@ int main(int argc, char** argv)
         else if (*argv[i]=='-') print_message("unknown argument: %s\n", argv[i]);
     }
     if (hostname.buf==NULL || sport==0) {
-        print_message("Usage... %s -h host_name[:port] -p port [-s] [-c] [-i] [-u user] [-f pid_file] [-d] \n", argv[0]);
-        print_message("                 [--conf config_file]  [--cert cert_file] [--key key_file]\n");
-        exit(1);
+        print_message("Usage... %s [-h host_name[:port]] -p client_side_port [-a api_port] [-s] [-c] [-i] [-u user] [-d] \n", argv[0]);
+        print_message("            [--allow allow_file] [--pid pid_file] [--conf config_file]  [--cert cert_file] [--key key_file]\n");
+        sig_term(-1);
     }
     //
     ProxyList = add_tList_node_anchor();
 
     int i = 0;
-    while(hostname.buf[i]!='\0' && hostname.buf[i]!=':') i++;
-    if (hostname.buf[i]==':') {
-        cport = atoi((char*)&(hostname.buf[i+1]));
-        hostname.buf[i] = '\0';
+    if (hostname.buf!=NULL) {
+        while(hostname.buf[i]!='\0' && hostname.buf[i]!=':') i++;
+        if (hostname.buf[i]==':') {
+            cport = atoi((char*)&(hostname.buf[i+1]));
+            hostname.buf[i] = '\0';
+        }
     }
-    else cport = sport;
+    if (cport==0) cport = sport;
 
-    if (pidfile.buf==NULL) copy_s2Buffer(DEFAULT_PID_FILE, &pidfile);
-    PIDFile = (char*)pidfile.buf;
-
-    //
-    // Config File
-    tList* filelist = NULL;
-    if (configfile.buf!=NULL) filelist = read_index_tList_file((char*)configfile.buf, '=');
-    //
-    if (certfile.buf==NULL) {
-        char* cert = get_str_param_tList(filelist, "LTICTR_Server_Cert", DEFAULT_CERT_FILE);
-        copy_s2Buffer(cert, &certfile);
-        free(cert);
-    }
-    if (keyfile.buf==NULL) {
-        char* key  = get_str_param_tList(filelist, "LTICTR_Private_Key", DEFAULT_KEY_FILE);
-        copy_s2Buffer(key, &keyfile);
-        free(key);
-    }
+    if (pidfile.buf!=NULL)   PIDFile     = (char*)pidfile.buf;
+    if (allowfile.buf!=NULL) AllowFile   = (char*)allowfile.buf;
+    if (certfile.buf!=NULL)  TLS_CertPem = (char*)certfile.buf;
+    if (keyfile.buf!=NULL)   TLS_KeyPem  = (char*)keyfile.buf;
 
     //
     // Initialization
     DEBUG_MODE print_message("Start initialization.\n");
-    Log_Type = init_main(DebugMode, filelist);
-    if (Log_Type<0) {
+    LogType = init_main(configfile);
+    if (LogType<0) {
         print_message("Initialization failure.\n");
-        exit(1);
+        sig_term(-1);
     }
+    free_Buffer(&configfile);
+    free_Buffer(&allowfile);
     DEBUG_MODE print_message("Initialization is finished.\n");
 
     //
@@ -139,61 +159,66 @@ int main(int argc, char** argv)
     //
     // PID file
     RootPID = getpid();
-    if (pidfile.buf!=NULL) {
-        FILE*  fp;
-        fp = fopen((char*)pidfile.buf, "w");
-        if (fp!=NULL) {
-            fprintf(fp, "%d", (int)RootPID);
-            fclose(fp);
-        }
+    FILE* fp = fopen((char*)PIDFile, "w");
+    if (fp!=NULL) {
+        fprintf(fp, "%d", (int)RootPID);
+        fclose(fp);
     }
 
     //
     // Change effective user
-    if (username.buf!=NULL) {
+    if (efctvuser.buf!=NULL) {
         int err = -1;
-
-        DEBUG_MODE print_message("Change effective user (%s)．\n", username.buf);
-        if (isdigit(username.buf[0]) || username.buf[0]=='-') {
-            err = seteuid(atoi((char*)username.buf));
+        DEBUG_MODE print_message("Change effective user (%s)．\n", efctvuser.buf);
+        if (isdigit(efctvuser.buf[0]) || efctvuser.buf[0]=='-') {
+            err = seteuid(atoi((char*)efctvuser.buf));
         }
         else {
-            pw = getpwnam((char*)username.buf);
+            pw = getpwnam((char*)efctvuser.buf);
             if (pw!=NULL) err = seteuid(pw->pw_uid);
         }
         if (err==-1) {
-            syslog(Log_Type, "Cannot change effective user (%s): [%s]", username.buf, strerror(errno));
-            DEBUG_MODE print_message("Cannot change effective user (%s).\n", username.buf);
+            DEBUG_MODE print_message("Cannot change effective user (%s).\n", efctvuser.buf);
         }
+        free_Buffer(&efctvuser);
     }
 
     //
     // Network
     // Server API port
-    DEBUG_MODE print_message("Port open for api connection.\n");
-    Mofd = tcp_server_socket(-8001);    // non block socket
-    if (Mofd<0) {
-        syslog(Log_Type, "Open error of the port for api connection: [%s]", strerror(errno));
-        print_message("Open error of the port for api connection.\n");
-        exit(1);
+    if (aport!=0) {
+        DEBUG_MODE print_message("Port open for api connection.\n");
+        Mofd = tcp_server_socket(-aport);    // non block socket
+        if (Mofd<0) {
+            syslog(LogType, "Open error of the port for api connection: [%s]", strerror(errno));
+            print_message("Open error of the port for api connection.\n");
+            sig_term(-1);
+        }
     }
 
     // socket open for client
     DEBUG_MODE print_message("Server port open for client connection.\n");
-    Nofd = tcp_server_socket(-sport);   // non block socket
+    Nofd = tcp_server_socket(-sport);       // non block socket
     if (Nofd<0) {
-        syslog(Log_Type, "Open error of the server port for client connection: [%s]", strerror(errno));
+        syslog(LogType, "Open error of the server port for client connection: [%s]", strerror(errno));
         print_message("Open error of the server port for client connection.\n");
-        exit(1);
+        sig_term(-1);
     }
 
     // for SSL/TLS
-    SSL_CTX* server_ctx = NULL;
-    SSL_CTX* client_ctx = NULL;
-    if (ServerSSL==ON || ClientSSL==ON) {
+    if (ServerSSL==ON || ClientSSL==ON || APIPortSSL==ON) {
         ssl_init();
-        if (ServerSSL==ON) server_ctx = ssl_server_setup((char*)certfile.buf, (char*)keyfile.buf);
-        if (ClientSSL==ON) client_ctx = ssl_client_setup(NULL);
+        if (ServerSSL==ON)  Server_CTX  = ssl_server_setup(TLS_CertPem, TLS_KeyPem);
+        if (ClientSSL==ON)  Client_CTX  = ssl_client_setup(NULL);
+        if (APIPortSSL==ON) APIPort_CTX = ssl_server_setup(TLS_CertPem, TLS_KeyPem);
+    }
+
+    SSL* assl = NULL;
+    if (APIPort_CTX!=NULL) {
+        assl = ssl_client_socket(Aofd, APIPort_CTX, OFF);
+        if (assl==NULL) {
+            DEBUG_MODE print_message("Failure to create SSL socket for API server port. (%d)\n", getpid());
+        }
     }
 
     //
@@ -221,13 +246,13 @@ int main(int argc, char** argv)
 
         //
         if (Sofd>0 && FD_ISSET(Sofd, &mask)) {
-            if (fork()==0) receipt((char*)hostname.buf, cport, server_ctx, client_ctx);
+            if (fork()==0) receipt_child((char*)hostname.buf, cport, Sofd, Client_CTX, Server_CTX, ProxyList);
             close(Sofd);    // don't use socket_close() !
             Sofd = 0;
         }
         //
         if (Aofd>0 && FD_ISSET(Aofd, &mask)) {
-            int ret = api_process(Aofd, NULL, ProxyList);
+            int ret = api_process(Aofd, assl, ProxyList);
             if (ret<0) {
                 socket_close(Aofd);
                 Aofd = 0;
@@ -238,218 +263,118 @@ int main(int argc, char** argv)
 
     // Unreachable
     DEBUG_MODE print_message("Stop main loop.\n");
+    term_main(0);
     //
-    socket_close(Nofd);
-    socket_close(Mofd);
-    //close_all_socket(ProxyList);
-    Sofd = Aofd = 0;
-
-    if (server_ctx!=NULL)  SSL_CTX_free(server_ctx);
-    if (client_ctx!=NULL)  SSL_CTX_free(client_ctx);
-    if (pidfile.buf!=NULL) remove((char*)pidfile.buf);   
-
-    free_Buffer(&hostname);
-    free_Buffer(&username);
-    free_Buffer(&pidfile);
-    free_Buffer(&certfile);
-    free_Buffer(&keyfile);
-    free_Buffer(&configfile);
-
-    del_tList(&filelist);
-    del_tList(&ProxyList);
-
     exit(0);
 }
 
+
+
+int  init_main(Buffer configfile)
+{
+    int logtype = LOG_INFO;
+    //int logtype = NO_SYSLOG;
+
+    openlog("LTICTR JupyterHub Proxy Start.", LOG_PERROR | LOG_PID, LOG_AUTH);
+
+    // config file
+    tList* filelist = NULL;
+    if (configfile.buf!=NULL) {
+        filelist = read_index_tList_file((char*)configfile.buf, '=');
+        //
+        if (filelist!=NULL) {
+            PIDFile        = get_str_param_tList (filelist, LTICTR_PID_FILE,    PIDFile);
+            AllowFile      = get_str_param_tList (filelist, LTICTR_ALLOW_FILE,  AllowFile);
+            TLS_CertPem    = get_str_param_tList (filelist, LTICTR_SERVER_CERT, TLS_CertPem);
+            TLS_KeyPem     = get_str_param_tList (filelist, LTICTR_PRIVATE_KEY, TLS_KeyPem);
+            //
+            Moodle_Host    = get_str_param_tList (filelist, MOODLE_HOST_KEY,    Moodle_Host);
+            Moodle_URL     = get_str_param_tList (filelist, MOODLE_URL_KEY ,    Moodle_URL);
+            Moodle_Token   = get_str_param_tList (filelist, MOODLE_TOKEN_KEY,   Moodle_Token);
+            Moodle_Service = get_str_param_tList (filelist, MOODLE_SERVICE_KEY, Moodle_Service);
+            Moodle_HTTP    = get_str_param_tList (filelist, MOODLE_HTTP_KEY,    Moodle_HTTP);
+            Moodle_Port    = get_int_param_tList (filelist, MOODLE_PORT_KEY,    Moodle_Port);
+            Moodle_DBAns   = get_bool_param_tList(filelist, MOODLE_DBANS_KEY,   Moodle_DBAns);
+            Moodle_TLS     = get_bool_param_tList(filelist, MOODLE_TLS_KEY,     Moodle_TLS);
+
+            if (Moodle_Token[0]=='\0') {
+                DEBUG_MODE print_message("The token used to connect to the Moodle Web Service has not been specified.\n");
+            }
+            del_tList(&filelist);
+        }
+    }
+
+    // 接続許可・禁止ファイルの読み込み
+    AllowList = read_ipaddr_file(AllowFile);
+    if (AllowList!=NULL) {
+        DEBUG_MODE print_message("Readed access allow list\n");
+    }
+    else {
+        DEBUG_MODE print_message("Failure to read access allow list. No access control is performed.\n");
+    }
+
+    init_xml_rpc_header();
+
+    return  logtype;
+}
 
 
 //
-void  receipt(char* hostname, int cport, SSL_CTX* server_ctx, SSL_CTX* client_ctx)
+void  term_main(int code)
 {
-    int    cc, nd;
-    char msg[RECVBUFSZ];
-    fd_set mask;
-    struct timeval timeout;
-
-    Buffer buf   = init_Buffer();   // 受信ボディ
-    tList* lst   = NULL;            // 受信ヘッダ
-    char*  uname = NULL;            // ex. bob
-
-    Sssl = NULL;
-    Cssl = NULL;
-
-    // for Client SSL Connection
-    if (ServerSSL==ON && server_ctx!=NULL) {
-        Sssl = ssl_server_socket(Sofd, server_ctx);
-        if (Sssl==NULL) {
-            sleep(1);
-            Sssl = ssl_server_socket(Sofd, server_ctx);
-            if (Sssl==NULL) {
-                print_message("クライアント用SSLサーバソケットの作成失敗．(%d)\n", getpid());
-                exit(1);
-            }
-        }
-        DEBUG_MODE print_message("クライアント用SSLサーバソケットのオープン．(%d)\n", getpid());
-    }
-    
-    //
-    buf = make_Buffer(RECVBUFSZ);
-    int ret = recv_https_Buffer(Sofd, Sssl, &lst, &buf, 0, NULL, NULL);
-    if (ret<=0) {           // 0 は正常切断
-        del_tList(&lst);
-        free_Buffer(&buf);
-        if (ret<0) {
-            send_https_error(Sofd, Sssl, 400);
-            exit(1);
-        }
-        else {
-            exit(0);
-        }
-    }
-
-    DEBUG_MODE {
-        print_message("\n=== HTTP RECV ===\n");
-        print_tList(stderr, lst);
-        print_message("%s\n", buf.buf);
-    }
-
-    char*  path  = NULL;                            // ex. /api/routes/user/bob
-    get_http_header_method(lst, &path);             // get http command and path
-    uname = get_username_api(path);                 // get user name from path
-    if (path!=NULL) free(path);
-    if (uname==NULL) {
-        del_tList(&lst);
-        free_Buffer(&buf);
-        send_https_error(Sofd, Sssl, 404);
-        exit(1);
-    }
-
-    int csock = 0;
-    tList* pp = strncasecmp_tList(lst, uname, 0, 1);
-    if (pp!=NULL) csock = (int)pp->ldat.id;
-
-
-/*
-    struct sockaddr_in* addr_ptr = (struct sockaddr_in*)&addr;
-    
-    // モジュールの開始処理
-    DEBUG_MODE print_message("モジュールの初期処理．\n");
-    ClientIPaddr_num = get_ipaddr_num_ipv4(addr_ptr->sin_addr);
-    ClientIPaddr     = get_ipaddr_ipv4(addr_ptr->sin_addr);
-    ClientName       = get_hostname_bynum_ipv4(ClientIPaddr_num);
-    syslog(Log_Type, "[%s] session start.\n", ClientIPaddr);
-
-    if (!init_process(Sofd, ClientName)) {
-        syslog(Log_Type, "module start error.");
-        print_message("モジュールの初期処理の失敗．(%d)\n", getpid());
-        exit(1);
-    }
-    DEBUG_MODE print_message("モジュールの初期処理完了．(%d)\n", getpid());
-*/
-
-    // for Server Connection
-    //Cofd = tcp_client_socket(hostname, cport);
-    if (csock<=0) {
-        syslog(Log_Type, "tcp_client_socket() error: [%s]", strerror(errno));
-        print_message("サーバへの接続に失敗．(%d)\n", getpid());
-        exit(1);
-    }
-    if (ClientSSL==ON && client_ctx!=NULL /*&& Sssl!=NULL*/) {
-        Cssl = ssl_client_socket(csock, client_ctx, OFF);
-        if (Cssl==NULL) {
-            DEBUG_MODE print_message("サーバへのSSL接続の失敗．(%d)\n", getpid());
-        }
-    }
-    send_https_Buffer(csock, Cssl, lst, &buf); 
-
-
-
-    int range = Max(Sofd, Cofd) + 1;
-
-    //
-    //do {
-    timeout.tv_sec  = LTICTRPROXY_TIMEOUT;
-    timeout.tv_usec = 0;
-    FD_ZERO(&mask); 
-    FD_SET(Sofd, &mask);
-    FD_SET(Cofd, &mask);
-    nd = select(range, &mask, NULL, NULL, &timeout);
-    //} while (nd<0);
-
-    DEBUG_MODE print_message("通信の中継処理開始．(%d)\n", getpid());
-    while(nd>0 && (FD_ISSET(Cofd, &mask) || FD_ISSET(Sofd, &mask))) {
-        // Client -> Server // fesrv はサーバ
-        if (FD_ISSET(Sofd, &mask)) {
-            memset(msg, 0, RECVBUFSZ);
-            cc = ssl_tcp_recv(Sofd, Sssl, msg, RECVBUFSZ);      // Client から受信
-            if (cc>0) {
-                cc = fe_client(Sofd, Cofd, Sssl, Cssl, msg, cc);     // Server へ転送
-                if (cc<=0) {
-                    if (cc<0) syslog(Log_Type, "error occurred in fe_client().");
-                    break;
-                }
-            }
-            else {
-                if (cc<0) {
-                    print_message("ltictr_proxy: C->S: ");
-                    jbxl_fprint_state(stderr, cc);
-                }
-                break;      // cc==0
-            }
-        }
-
-        // Server -> Client // fesrv はクライアント
-        if (FD_ISSET(Cofd, &mask)) {
-            memset(msg, 0, RECVBUFSZ);
-            cc = ssl_tcp_recv(Cofd, Cssl, msg, RECVBUFSZ);      // Server から受信
-            if (cc>0) {
-                cc = fe_server(Cofd, Sofd, Cssl, Sssl, msg, cc);     // Client へ転送
-                if (cc<=0) {
-                    if (cc<0) syslog(Log_Type, "error occurred in fe_server().");
-                    break;
-                }
-            }
-            else {
-                if (cc<0) {
-                    print_message("ltictr_proxy: S->C: ");
-                    jbxl_fprint_state(stderr, cc);
-                }
-                break;      // cc==0
-            }
-        }
-        // dp {
-        timeout.tv_sec  = LTICTRPROXY_TIMEOUT;
-        timeout.tv_usec = 0;
-        FD_ZERO(&mask); 
-        FD_SET(Sofd, &mask);
-        FD_SET(Cofd, &mask);
-        nd = select(range, &mask, NULL, NULL, &timeout);
-        //} while (nd<0);
-    }
-    DEBUG_MODE print_message("End of communication. (%d)\n", getpid());
-
-    ssl_close(Cssl);
-    ssl_close(Sssl);
-    socket_close(Cofd);
-    Cssl = Sssl = NULL;
-    Cofd = 0;
-
-    syslog(Log_Type, "[%s] session end.", ClientIPaddr);
-
-    // モジュールの終了処理
-    DEBUG_MODE print_message("Termination of the child process. (%d)\n", getpid());
-    if (!term_process(Sofd)) {
-        syslog(Log_Type, "Error of termination of the child process.");
-        print_message("Failure to terminate the child process. (%d)\n", getpid());
-        exit(1);
-    }
-
     socket_close(Sofd);
-    DEBUG_MODE print_message("Termination of child process. (%d)\n", getpid());
+    socket_close(Aofd);
+    socket_close(Nofd);
+    socket_close(Mofd);
+    close_all_socket(ProxyList);
 
-    exit(0);
+    Sofd = Aofd = Nofd = Mofd = 0;
+
+    if (Server_CTX!=NULL)  SSL_CTX_free(Server_CTX);
+    if (Client_CTX!=NULL)  SSL_CTX_free(Client_CTX);
+    if (APIPort_CTX!=NULL) SSL_CTX_free(APIPort_CTX);
+
+    //free_Buffer(&hostname);
+    ////free_Buffer(&efctvuser);
+    //free_Buffer(&pidfile);      // PIDFile
+    //free_Buffer(&certfile);
+    //free_Buffer(&keyfile);
+    ////free_Buffer(&allowfile);  // AllowFile
+    ////free_Buffer(&configfile);
+
+    del_tList(&ProxyList);
+    del_tList(&AllowList);
+
+    //
+    pid_t pid = getpid();
+    if (pid==RootPID) {
+        closelog(); // close syslog 
+        if (PIDFile!=NULL) remove(PIDFile);
+        syslog(LogType, "Shutdown root ltictr_proxy process with code = (%d): [%s]", code, strerror(errno));
+        print_message("Shutdown root ltictr_proxy process with code = (%d): [%s]", code, strerror(errno));
+    }
+    else {
+        DEBUG_MODE print_message("Shutdown child ltictr_proxy process with code = (%d): [%s]", code, strerror(errno));
+    }
+    return;
 }
- 
+
+
+
+void  close_all_socket(tList* lp)
+{
+    if (lp==NULL) return;
+
+    lp = lp->next;
+    while (lp!=NULL) {
+        //if (lp->ldat.id>0) close(lp->ldat.id);
+        if (lp->ldat.id>0) socket_close(lp->ldat.id);
+        lp = lp->next;
+    }
+    
+    return;
+}
+
 
 
 //
@@ -457,23 +382,12 @@ void  receipt(char* hostname, int cport, SSL_CTX* server_ctx, SSL_CTX* client_ct
 //
 void  sig_term(int signal)
 {
-    UNUSED(signal);
-
+    term_main(signal);
+    
     pid_t pid = getpid();
-    if (pid==RootPID) {
-        if (term_main()) DEBUG_MODE print_message("Failure to terminate the program.(%d)\n", getpid());
-    }
-
-    if (Cofd>0) { close(Cofd); Cofd = 0;}
-    if (Sofd>0) { close(Sofd); Sofd = 0;}
-    if (Aofd>0) { close(Aofd); Aofd = 0;}
-    if (Nofd>0) { close(Nofd); Nofd = 0;}
-    if (Mofd>0) { close(Mofd); Mofd = 0;}
-    if (PIDFile!=NULL) remove(PIDFile);
-
-    closelog(); // close syslog 
-    //exit(signal);
-    exit(0);
+    print_message("\nExit program with signal = %d (%d)\n", signal, pid);
+    if (signal<0) exit(-signal);
+    exit(signal);
 }
 
 

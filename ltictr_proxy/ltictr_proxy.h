@@ -28,14 +28,17 @@
 ///////////////////////////////////////////////////////////////////////////////////
 
 int   main(int argc, char** argv);
-//void  receipt(char* hostname, int cport, struct sockaddr addr, SSL_CTX* s_ctx, SSL_CTX* c_ctx);
-void  receipt(char* hostname, int cport, SSL_CTX* s_ctx, SSL_CTX* c_ctx);
+int   init_main(Buffer file);
+void  term_main(int code);
+void  close_all_socket(tList* lp);
+
 void  sig_term(int signal);
 void  sig_child(int signal);
 
-int   server_api(int sock);
-int   send_http_error(int sock, int err);
-int   get_notused_tcp_port(int port);
+
+//int   server_api(int sock);
+//int   send_http_error(int sock, int err);
+//int   get_notused_tcp_port(int port);
 
 ///////////////////////////////////////////////////////////////////////////////////
 

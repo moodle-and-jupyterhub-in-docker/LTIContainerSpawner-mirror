@@ -8,7 +8,7 @@
 
 
 
-int  api_process(int sock, SSL* ssl, tList* lprxy)
+int  api_process(int sock, SSL* ssl, tList* lproxy)
 {
     tList* lst = NULL;             // 受信ヘッダ
     Buffer buf = init_Buffer();    // 受信ボディ
@@ -47,7 +47,7 @@ int  api_process(int sock, SSL* ssl, tList* lprxy)
     // GET
     if (com==HTTP_GET_METHOD) {
         Buffer res = init_Buffer();
-        ret = get_user_api(uname, &res, lprxy);
+        ret = get_user_api(uname, &res, lproxy);
         if (ret==0) {
             send_https_response(sock, ssl, 200, &res);
         }
@@ -60,7 +60,7 @@ int  api_process(int sock, SSL* ssl, tList* lprxy)
     }
     // POST
     else if (com==HTTP_POST_METHOD) {
-        ret = add_user_api(uname, buf, lprxy);
+        ret = add_user_api(uname, buf, lproxy);
         if (ret==0) {
             send_https_response(sock, ssl, 201, NULL);
         }
@@ -71,7 +71,7 @@ int  api_process(int sock, SSL* ssl, tList* lprxy)
     }
     // DELETE
     else if (com==HTTP_DELETE_METHOD) {
-        ret = del_user_api(uname, lprxy);
+        ret = del_user_api(uname, lproxy);
         if (ret==0) {
             send_https_response(sock, ssl, 204, NULL);
         }

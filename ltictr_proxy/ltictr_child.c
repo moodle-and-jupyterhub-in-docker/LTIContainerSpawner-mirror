@@ -7,10 +7,10 @@
 */
 
 
-#include "ltictr_nbws.h"
+#include "ltictr_child.h"
 
-int      Logtype;
-tList*   Allow_IPaddr = NULL;
+//int      Logtype;
+//tList*   Allow_IPaddr = NULL;
 
 tList*   HTTP_Header  = NULL;
 tList*   HTTP_Host    = NULL;
@@ -19,30 +19,19 @@ tList*   HTTP_Data    = NULL;
 
 char*    SessionInfo  = NULL;
 
-tList*   flist        = NULL;
 
-#define  MOODLE_HOST_KEY     "Moodle_Host"
-#define  MOODLE_PORT_KEY     "Moodle_Port"
-#define  MOODLE_URL_KEY      "Moodle_URL"
-#define  MOODLE_TOKEN_KEY    "Moodle_Token"
-#define  MOODLE_SERVICE_KEY  "Moodle_Servide"
-#define  MOODLE_DBANS_KEY    "Moodle_DBAns"
-#define  MOODLE_TLS_KEY      "Moodle_TLS"
-#define  MOODLE_HTTP_KEY     "Moodle_HTTP"
+extern tList*   AllowList;
 
-#define  NO_SYSLOG          999
-#define  ALLOW_FILE         "/usr/local/etc/ltictr_allow.list"
-#define  TIME_OUT           600
+extern char*    Moodle_Host;
+extern char*    Moodle_URL;
+extern char*    Moodle_Token;
+extern char*    Moodle_Service;
+extern char*    Moodle_HTTP;
+extern int      Moodle_Port;
+extern int      Moodle_DBAns;
+extern int      Moodle_TLS;
 
-
-char*    Moodle_Host    = "localhost";
-char*    Moodle_URL     = "/webservice/xmlrpc/server.php";
-char*    Moodle_Token   = "";
-char*    Moodle_Service = "mod_lticontainer_write_nbdata";
-char*    Moodle_HTTP    = "1.1";
-int      Moodle_Port    = 80;
-int      Moodle_DBAns   = FALSE;
-int      Moodle_TLS     = FALSE;
+#define  LTICTRPROXY_TIMEOUT   900       // 15m
 
 
 
@@ -375,70 +364,6 @@ void  init_xml_rpc_header(void)
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //
-// 全プロセスの共通初期化処理
-//
-int  init_main(int mode, tList* flist)
-{
-    //if (flist!=NULL) print_tTree(stderr, flist, "    ");
-
-    //openlog("FEServer Jupyter WebScoket Plugin", LOG_PERROR|LOG_PID, LOG_AUTH);
-    //Logtype = LOG_INFO;
-    Logtype = NO_SYSLOG;
-    DebugMode = mode;
-
-    // 接続許可・禁止ファイルの読み込み
-    //DEBUG_MODE print_message("アクセス制御ファイルの読み込み．\n");
-    Allow_IPaddr = read_ipaddr_file(ALLOW_FILE);
-    if (Allow_IPaddr!=NULL) {
-        //syslog(Logtype, "Readed Access Allow tList.");
-        //DEBUG_MODE print_message("アクセス許可ファイルの読み込み完了．\n");
-        //DEBUG_MODE print_address_in_list(stderr, Allow_IPaddr);
-    }
-    else {
-        syslog(Logtype, "Cannot read Access Contorol tList.");
-        DEBUG_MODE print_message("アクセス制御ファイルの読み込み失敗．アクセス制御は行なわれません．\n");
-    }
-
-    // config file
-    Moodle_Host    = get_str_param_tList (flist, MOODLE_HOST_KEY,    Moodle_Host);
-    Moodle_URL     = get_str_param_tList (flist, MOODLE_URL_KEY ,    Moodle_URL);
-    Moodle_Token   = get_str_param_tList (flist, MOODLE_TOKEN_KEY,   Moodle_Token);
-    Moodle_Service = get_str_param_tList (flist, MOODLE_SERVICE_KEY, Moodle_Service);
-    Moodle_HTTP    = get_str_param_tList (flist, MOODLE_HTTP_KEY,    Moodle_HTTP);
-    Moodle_Port    = get_int_param_tList (flist, MOODLE_PORT_KEY,    Moodle_Port);
-    Moodle_DBAns   = get_bool_param_tList(flist, MOODLE_DBANS_KEY,   Moodle_DBAns);
-    Moodle_TLS     = get_bool_param_tList(flist, MOODLE_TLS_KEY,     Moodle_TLS);
-
-    if (Moodle_Token[0]=='\0') {
-        DEBUG_MODE print_message("Moodle Web Service に接続するためのトークンが指定されていません．\n");
-    }
-
-    init_xml_rpc_header();
-
-    return  Logtype;
-}
-
-
-
-//
-// 全プロセスの共通終了処理
-//
-int  term_main(void)
-{
-    del_tList(&HTTP_Header);
-
-    free(Moodle_Host);
-    free(Moodle_URL);
-    free(Moodle_Token);
-    free(Moodle_Service);
-    free(Moodle_HTTP);
-
-    return 0;
-}
-
-
-
-//
 // プロセス毎の初期化処理
 //
 int  init_process(int dummy, char* client)
@@ -446,16 +371,16 @@ int  init_process(int dummy, char* client)
     UNUSED(dummy);
 
     //EBUG_MODE print_message("接続許可・禁止の確認．\n");
-    if (Allow_IPaddr!=NULL) {
+    if (AllowList!=NULL) {
         unsigned char* ip_num = get_ipaddr_byname_num(client, AF_INET);
         char* client_ip = get_ipaddr_byname(client, AF_INET);
 
-        if (is_host_in_list(Allow_IPaddr, ip_num, client)) {
+        if (is_host_in_list(AllowList, ip_num, client)) {
             //DEBUG_MODE print_message("[%s] が許可ファイルにありました．\n", client_ip);
         }
         else {
-            syslog(Logtype, "[%s] is access denied by AllowtList.", client_ip);
-            DEBUG_MODE print_message("[%s] は許可ファイルに載っていません．\n", client_ip);
+            //syslog(Logtype, "[%s] is access denied by AllowtList.", client_ip);
+            DEBUG_MODE print_message("[%s] is not in the allow list. \n", client_ip);
             return FALSE;
         }
     }
@@ -473,7 +398,7 @@ int  term_process(int dummy)
 {
     UNUSED(dummy);
 
-    del_all_tList(&Allow_IPaddr);
+    del_all_tList(&AllowList);
 
     if (SessionInfo!=NULL) free(SessionInfo);
     SessionInfo = NULL;
@@ -587,8 +512,8 @@ int   fe_client(int dummy1, int cofd, SSL* dummy2, SSL* ssl, char* mesg, int cc)
     UNUSED(dummy1);
     UNUSED(dummy2);
 
-    //print_message("\nCLIENT +++++++++++++++++++++++++++++++++++ %d\n", getpid());
-    //print_message("%s\n",mesg);
+    print_message("\nCLIENT +++++++++++++++++++++++++++++++++++ %d\n", getpid());
+    print_message("%s\n",mesg);
 
     //////////////////////////////////////////////
     cc = ssl_tcp_send(cofd, ssl, mesg, cc);
@@ -732,4 +657,285 @@ int   fe_client(int dummy1, int cofd, SSL* dummy2, SSL* ssl, char* mesg, int cc)
     //
     return cc;
 }
+
+
+
+//
+void  receipt_child(char* hostname, int cport, int ssock, SSL_CTX* client_ctx, SSL_CTX* server_ctx, tList* lproxy)
+{
+    int    cc, nd;
+    char msg[RECVBUFSZ];
+    fd_set mask;
+    struct timeval timeout;
+
+    Buffer buf   = init_Buffer();   // 受信ボディ
+    tList* hdr   = NULL;            // 受信ヘッダ
+    char*  uname = NULL;            // ex. bob
+
+    char*  cproto = NULL;
+    char*  sproto = NULL;
+
+    SSL* sssl = NULL;
+    SSL* cssl = NULL;
+    
+
+    // for Client SSL Connection
+    if (server_ctx!=NULL) {
+        sproto = dup_str("https");
+        sssl = ssl_server_socket(ssock, server_ctx);
+        if (sssl==NULL) {
+            sleep(1);
+            sssl = ssl_server_socket(ssock, server_ctx);
+            if (sssl==NULL) {
+                free(sproto);
+                print_message("Failure to create the client socket. (%d)\n", getpid());
+                //exit(1);
+                sig_term(-1);
+            }
+        }
+        DEBUG_MODE print_message("Opened socket for SSL server. (%d)\n", getpid());
+    }
+    else sproto = dup_str("http");
+    
+    //
+    buf = make_Buffer(RECVBUFSZ);
+    int ret = recv_https_Buffer(ssock, sssl, &hdr, &buf, 0, NULL, NULL);
+    if (ret<=0) {           // 0 は正常切断
+        del_tList(&hdr);
+        free_Buffer(&buf);
+        if (ret<0) {
+            send_https_error(ssock, sssl, 400);
+            free(sproto);
+            sig_term(-1);
+        }
+        else {
+            sig_term(0);
+        }
+    }
+
+    DEBUG_MODE {
+        print_message("\n=== HTTP RECV ===\n");
+        print_tList(stderr, hdr);
+        print_message("%s\n", buf.buf);
+    }
+
+    char*  path  = NULL;                                // ex. /hub/lti/launch
+    get_http_header_method(hdr, &path);       // get http command and path
+    uname = get_https_username(path);                   // get user name from path
+    if (path!=NULL) free(path);
+    if (uname==NULL) {
+        del_tList(&hdr);
+        free_Buffer(&buf);
+        send_https_error(ssock, sssl, 404);
+        exit(1);
+    }
+
+    int csock = 0;
+    ret = 0;
+    tList* lp = strncasecmp_tList(lproxy, uname, 0, 1);
+    if (lp!=NULL) {
+        csock = (int)lp->ldat.id;
+        if (csock<=0) {
+            print_message("socket for %s is invalid.\n", uname);
+            //
+            char* hp = (char*)lp->ldat.val.buf + lp->ldat.val.vldsz;
+            while(*hp!=':') hp--;
+            char* hname = dup_str(hp + 1);
+            csock = tcp_client_socket(hname, lp->ldat.lv);
+            free(hname);
+            //
+            if (csock>0) {
+                char* lasttime = get_local_timestamp(time(0), "%Y-%b-%dT%H:%M:%SZ");
+                lp->ldat.id = csock; 
+                if (lp->ldat.ptr!=NULL) free(lp->ldat.ptr);
+                lp->ldat.ptr = lasttime;
+                lp->ldat.sz  = strlen(lasttime) + 1;
+            }
+            else ret = 500;
+        }
+    }
+    // リストに無い
+    else {
+        csock = tcp_client_socket(hostname, cport);
+        if (csock>0) {
+            char* lasttime = get_local_timestamp(time(0), "%Y-%b-%dT%H:%M:%SZ");
+            Buffer hnm = make_Buffer_str(cproto);
+            cat_s2Buffer("://", &hnm);
+            cat_s2Buffer(hostname, &hnm);
+            tList* end = find_tList_end(lproxy);
+            add_tList_node_bystr(end, csock, cport, uname, (char*)hnm.buf, lasttime, strlen(lasttime)+1);
+            free(lasttime);
+            free_Buffer(&hnm);
+        }
+        else ret = 500;
+    }
+
+    // error handling
+    if (ret>0) {
+        free(uname);
+        del_tList(&hdr);
+        free_Buffer(&buf);
+        send_https_error(ssock, sssl, ret);
+        exit(1);
+    }
+
+
+/*
+    struct sockaddr_in* addr_ptr = (struct sockaddr_in*)&addr;
+    
+    // モジュールの開始処理
+    DEBUG_MODE print_message("モジュールの初期処理．\n");
+    ClientIPaddr_num = get_ipaddr_num_ipv4(addr_ptr->sin_addr);
+    ClientIPaddr     = get_ipaddr_ipv4(addr_ptr->sin_addr);
+    ClientName       = get_hostname_bynum_ipv4(ClientIPaddr_num);
+    syslog(Log_Type, "[%s] session start.\n", ClientIPaddr);
+
+    if (!init_process(ssock, ClientName)) {
+        syslog(Log_Type, "module start error.");
+        print_message("モジュールの初期処理の失敗．(%d)\n", getpid());
+        exit(1);
+    }
+    DEBUG_MODE print_message("モジュールの初期処理完了．(%d)\n", getpid());
+*/
+
+    // for Server Connection
+    //Cofd = tcp_client_socket(hostname, cport);
+    //if (csock<=0) {
+    //    syslog(Log_Type, "tcp_client_socket() error: [%s]", strerror(errno));
+    //    print_message("サーバへの接続に失敗．(%d)\n", getpid());
+    //    exit(1);
+    //}
+    if (client_ctx!=NULL) {
+        cproto = dup_str("https");
+        cssl = ssl_client_socket(csock, client_ctx, OFF);
+        if (cssl==NULL) {
+            DEBUG_MODE print_message("サーバへのSSL接続の失敗．(%d)\n", getpid());
+        }
+    }
+
+    
+    tList* ph = search_key_tList(hdr, "Host", 1);
+    add_protocol_header(ph, "X-Forwarded-Proto", "https");
+
+    Buffer snd = rebuild_http_Buffer(hdr, &buf);
+
+    cc = fe_client(ssock, csock, sssl, cssl, (char*)snd.buf, snd.vldsz);     // Server へ転送
+    if (cc<=0) {
+        //if (cc<0) syslog(Log_Type, "error occurred in fe_client().");
+    }
+    del_tList(&hdr);
+    free_Buffer(&buf);
+
+//    set_http_host_header(hdr, "127.0.0.1", 8081);
+//    cc = send_https_Buffer(csock, cssl, hdr, &buf); 
+
+/*
+   cc = ssl_tcp_recv(ssock, sssl, msg, RECVBUFSZ);      // Client から受信
+   if (cc>0) {
+        cc = fe_client(ssock, csock, sssl, cssl, msg, cc);     // Server へ転送
+        if (cc<=0) {
+            if (cc<0) syslog(Log_Type, "error occurred in fe_client().");
+        }
+    }
+    else {
+       if (cc<0) {
+           print_message("ltictr_proxy: C->S: ");
+           jbxl_fprint_state(stderr, cc);
+       }
+    }
+    //cc = ssl_tcp_send(csock, cssl, msg, RECVBUFSZ);      // Client から受信
+*/
+
+
+
+
+    int range = Max(ssock, csock) + 1;
+
+    //
+    //do {
+    timeout.tv_sec  = LTICTRPROXY_TIMEOUT;
+    timeout.tv_usec = 0;
+    FD_ZERO(&mask); 
+    FD_SET(ssock,  &mask);
+    FD_SET(csock, &mask);
+    nd = select(range, &mask, NULL, NULL, &timeout);
+    //} while (nd<0);
+
+    DEBUG_MODE print_message("通信の中継処理開始．(%d)\n", getpid());
+    while(nd>0 && (FD_ISSET(csock, &mask) || FD_ISSET(ssock, &mask))) {
+        // Client -> Server // fesrv はサーバ
+print_message("===> S socket = %d\n", ssock);
+        if (FD_ISSET(ssock, &mask)) {
+            cc = ssl_tcp_recv(ssock, sssl, msg, RECVBUFSZ);      // Client から受信
+            if (cc>0) {
+print_message("\nC -> S (%d)\n", getpid());
+print_message(msg);
+                cc = fe_client(ssock, csock, sssl, cssl, msg, cc);     // Server へ転送
+                if (cc<=0) {
+                    //if (cc<0) syslog(Log_Type, "error occurred in fe_client().");
+                    break;
+                }
+            }
+            else {
+                if (cc<0) {
+                    print_message("ltictr_proxy: C->S: ");
+                    jbxl_fprint_state(stderr, cc);
+                }
+                break;      // cc==0
+            }
+        }
+
+        // Server -> Client // fesrv はクライアント
+        if (FD_ISSET(csock, &mask)) {
+            cc = ssl_tcp_recv(csock, cssl, msg, RECVBUFSZ);      // Server から受信
+print_message("\nS -> C (%d)\n", getpid());
+print_message(msg);
+            if (cc>0) {
+                cc = fe_server(csock, ssock, cssl, sssl, msg, cc);     // Client へ転送
+                if (cc<=0) {
+                    //if (cc<0) syslog(Log_Type, "error occurred in fe_server().");
+                    break;
+                }
+            }
+            else {
+                if (cc<0) {
+                    print_message("ltictr_proxy: S->C: ");
+                    jbxl_fprint_state(stderr, cc);
+                }
+                break;      // cc==0
+            }
+        }
+        // dp {
+        timeout.tv_sec  = LTICTRPROXY_TIMEOUT;
+        timeout.tv_usec = 0;
+        FD_ZERO(&mask); 
+        FD_SET(ssock,  &mask);
+        FD_SET(csock, &mask);
+        nd = select(range, &mask, NULL, NULL, &timeout);
+        //} while (nd<0);
+    }
+    DEBUG_MODE print_message("End of communication. (%d)\n", getpid());
+
+    ssl_close(cssl);
+    ssl_close(sssl);
+    socket_close(csock);
+    cssl = sssl = NULL;
+    //Cofd = 0;
+
+    //syslog(Log_Type, "[%s] session end.", ClientIPaddr);
+
+    // モジュールの終了処理
+    DEBUG_MODE print_message("Termination of the child process. (%d)\n", getpid());
+    if (!term_process(ssock)) {
+        //syslog(Log_Type, "Error of termination of the child process.");
+        print_message("Failure to terminate the child process. (%d)\n", getpid());
+        exit(1);
+    }
+
+    socket_close(ssock);
+    DEBUG_MODE print_message("Termination of child process. (%d)\n", getpid());
+
+    exit(0);
+}
+ 
 

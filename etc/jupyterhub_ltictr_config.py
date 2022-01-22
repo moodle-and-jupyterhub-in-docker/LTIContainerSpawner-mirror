@@ -309,7 +309,6 @@ c.JupyterHub.db_url = 'sqlite:////var/lib/jupyterhub/jupyterhub.sqlite'
 #  
 #  jupyterhub &>> /var/log/jupyterhub.log
 #  Default: ''
-c.JupyterHub.extra_log_file = '/var/log/jupyterhub.log'
 
 ## Extra log handlers to set on JupyterHub logger
 #  Default: []

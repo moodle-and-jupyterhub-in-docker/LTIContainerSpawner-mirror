@@ -2,9 +2,11 @@
 #include "ltictr_https.h"
 
 
-#define  LTICTR_MIN_PORT    48000
-#define  LTICTR_MAX_PORT    50000
+//#define  LTICTR_MIN_PORT    48000
+//#define  LTICTR_MAX_PORT    50000
 
+#define  LTICTR_HTTPS_HUB   "/hub"
+#define  LTICTR_HTTPS_USER  "/hub"
 
 
 /*
@@ -153,3 +155,19 @@ int  get_tcp_socket(int* port)
 }
 */
           
+
+char*  get_https_username(char* path)
+{
+    if (path==NULL) return NULL;
+
+    char* str = NULL;
+    
+    if (ex_strcmp(LTICTR_HTTPS_HUB, path)) {
+        str = dup_str((char*)"/");
+    }
+    else if (ex_strcmp(LTICTR_HTTPS_USER, path)) {
+        str = NULL;
+    }
+
+    return str;
+}
