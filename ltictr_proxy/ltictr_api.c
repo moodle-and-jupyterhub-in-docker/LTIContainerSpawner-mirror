@@ -38,7 +38,8 @@ int  api_process(int sock, SSL* ssl, tList* lproxy)
     if (path!=NULL) free(path);
     if (uname==NULL) {
         free_Buffer(&buf);
-        send_https_error(sock, ssl, 404);
+        if (com==HTTP_UNKNOWN_METHOD) send_https_error(sock, ssl, 400);
+        else                          send_https_error(sock, ssl, 404);
         return -1;
     }
 

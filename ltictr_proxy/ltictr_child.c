@@ -1,156 +1,25 @@
 /* vi: set tabstop=4 nocindent noautoindent: */
 
-/*  
-    Front End Server Plugin for  Moodle & Jupyter Notebook Web Socket
-        
-                by Fumi.Iseki '22 01/16  v1.1.0  BSD License.
-*/
-
 
 #include "ltictr_child.h"
+#include "ltictr_signal.h"
 
-//int      Logtype;
-//tList*   Allow_IPaddr = NULL;
 
-tList*   HTTP_Header  = NULL;
-tList*   HTTP_Host    = NULL;
-tList*   HTTP_Length  = NULL;
-tList*   HTTP_Data    = NULL;
+
+#define  LTICTR_TIMEOUT    900       // 15m
+
+#define  SESSION_ID_KEY    "session_id="
+#define  SESSION_INFO_KEY  "lms_sessioninfo="           // Instance id, LTI id
+
 
 char*    SessionInfo  = NULL;
 
-
-extern tList*   AllowList;
-
-extern char*    Moodle_Host;
-extern char*    Moodle_URL;
-extern char*    Moodle_Token;
-extern char*    Moodle_Service;
-extern char*    Moodle_HTTP;
-extern int      Moodle_Port;
-extern int      Moodle_DBAns;
-extern int      Moodle_TLS;
-
-#define  LTICTRPROXY_TIMEOUT   900       // 15m
-
-
-
-///////////////////////////////////////////////////////////////////////
-// Web Socket Data
-
-/*
-void  print_buf(FILE* fp, unsigned char* buf, int size)
-{
-    int i;
-    for(i=0; i<size; i++) {
-        fprintf(fp, "%02x ", buf[i]);
-        if (i%8==7) fprintf(fp, "\n");
-    }
-    fprintf(fp, "\n");
-    fflush(fp);
-}
-*/
-
-
-tJson*  ws_json(Buffer* buf, char* mesg, int cc)
-{
-    tJson* json = NULL;
-
-    unsigned char* pp = NULL;
-    int pos = 0, mask, i;
-    long int len = 0;
-    
-    //
-    if (buf->state==1) {                // continue state
-        cat_b2Buffer(mesg, buf, cc);
-    }
-    else {
-        *buf = set_Buffer(mesg, cc);
-    }
-    pp = buf->buf;
-
-    //unsigned char hd1 = pp[0] >> 4;
-    //unsigned char hd2 = pp[0] & 0x0f;
-    //if ((hd1==0x00 || hd1==0x08) && (hd2==0x00 || hd2==0x01 || hd2==0x02)) {
-
-    // 非断片化のテキストのみサポート
-    if (*pp==0x81) {
-        mask = (int)(pp[1] >> 7);
-        len  = (long int)(pp[1] & 0x7f);
-        pos  = 2;
-        if (len==126) {
-            len = (long int)pp[2]*256 + (long int)pp[3];
-            pos = 4;
-        }
-        else if (len==127) {
-            len = (long int)pp[2];
-            for(i=3; i<10; i++) {
-                len = len*256 + (long int)pp[i];
-                pos = 10;
-            }
-        }
-
-        if (buf->vldsz>=pos+len+mask*4) {
-            if (mask==1) {
-                unsigned char* pm = &(pp[pos]);
-                pos += 4;
-                for (i=0; i<len; i++) {
-                    pp[pos+i] = pp[pos+i] ^ pm[i%4];
-                }
-            }
-
-            //print_message("%s\n",&(pp[pos]));
-            if (pp[pos]=='{') {
-                pp[pos+len] = '\0';
-                json = json_parse((char*)&(pp[pos]), 0);
-            }
-            buf->state = 0;
-        }
-        else {
-            buf->state = 1;
-        }
-    }
-    else {
-        buf->state = 0;
-    }
-
-    return json;
-}
-
-
-
-tJson*  ws_json_client(char* mesg, int cc)
-{
-    static Buffer buf;
-
-    tJson* json = ws_json(&buf, mesg, cc);
-    if (buf.state==0) {
-        free_Buffer(&buf);
-        buf.state = 0;
-    }
-    return json;
-}
-
- 
-tJson*  ws_json_server(char* mesg, int cc)
-{
-    static Buffer buf;
-
-    tJson* json = ws_json(&buf, mesg, cc);
-    if (buf.state==0) {
-        free_Buffer(&buf);
-        buf.state = 0;
-    }
-    return json;
-}
-
+extern tList* AllowList;
 
 
 ///////////////////////////////////////////////////////////////////////
 // get information from HTTP
 
-#define  SESSION_ID_KEY    "session_id="
-#define  SESSION_INFO_KEY  "lms_sessioninfo="           // Instance id, LTI id
 
 
 //
@@ -213,6 +82,7 @@ char*  get_info_from_sessioninfo(char* mesg)
 }
 
 
+
 //
 // クライアント（Webブラウザ）のクッキーから コースIDとLTIのインスタンスID を取り出す．
 // 要 free
@@ -240,123 +110,6 @@ char*  get_info_from_cookie(char* mesg)
     free(pl);
 
     return ssninfo;
-}
-
-
-
-///////////////////////////////////////////////////////////////////////
-// tools
-
-//
-// JSON データのノード値の文字列を返す．
-// "" または '' で囲まれている場合は，その内部のデータ（"", ''の中味）の返す．
-// 要 free
-//
-char*  get_string_from_json(tJson* json)
-{
-    if (json==NULL) return NULL;
-
-    char* str = NULL;
-    char* pp  = (char*)json->ldat.val.buf;
-
-    if (pp!=NULL && json->ldat.lv!=JSON_VALUE_ARRAY) {
-        if (*pp=='\"' || *pp=='\'') {
-            char* pt = (char*)&(json->ldat.val.buf[json->ldat.val.vldsz-1]);
-            if (*pp==*pt) {
-                pp++;
-                char bkup = *pt;
-                *pt = '\0';
-                str = dup_str(pp);
-                *pt = bkup;
-            }
-        }
-    }
-    else {
-        str = dup_str(pp);
-    }
-
-    return str;
-}
-
-
-
-///////////////////////////////////////////////////////////////////////
-// send data to Moodle Web Service
-
-void  send_data_server()
-{
-    int sock = tcp_client_socket(Moodle_Host, Moodle_Port);
-    if (sock<0) {
-        print_message("ltictr_nbws: Connect to %s %d: ", Moodle_Host, Moodle_Port);
-        jbxl_fprint_state(stderr, sock);
-        return;
-    }
-    SSL_CTX* ctx = NULL;
-    SSL* ssl     = NULL;
-
-    if (Moodle_TLS) {
-        ctx = ssl_client_setup(NULL);
-        ssl = ssl_client_socket(sock, ctx, OFF);
-    }
-
-    DEBUG_MODE print_tList(stderr, HTTP_Header);
-    send_https_header(sock, ssl, HTTP_Header, ON);
-    if (Moodle_DBAns) {
-        char ans[RECVBUFSZ];
-        ssl_tcp_recv(sock, ssl, ans, RECVBUFSZ-1);
-        print_message("%s\n", ans);
-    }
-
-    if (Moodle_TLS) {
-        if (ssl!=NULL) ssl_close(ssl);
-        SSL_CTX_free(ctx);
-    }
-    socket_close(sock);
-
-    return;
-}
-
-
-void  post_xml_server(struct ws_info* info)
-{
-    tXML* xml = NULL;
-    xml = xml_rpc_add_member(xml, "host",     info->host, "");
-    xml = xml_rpc_add_member(xml, "inst_id",  info->inst_id, "");
-    xml = xml_rpc_add_member(xml, "lti_id",   info->lti_id, "");
-    xml = xml_rpc_add_member(xml, "session",  info->session, "");
-    xml = xml_rpc_add_member(xml, "message",  info->message, "");
-    xml = xml_rpc_add_member(xml, "status",   info->status, "");
-    xml = xml_rpc_add_member(xml, "username", info->username, "");
-    xml = xml_rpc_add_member(xml, "cell_id",  info->cell_id, "");
-    xml = xml_rpc_add_member(xml, "tags",     info->tags, "");
-    xml = xml_rpc_add_member(xml, "date",     info->date, "");
-    xml = xml_rpc_end_member(xml);
-    
-    Buffer buf = xml_rpc_request_pack(Moodle_Service, xml);
-    copy_i2Buffer((int)buf.vldsz, &(HTTP_Length->ldat.val));
-    copy_Buffer(&buf, &(HTTP_Data->ldat.val));
-
-    send_data_server();
-    free_Buffer(&buf);
-    del_xml(&xml);
-}
-
-
-void  init_xml_rpc_header(void)
-{
-    char url[LMESG];
-    snprintf(url, LMESG-1, "POST %s?wstoken=%s HTTP/%s", Moodle_URL, Moodle_Token, Moodle_HTTP);
-
-    tList* pp = NULL;
-    pp = HTTP_Header = add_tList_node_str(pp, HDLIST_FIRST_LINE_KEY, url);
-    pp               = add_tList_node_str(pp, "Host", Moodle_Host);
-    pp               = add_tList_node_str(pp, "Content-Type", "text/html");
-    pp = HTTP_Length = add_tList_node_str(pp, "Content-Length", "");
-    pp               = add_tList_node_str(pp, "Connection", "close");
-    pp               = add_tList_node_str(pp, HDLIST_END_KEY, "");
-    pp = HTTP_Data   = add_tList_node_str(pp, HDLIST_CONTENTS_KEY,  "");
-
-    return;
 }
 
 
@@ -482,7 +235,7 @@ int   fe_server(int dummy1, int sofd, SSL* dummy2, SSL* ssl, char* mesg, int cc)
                     if (info.session!=NULL) {
                         info.message = get_string_from_json(find_key_sister_json(temp, "msg_id"));
                         info.host    = host;
-                        post_xml_server(&info);
+                        post_xmlrpc_server(&info);
                         //
                         if (info.message!=NULL) free(info.message);
                         free(info.session);
@@ -552,7 +305,7 @@ int   fe_client(int dummy1, int cofd, SSL* dummy2, SSL* ssl, char* mesg, int cc)
                 info.lti_id  = pt;
                 info.session = sessionid;
                 //
-                post_xml_server(&info);
+                post_xmlrpc_server(&info);
                 //
                 free(ssninfo);
                 free(sessionid);
@@ -642,7 +395,7 @@ int   fe_client(int dummy1, int cofd, SSL* dummy2, SSL* ssl, char* mesg, int cc)
                 info.date     = get_string_from_json(find_key_sister_json(temp, "date"));
                 info.message  = get_string_from_json(find_key_sister_json(temp, "msg_id"));
                 info.host     = host;
-                post_xml_server(&info);
+                post_xmlrpc_server(&info);
                 //
                 if (info.message!=NULL) free(info.message);
                 if (info.date   !=NULL) free(info.date);
@@ -853,7 +606,7 @@ void  receipt_child(char* hostname, int cport, int ssock, SSL_CTX* client_ctx, S
 
     //
     //do {
-    timeout.tv_sec  = LTICTRPROXY_TIMEOUT;
+    timeout.tv_sec  = LTICTR_TIMEOUT;
     timeout.tv_usec = 0;
     FD_ZERO(&mask); 
     FD_SET(ssock,  &mask);
@@ -906,7 +659,7 @@ print_message(msg);
             }
         }
         // dp {
-        timeout.tv_sec  = LTICTRPROXY_TIMEOUT;
+        timeout.tv_sec  = LTICTR_TIMEOUT;
         timeout.tv_usec = 0;
         FD_ZERO(&mask); 
         FD_SET(ssock,  &mask);

@@ -313,7 +313,7 @@ int  init_main(Buffer configfile)
         DEBUG_MODE print_message("Failure to read access allow list. No access control is performed.\n");
     }
 
-    init_xml_rpc_header();
+    init_xmlrpc_header();
 
     return  logtype;
 }
