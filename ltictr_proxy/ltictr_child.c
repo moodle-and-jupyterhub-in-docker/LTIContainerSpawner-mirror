@@ -366,7 +366,7 @@ print_message("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
 //
-void  receipt_child(char* hostname, int cport, int ssock, SSL_CTX* client_ctx, SSL_CTX* server_ctx, tList* lproxy)
+void  receipt_child(int ssock, SSL_CTX* client_ctx, SSL_CTX* server_ctx, tList* lproxy)
 {
     int    cc, nd;
     fd_set mask;
@@ -420,28 +420,16 @@ void  receipt_child(char* hostname, int cport, int ssock, SSL_CTX* client_ctx, S
     }
 
     int http_com;
-    int csock = get_proxy_socket(hdr, &http_com, hostname, cport, ClientSSL, lproxy);
+    int csock = get_proxy_socket(hdr, &http_com, lproxy);
     if (csock<=0) {
         free(sproto);
         del_tList(&hdr);
         free_Buffer(&buf);
-        send_https_error(ssock, sssl, -ret);
+        send_https_error(ssock, sssl, 500);
         DEBUG_MODE print_message("Failure to get proxy client socket. (%d)\n", getpid());
         sig_term(-1);
     }
-    if (ex_strcmp("https:", (char*)hdr->ldat.val.buf)) {
-        ClientSSL = ON;
-        //cproto = dup_str("https");
-        cssl = ssl_client_socket(csock, client_ctx, OFF);
-        if (cssl==NULL) {
-            DEBUG_MODE print_message("Failure to connect to server SSL port. (%d)\n", getpid());
-            sig_term(-1);
-        }
-    }
-    else {
-        ClientSSL = OFF;
-        //cproto = dup_str("http");
-    }
+    cssl = get_proxy_ssl(csock, hdr, client_ctx);
     
     // データ送信
     cc = send_server(csock, cssl, hdr, buf, http_com, sproto); 
@@ -461,6 +449,7 @@ void  receipt_child(char* hostname, int cport, int ssock, SSL_CTX* client_ctx, S
     nd = select(range, &mask, NULL, NULL, &timeout);
     //} while (nd<0);
 
+    // Main Loop
     DEBUG_MODE print_message("Child Proxy Loop(%d)\n", getpid());
     while(nd>0 && (FD_ISSET(csock, &mask) || FD_ISSET(ssock, &mask))) {
         // Client -> Server // ltictr_proxy はサーバ
@@ -472,7 +461,9 @@ void  receipt_child(char* hostname, int cport, int ssock, SSL_CTX* client_ctx, S
                     print_tList(stderr, hdr);
                     //print_message("%s\n", (char*)buf.buf);
                 }
-                http_com = get_http_header_method(hdr, NULL);
+                csock = get_proxy_socket(hdr, &http_com, lproxy);
+                cssl  = get_proxy_ssl(csock, hdr, client_ctx);
+                //http_com = get_http_header_method(hdr, NULL);
                 cc = send_server(csock, cssl, hdr, buf, http_com, sproto);     // Server へ転送
                 if (cc<=0) {
                     //if (cc<0) syslog(Log_Type, "error occurred in fe_client().");
@@ -497,7 +488,7 @@ void  receipt_child(char* hostname, int cport, int ssock, SSL_CTX* client_ctx, S
                     print_tList(stderr, hdr);
                     //print_message("%s\n", (char*)buf.buf);
                 }
-                http_com = get_http_header_method(hdr, NULL);
+                http_com = get_http_header_method(hdr);
                 cc = send_client(ssock, sssl, hdr, buf, http_com);     // Client へ転送
                 if (cc<=0) {
                     //if (cc<0) syslog(Log_Type, "error occurred in fe_server().");
@@ -542,13 +533,11 @@ void  receipt_child(char* hostname, int cport, int ssock, SSL_CTX* client_ctx, S
 
 
 
-int  get_proxy_socket(tList* hdr, int* http_com, char* hostname, int cport, int use_ssl, tList* lproxy)
+int  get_proxy_socket(tList* hdr, int* http_com, tList* lproxy)
 {
-    char* path  = NULL;                                 // ex. /hub/lti/launch
-    int   com   = get_http_header_method(hdr, &path);                // get http command and path
-    char* uname = get_https_username(path);            // get user name from path
+    int   com   = get_http_header_method(hdr);
+    char* uname = get_https_username(hdr);
     if (http_com!=NULL) *http_com = com;
-    if (path!=NULL)  free(path);
     if (uname==NULL) return -400;
 
     // Proxy 処理
@@ -576,27 +565,24 @@ int  get_proxy_socket(tList* hdr, int* http_com, char* hostname, int cport, int 
             else csock = -500;
 //        }
     }
-    // リストに無い
-    else {
-        if (hostname!=NULL) {
-            csock = tcp_client_socket(hostname, cport);
-            if (csock>0) {
-                char* lasttime = get_local_timestamp(time(0), "%Y-%b-%dT%H:%M:%SZ");
-                Buffer hnm;
-                if (use_ssl==ON) hnm = make_Buffer_str("https://");
-                else             hnm = make_Buffer_str("http://");
-                cat_s2Buffer(hostname, &hnm);
-                //
-                tList* end = find_tList_end(lproxy);
-                add_tList_node_bystr(end, 0, cport, uname, (char*)hnm.buf, lasttime, strlen(lasttime)+1);
-                free(lasttime);
-                free_Buffer(&hnm);
-            }
-            else csock = -500;
-        }
-        else csock = -500;
-    }
 
     free(uname);
     return csock;
+}
+
+
+
+SSL*  get_proxy_ssl(int sock, tList* hdr, SSL_CTX* ctx)
+{
+    SSL* ssl = NULL;
+
+    if (ex_strcmp("https:", (char*)hdr->ldat.val.buf)) {
+        ssl = ssl_client_socket(sock, ctx, OFF);
+        if (ssl==NULL) {
+            DEBUG_MODE print_message("Failure to connect to server SSL port. (%d)\n", getpid());
+            sig_term(-1);
+        }
+    }
+
+    return ssl;
 }

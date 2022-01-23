@@ -16,11 +16,11 @@ tList_data 構造体
 */
 
 
-int    api_process(int sock, SSL* ssl, tList* lprxy);
-char*  get_username_api(char* path);
+int    api_process(int sock, SSL* ssl, tList* lproxy);
+char*  get_username_api(tList* hdr);
 
-int    get_user_api(char* uname, Buffer* res, tList* lst);
-int    add_user_api(char* uname, Buffer  buf,  tList* lst);
-int    del_user_api(char* uname, tList*  lst);
+int    get_user_api(char* uname, Buffer* res, tList* lproxy);
+int    add_user_api(char* uname, Buffer  buf, tList* lproxy);
+int    del_user_api(char* uname, tList*  lproxy);
 
 

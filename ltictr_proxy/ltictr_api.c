@@ -10,14 +10,14 @@
 
 int  api_process(int sock, SSL* ssl, tList* lproxy)
 {
-    tList* lst = NULL;             // 受信ヘッダ
+    tList* hdr = NULL;             // 受信ヘッダ
     Buffer buf = init_Buffer();    // 受信ボディ
 
     //
     buf = make_Buffer(RECVBUFSZ);
-    int ret = recv_https_Buffer(sock, ssl, &lst, &buf, 0, NULL, NULL);
+    int ret = recv_https_Buffer(sock, ssl, &hdr, &buf, 0, NULL, NULL);
     if (ret<=0) {           // 0 は正常切断
-        del_tList(&lst);
+        del_tList(&hdr);
         free_Buffer(&buf);
         if (ret<0) send_https_error(sock, ssl, 400);
         return -1;          // -1 は切断
@@ -26,16 +26,14 @@ int  api_process(int sock, SSL* ssl, tList* lproxy)
     //
     DEBUG_MODE {
         print_message("\n=== API RECV ===\n");
-        print_tList(stderr, lst);
+        print_tList(stderr, hdr);
         print_message("%s\n", buf.buf);
     }
 
     // Get User Name
-    char* path  = NULL;
-    int   com   = get_http_header_method(lst, &path);    // get http command and path
-    char* uname = get_username_api(path);                // get user name from path
-    del_tList(&lst);
-    if (path!=NULL) free(path);
+    int   com   = get_http_header_method(hdr);
+    char* uname = get_username_api(hdr);
+    del_tList(&hdr);
     if (uname==NULL) {
         free_Buffer(&buf);
         if (com==HTTP_UNKNOWN_METHOD) send_https_error(sock, ssl, 400);
@@ -96,31 +94,47 @@ int  api_process(int sock, SSL* ssl, tList* lproxy)
 
 
 
-char*  get_username_api(char* path)
+char*  get_username_api(tList* hdr)
 {
+    if (hdr==NULL) return NULL;
+
+    char*  path = NULL;
+    Buffer hbuf = search_protocol_header(hdr, (char*)HDLIST_FIRST_LINE_KEY, 1);
+
+    if (hbuf.buf!=NULL) {
+        path = cawk((char*)hbuf.buf, ' ', 2);
+        if (path!=NULL && *path!='/') {
+            free(path);
+            path = NULL;
+        }
+        free_Buffer(&hbuf);
+    }
     if (path==NULL) return NULL;
 
     char* str = NULL;
     char* pp = strstr(path, LTICTR_API_ROUTES);
-    if (pp == NULL) return NULL;
 
-    int len = strlen(LTICTR_API_ROUTES);
-    if ((pp[len]=='\0') ||  (pp[len]=='/' && pp[len+1]=='\0')) {
-        str = dup_str((char*)"/");
-    }
-    else if (pp[len] == '/') {
-        pp = strstr(path, LTICTR_API_USER);
-        if (pp==NULL) return NULL;
-        len = strlen(LTICTR_API_USER);
-        str = dup_str(pp+len);
+    if (pp!=NULL) {
+        int len = strlen(LTICTR_API_ROUTES);
+        if ((pp[len]=='\0') ||  (pp[len]=='/' && pp[len+1]=='\0')) {
+            str = dup_str((char*)"/");
+        }
+        else if (pp[len] == '/') {
+            pp = strstr(path, LTICTR_API_USER);
+            if (pp!=NULL) {
+                len = strlen(LTICTR_API_USER);
+                str = dup_str(pp+len);
+            }
+        }
     }
 
+    free(path);
     return str;
 }
 
 
 
-int  get_user_api(char* uname, Buffer* buf, tList* lst)
+int  get_user_api(char* uname, Buffer* buf, tList* lproxy)
 {
     char json_data[LDATA]; 
     char json_root_fmt[] = "{\"/\":{\"hub\":true,\"target\":\"%s:%d\",\"jupyterhub\":true,\"last_activity\":\"%s\"}}";
@@ -130,7 +144,7 @@ int  get_user_api(char* uname, Buffer* buf, tList* lst)
     tJson* res = json_parse_prop(NULL, "{}", 0);
 
     if (!strcmp("/", uname)) {
-        pp = lst;
+        pp = lproxy;
         while (pp!=NULL) {
             char* user = (char*)pp->ldat.key.buf;
             if (user!=NULL) {
@@ -152,7 +166,7 @@ int  get_user_api(char* uname, Buffer* buf, tList* lst)
         }
     }
     else {
-        pp = strncasecmp_tList(lst, uname, 0, 1);
+        pp = strncasecmp_tList(lproxy, uname, 0, 1);
         //
         char* user = (char*)pp->ldat.key.buf;
         char* url  = (char*)pp->ldat.val.buf;
@@ -183,7 +197,7 @@ int  get_user_api(char* uname, Buffer* buf, tList* lst)
   "jupyterhub": true
 }
 */
-int  add_user_api(char* uname, Buffer buf, tList* lst)
+int  add_user_api(char* uname, Buffer buf, tList* lproxy)
 {
     Buffer target = init_Buffer();
     Buffer protocol, srvfqdn;
@@ -214,7 +228,7 @@ int  add_user_api(char* uname, Buffer buf, tList* lst)
     cat_Buffer(&srvfqdn, &protocol);
 
     // check of user exist
-    tList* exist = strncasecmp_tList(lst, uname, 0, 1);
+    tList* exist = strncasecmp_tList(lproxy, uname, 0, 1);
     if (exist!=NULL) {
         if (exist->ldat.id>0) socket_close(exist->ldat.id);
         del_tList_node(&exist);
@@ -228,8 +242,8 @@ int  add_user_api(char* uname, Buffer buf, tList* lst)
     //}
     //
     char* lasttime = get_local_timestamp(time(0), "%Y-%b-%dT%H:%M:%SZ");
-    lst = find_tList_end(lst);
-    add_tList_node_bystr(lst, 0, (int)port, uname, (char*)protocol.buf, lasttime, strlen(lasttime)+1);
+    lproxy = find_tList_end(lproxy);
+    add_tList_node_bystr(lproxy, 0, (int)port, uname, (char*)protocol.buf, lasttime, strlen(lasttime)+1);
     free_Buffer(&srvfqdn);
     free_Buffer(&protocol);
     free(lasttime);
@@ -237,7 +251,7 @@ int  add_user_api(char* uname, Buffer buf, tList* lst)
     //
     DEBUG_MODE {
         print_message("\n=== ADD USER API ===\n");
-        print_tList(stderr, lst);
+        print_tList(stderr, lproxy);
     }
 
     return 0;
@@ -245,9 +259,9 @@ int  add_user_api(char* uname, Buffer buf, tList* lst)
 
 
 
-int  del_user_api(char* uname, tList* lst)
+int  del_user_api(char* uname, tList* lproxy)
 {
-    tList* pp = strncasecmp_tList(lst, uname, 0, 1);
+    tList* pp = strncasecmp_tList(lproxy, uname, 0, 1);
     if (pp==NULL) return 404;      // user does not exist
 
     socket_close(pp->ldat.id);
@@ -256,7 +270,7 @@ int  del_user_api(char* uname, tList* lst)
     //
     DEBUG_MODE {
         print_message("\n=== DEL USER API === (%s)\n", uname);
-        print_tList(stderr, lst);
+        print_tList(stderr, lproxy);
     }
 
     return 0;

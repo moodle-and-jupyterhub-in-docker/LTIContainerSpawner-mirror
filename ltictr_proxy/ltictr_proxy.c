@@ -33,7 +33,6 @@ pid_t    RootPID;
 int      Nofd, Sofd;
 int      Mofd, Aofd;
 
-int      ClientSSL      = OFF;     // サーバ側（自身はクライアント）とのSSL 接続
 int      ServerSSL      = OFF;     // クライアント側（自身はサーバ）とのSSL 接続
 int      APIPortSSL     = OFF;     // APIポートのSSL 接続
 
@@ -92,7 +91,6 @@ int main(int argc, char** argv)
         else if (!strcmp(argv[i],"-a")) {if (i!=argc-1) aport = atoi(argv[i+1]);}
         else if (!strcmp(argv[i],"-h")) {if (i!=argc-1) hostname  = make_Buffer_bystr(argv[i+1]);}
         else if (!strcmp(argv[i],"-u")) {if (i!=argc-1) efctvuser = make_Buffer_bystr(argv[i+1]);}
-        else if (!strcmp(argv[i],"-s")) ClientSSL  = ON;
         else if (!strcmp(argv[i],"-c")) ServerSSL  = ON;
         else if (!strcmp(argv[i],"-i")) APIPortSSL = ON;
         else if (!strcmp(argv[i],"-d")) DebugMode  = ON;
@@ -112,8 +110,6 @@ int main(int argc, char** argv)
         sig_term(-1);
     }
     //
-    ProxyList = add_tList_node_anchor();
-
     int i = 0;
     if (hostname.buf!=NULL) {
         while(hostname.buf[i]!='\0' && hostname.buf[i]!=':') i++;
@@ -128,6 +124,13 @@ int main(int argc, char** argv)
     if (allowfile.buf!=NULL) AllowFile   = (char*)allowfile.buf;
     if (certfile.buf!=NULL)  TLS_CertPem = (char*)certfile.buf;
     if (keyfile.buf!=NULL)   TLS_KeyPem  = (char*)keyfile.buf;
+
+    ProxyList = add_tList_node_anchor();
+    if (hostname.buf!=NULL) {
+        char* lasttime = get_local_timestamp(time(0), "%Y-%b-%dT%H:%M:%SZ");
+        add_tList_node_bystr(ProxyList, 0, cport, "/", (char*)hostname.buf, lasttime, strlen(lasttime)+1);
+        free(lasttime);
+    }
 
     //
     // Initialization
@@ -235,7 +238,7 @@ int main(int argc, char** argv)
 
         //
         if (Sofd>0 && FD_ISSET(Sofd, &mask)) {
-            if (fork()==0) receipt_child((char*)hostname.buf, cport, Sofd, Client_CTX, Server_CTX, ProxyList);
+            if (fork()==0) receipt_child(Sofd, Client_CTX, Server_CTX, ProxyList);
             close(Sofd);    // don't use socket_close() !
             Sofd = 0;
         }
