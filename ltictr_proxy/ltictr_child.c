@@ -15,26 +15,31 @@
 char*    SessionInfo  = NULL;
 
 extern tList* AllowList;
+extern int    ClientSSL;
 
 
 ///////////////////////////////////////////////////////////////////////
 // get information from HTTP
-
-
 
 //
 // URL パラメータから，存在するならば セッションID を取り出す．
 // SESSION_ID_KEY はクライアント（Webブラウザ）からのリクエスト中のボディデータ中に設定されている値．
 // 要 free
 //
-char*  get_sessionid_from_header(char* mesg)
+char*  get_sessionid_from_header(tList* hdr)
 {
-    if (mesg==NULL) return NULL;
+    if (hdr==NULL) return NULL;
     //
-    char* pl = get_line(mesg, 1);
-    if (pl==NULL) return NULL;
-    char* pp = strstr(pl, SESSION_ID_KEY);
-    if (pp==NULL) return NULL;
+    tList* lp = search_key_tList(hdr, HDLIST_FIRST_LINE_KEY, 1);
+    if (lp==NULL)  return NULL;
+    char* url = dup_str((char*)lp->ldat.val.buf);
+    if (url==NULL) return NULL;
+
+    char* pp = strstr(url, SESSION_ID_KEY);
+    if (pp==NULL) {
+        free(url);
+        return NULL;
+    }
     pp = pp + strlen(SESSION_ID_KEY);
 
     char* pt = pp;
@@ -43,10 +48,42 @@ char*  get_sessionid_from_header(char* mesg)
     *pt = '\0';
     char* sid = dup_str(pp);
 
-    free(pl);
-    
+    free(url);
     return sid;
 }
+
+
+//
+// クライアント（Webブラウザ）のクッキーから コースIDとLTIのインスタンスID を取り出す．
+// 要 free
+//
+char*  get_info_from_cookie(tList* hdr)
+{
+    if (hdr==NULL) return NULL;
+
+    tList* lp = search_key_tList(hdr, "Cookie", 1);
+    if (lp==NULL)  return NULL;
+    char* cke = dup_str((char*)lp->ldat.val.buf);
+    if (cke==NULL) return NULL;
+
+    char* pp = strstr(cke, SESSION_INFO_KEY);
+    if (pp==NULL) {
+        free(cke);
+        return NULL;
+    }
+    pp = pp + strlen(SESSION_INFO_KEY);
+
+    char* pt = pp; 
+    while (*pt!=';' && *pt!='\0') pt++;
+
+    *pt = '\0';
+    char* ssninfo = dup_str(pp);
+
+    free(cke);
+    return ssninfo;
+}
+
+
 
 
 //
@@ -58,14 +95,8 @@ char*  get_info_from_sessioninfo(char* mesg)
 {
     if (mesg==NULL) return NULL;
 
-    char* pp = mesg;
-    if (ex_strcmp("POST ", (char*)mesg)){
-        pp = strstr(mesg, "\r\n\r\n");    // Body
-        if (pp==NULL) return NULL; 
-    }
-    //
     // Search in the Body
-    pp = strstr(pp, SESSION_INFO_KEY);
+    char* pp = strstr(mesg, SESSION_INFO_KEY);
     if (pp==NULL) return NULL;
     pp = pp + strlen(SESSION_INFO_KEY);
     //
@@ -77,37 +108,6 @@ char*  get_info_from_sessioninfo(char* mesg)
     char* ssninfo = dup_str(pp);
     *pt = bkup;
     //print_message("lms_sessioninfo = %s\n", ssninfo);
-
-    return ssninfo;
-}
-
-
-
-//
-// クライアント（Webブラウザ）のクッキーから コースIDとLTIのインスタンスID を取り出す．
-// 要 free
-//
-char*  get_info_from_cookie(char* mesg)
-{
-    if (mesg==NULL) return NULL;
-
-    char* pp = strstr(mesg, "Cookie:");
-    if (pp==NULL) pp = strstr(mesg, "Cookie:");
-    if (pp==NULL) return NULL;
-
-    char* pl = get_line(pp, 1);
-    if (pl==NULL) return NULL;
-    pp = strstr(pl, SESSION_INFO_KEY);
-    if (pp==NULL) return NULL;
-    pp = pp + strlen(SESSION_INFO_KEY);
-
-    char* pt = pp; 
-    while (*pt!=';' && *pt!='\0') pt++;
-
-    *pt = '\0';
-    char* ssninfo = dup_str(pp);
-
-    free(pl);
 
     return ssninfo;
 }
@@ -162,51 +162,37 @@ int  term_process(int dummy)
 
 
 //
-//    Server -> Client (cofd -> sofd) 
+//    Server -> Client 
 //
-int   fe_server(int dummy1, int sofd, SSL* dummy2, SSL* ssl, char* mesg, int cc)
+int   send_client(int sock, SSL* ssl, tList* hdr, Buffer buf)
 {
-    UNUSED(dummy1);
-    UNUSED(dummy2);
-    Buffer shd = init_Buffer();
+    if (hdr==NULL) return -1;
 
-    int http_res = 0;
+    //int http_res = OFF;
 
-    //print_message("SERVER +++++++++++++++++++++++++++++++++++ %d\n", getpid());
-    //print_message("%s\n",mesg);
+    char*  resp = NULL;
+    tList* lp = search_key_tList(hdr, HDLIST_FIRST_LINE_KEY, 1);
+    if (lp!=NULL) resp = (char*)lp->ldat.val.buf;
 
     // add cookie
     // Session Info を lms_sessioninfo の値として cookie に追加
-    if (SessionInfo!=NULL && ex_strcmp("HTTP/", (char*)mesg)){
-        http_res = 1;
+    if (SessionInfo!=NULL && resp!=NULL && ex_strcmp("HTTP/", resp)) {
+        //http_res = ON;
+        lp = search_key_tList(hdr, "Set-Cookie", 1);
+        if (lp==NULL) lp = search_key_tList(hdr, "Host", 1);
         //
-        Buffer buf = make_Buffer_bystr(mesg);
-        tList* lhd = get_protocol_header_list(buf, ':', TRUE, TRUE);
-        tList* chk = search_key_tList(lhd, HDLIST_CONTENTS_KEY, 1);
-        //
-        if (chk==NULL) {
-            tList* cke = search_key_tList(lhd, "set-cookie", 1);
-            if (cke==NULL) cke = search_key_tList(lhd, "Set-Cookie", 1);
-            if (cke!=NULL) {
-                char cookie[LMESG];
-                snprintf(cookie, LMESG-1, "%s%s; HttpOnly; Path=/; Secure", SESSION_INFO_KEY, SessionInfo);
-                cke  = add_protocol_header(cke, "set-cookie", cookie);
-                shd  = restore_protocol_header(lhd, ": ", OFF, NULL);
-                mesg = (char*)shd.buf;
-                cc   = shd.vldsz;
-                free(SessionInfo);
-                SessionInfo = NULL;
-            }
-        }
-        free_Buffer(&buf);
-        del_tList(&lhd);
+        char cookie[LMESG];
+        snprintf(cookie, LMESG-1, "%s%s; HttpOnly; Path=/; Secure", SESSION_INFO_KEY, SessionInfo);
+        add_protocol_header(lp, "Set-Cookie", cookie);
+        free(SessionInfo);
+        SessionInfo = NULL;
     }
 
-    //////////////////////////////////////////////
-    int ret = ssl_tcp_send(sofd, ssl, mesg, cc);
-    //////////////////////////////////////////////
-
-    if (shd.buf!=NULL) free_Buffer(&shd);
+    //////////////////////////////////////////////////////////
+    Buffer snd = rebuild_http_Buffer(hdr, &buf);
+    int ret = ssl_tcp_send(sock, ssl, (char*)buf.buf, buf.vldsz);
+    free_Buffer(&snd);
+    //////////////////////////////////////////////////////////
 
 
     //
@@ -216,7 +202,6 @@ int   fe_server(int dummy1, int sofd, SSL* dummy2, SSL* ssl, char* mesg, int cc)
     tJson* temp = NULL;
     tJson* json = NULL;
     //if (*(unsigned char*)mesg==0x81) json = ws_json(mesg, cc);
-    if (http_res==0) json = ws_json_server(mesg, cc);
     if (json!=NULL) {
         //print_json(stderr, json);
         struct ws_info info;
@@ -255,41 +240,32 @@ int   fe_server(int dummy1, int sofd, SSL* dummy2, SSL* ssl, char* mesg, int cc)
 
 
 
-#define  CONTENT_LENGTH  "\r\ncontent-length: " 
-
 //
-//    Client -> Server (sofd -> cofd)
+//    Client -> Server 
 //
-int   fe_client(int dummy1, int cofd, SSL* dummy2, SSL* ssl, char* mesg, int cc)
+int   send_server(int sock, SSL* ssl, tList* hdr, Buffer buf, int http_com, char* proto)
 {
-    UNUSED(dummy1);
-    UNUSED(dummy2);
+    if (hdr==NULL) return -1;
 
-    print_message("\nCLIENT +++++++++++++++++++++++++++++++++++ %d\n", getpid());
-    print_message("%s\n",mesg);
+    tList* ph = search_key_tList(hdr, "Host", 1);
+    add_protocol_header(ph, "X-Forwarded-Proto", proto);
 
-    //////////////////////////////////////////////
-    cc = ssl_tcp_send(cofd, ssl, mesg, cc);
-    //////////////////////////////////////////////
+    //////////////////////////////////////////////////////////
+    Buffer snd = rebuild_http_Buffer(hdr, &buf);
+    int cc = ssl_tcp_send(sock, ssl, (char*)snd.buf, snd.vldsz);
+    free_Buffer(&snd);
+    //////////////////////////////////////////////////////////
 
-    static char ltictr_proxy[] = "ltictr_proxy";
-    char num[10];
-
-    static int content_length = 0;
-    static Buffer recv_buffer;
-    
-    int http_com = 0;
-
+    static char ltictr[] = "ltictr";
     //
-    // GET session_id と cookie の lms_sessionifo (course_id+%2C+lti_id) を関連付けて DB に登録．
-    if (ex_strcmp("GET ", (char*)mesg)) {
-        http_com = 1;
-        content_length = 0;
-        recv_buffer = init_Buffer();
+    // GET session_id と cookie の lms_sessionifo (course_id+%2C+lti_id) を関連付けて XMLRPC で送る．
+    if (http_com == HTTP_GET_METHOD) {
+        //content_length = 0;
+        //recv_buffer = init_Buffer();
         //
-        char* sessionid = get_sessionid_from_header(mesg); // URL パラメータから session_id を得る
+        char* sessionid = get_sessionid_from_header(hdr);   // URL パラメータから session_id を得る
         if (sessionid!=NULL) {
-            char* ssninfo = get_info_from_cookie(mesg);
+            char* ssninfo = get_info_from_cookie(hdr);          // ヘッダから Cookie を得る
             if (ssninfo!=NULL) {
                 struct ws_info info;
                 memset(&info, 0, sizeof(struct ws_info));
@@ -300,7 +276,7 @@ int   fe_client(int dummy1, int cofd, SSL* dummy2, SSL* ssl, char* mesg, int cc)
                     *pt = '\0';
                     pt = pt + 3;
                 }
-                info.host    = ltictr_proxy;
+                info.host    = ltictr;
                 info.inst_id = ssninfo;
                 info.lti_id  = pt;
                 info.session = sessionid;
@@ -314,62 +290,16 @@ int   fe_client(int dummy1, int cofd, SSL* dummy2, SSL* ssl, char* mesg, int cc)
     }
 
     //
-    else if (ex_strcmp("POST ", (char*)mesg)) {
-        http_com = 2;
-        content_length = 0;
-        recv_buffer = init_Buffer();
-        char* pp = strstr(mesg, "\r\n\r\n");
-        char* pt = strstrcase(mesg, CONTENT_LENGTH);
-
-        // content-length の取り出し
-        if (pp!=NULL && pt!=NULL && (int)(pp-pt)>0) {
-            pt += strlen(CONTENT_LENGTH);
-            char* pr = pt;
-            while (*pr!=0x0d && *pr!=0x0a && *pr!=0x00) pr++;
-            int l = (int)(pr - pt);
-            if (l<=10) {
-                memcpy(&num, pt, l);
-                num[l] = 0x00;
-                content_length = atoi(num);
-            }
-        } 
- 
-        // Body部 の取り出し
-        if (pp!=NULL && content_length>0) {
-            pp += strlen("\r\n\r\n");
-            int l = cc - (int)(pp - (char*)mesg); 
-            recv_buffer = set_Buffer(pp, l);
-        }
-    }
-    else if (ex_strcmp("PUT ", (char*)mesg)) {
-        http_com = 3;
-    }
-    else if (ex_strcmp("DELETE ", (char*)mesg)) {
-        http_com = 4;
-    }
-    else if (ex_strcmp("PATCH ", (char*)mesg)) {
-        http_com = 5;
-    }
-    else if (content_length>0) {
-        http_com = 2;
-        cat_b2Buffer(mesg, &recv_buffer, cc);
-    }
-
-    // POST 受信完了
-    if (content_length>0 && content_length==recv_buffer.vldsz) {
-        mesg = (char*)recv_buffer.buf;
-        //
+    else if (http_com == HTTP_POST_METHOD) {
         if (SessionInfo==NULL) {
-            if (ex_strcmp("oauth_version", (char*)mesg)) {
-                SessionInfo = get_info_from_sessioninfo(mesg);  
+            if (ex_strcmp("oauth_version", (char*)buf.buf)) {
+                SessionInfo = get_info_from_sessioninfo((char*)buf.buf);  
             }
             // 
-            if (SessionInfo==NULL && strstr(mesg,  SESSION_INFO_KEY) != NULL) {
-                SessionInfo = get_info_from_sessioninfo(mesg);  
-            }
+            //if (SessionInfo==NULL && strstr(buf.buf,  SESSION_INFO_KEY) != NULL) {
+            //    SessionInfo = get_info_from_sessioninfo((char*)buf.buf);  
+            //}
         }
-        content_length = 0;
-        free_Buffer(&recv_buffer);
     }
 
 
@@ -380,7 +310,7 @@ int   fe_client(int dummy1, int cofd, SSL* dummy2, SSL* ssl, char* mesg, int cc)
     tJson* temp = NULL;
     tJson* json = NULL;
     //if (*(unsigned char*)mesg==0x81) json = ws_json(mesg, cc);
-    if (http_com==0) json = ws_json_client(mesg, cc);
+    if (http_com==0) json = ws_json_client((char*)buf.buf, buf.vldsz);
     if (json!=NULL) {
         struct ws_info info;
         memset(&info, 0, sizeof(struct ws_info));
@@ -413,52 +343,50 @@ int   fe_client(int dummy1, int cofd, SSL* dummy2, SSL* ssl, char* mesg, int cc)
 
 
 
+
+
+
+
+
 //
 void  receipt_child(char* hostname, int cport, int ssock, SSL_CTX* client_ctx, SSL_CTX* server_ctx, tList* lproxy)
 {
     int    cc, nd;
-    char msg[RECVBUFSZ];
     fd_set mask;
     struct timeval timeout;
 
     Buffer buf   = init_Buffer();   // 受信ボディ
     tList* hdr   = NULL;            // 受信ヘッダ
-    char*  uname = NULL;            // ex. bob
 
-    char*  cproto = NULL;
-    char*  sproto = NULL;
+    //char* cproto = NULL;
+    char* sproto = NULL;
 
     SSL* sssl = NULL;
     SSL* cssl = NULL;
     
-
-    // for Client SSL Connection
+    // Client SSL connection for data recieve
     if (server_ctx!=NULL) {
         sproto = dup_str("https");
         sssl = ssl_server_socket(ssock, server_ctx);
         if (sssl==NULL) {
-            sleep(1);
-            sssl = ssl_server_socket(ssock, server_ctx);
-            if (sssl==NULL) {
-                free(sproto);
-                print_message("Failure to create the client socket. (%d)\n", getpid());
-                //exit(1);
-                sig_term(-1);
-            }
+            free(sproto);
+            print_message("Failure to create the client socket. (%d)\n", getpid());
+            sig_term(-1);
         }
         DEBUG_MODE print_message("Opened socket for SSL server. (%d)\n", getpid());
     }
     else sproto = dup_str("http");
     
-    //
+    // データ受信
     buf = make_Buffer(RECVBUFSZ);
     int ret = recv_https_Buffer(ssock, sssl, &hdr, &buf, 0, NULL, NULL);
     if (ret<=0) {           // 0 は正常切断
+        free(sproto);
         del_tList(&hdr);
         free_Buffer(&buf);
         if (ret<0) {
             send_https_error(ssock, sssl, 400);
-            free(sproto);
+            DEBUG_MODE print_message("Failure to recieve data from Web beowser. (%d)\n", getpid());
             sig_term(-1);
         }
         else {
@@ -469,141 +397,44 @@ void  receipt_child(char* hostname, int cport, int ssock, SSL_CTX* client_ctx, S
     DEBUG_MODE {
         print_message("\n=== HTTP RECV ===\n");
         print_tList(stderr, hdr);
-        print_message("%s\n", buf.buf);
+        print_message("%s\n", (char*)buf.buf);
     }
 
-    char*  path  = NULL;                                // ex. /hub/lti/launch
-    get_http_header_method(hdr, &path);       // get http command and path
-    uname = get_https_username(path);                   // get user name from path
-    if (path!=NULL) free(path);
-    if (uname==NULL) {
+    int http_com;
+    int csock = get_proxy_socket(hdr, &http_com, hostname, cport, ClientSSL, lproxy);
+    if (csock<=0) {
+        free(sproto);
         del_tList(&hdr);
         free_Buffer(&buf);
-        send_https_error(ssock, sssl, 404);
-        exit(1);
+        send_https_error(ssock, sssl, -ret);
+        DEBUG_MODE print_message("Failure to get proxy client socket. (%d)\n", getpid());
+        sig_term(-1);
     }
-
-    int csock = 0;
-    ret = 0;
-    tList* lp = strncasecmp_tList(lproxy, uname, 0, 1);
-    if (lp!=NULL) {
-        csock = (int)lp->ldat.id;
-        if (csock<=0) {
-            print_message("socket for %s is invalid.\n", uname);
-            //
-            char* hp = (char*)lp->ldat.val.buf + lp->ldat.val.vldsz;
-            while(*hp!=':') hp--;
-            char* hname = dup_str(hp + 1);
-            csock = tcp_client_socket(hname, lp->ldat.lv);
-            free(hname);
-            //
-            if (csock>0) {
-                char* lasttime = get_local_timestamp(time(0), "%Y-%b-%dT%H:%M:%SZ");
-                lp->ldat.id = csock; 
-                if (lp->ldat.ptr!=NULL) free(lp->ldat.ptr);
-                lp->ldat.ptr = lasttime;
-                lp->ldat.sz  = strlen(lasttime) + 1;
-            }
-            else ret = 500;
-        }
-    }
-    // リストに無い
-    else {
-        csock = tcp_client_socket(hostname, cport);
-        if (csock>0) {
-            char* lasttime = get_local_timestamp(time(0), "%Y-%b-%dT%H:%M:%SZ");
-            Buffer hnm = make_Buffer_str(cproto);
-            cat_s2Buffer("://", &hnm);
-            cat_s2Buffer(hostname, &hnm);
-            tList* end = find_tList_end(lproxy);
-            add_tList_node_bystr(end, csock, cport, uname, (char*)hnm.buf, lasttime, strlen(lasttime)+1);
-            free(lasttime);
-            free_Buffer(&hnm);
-        }
-        else ret = 500;
-    }
-
-    // error handling
-    if (ret>0) {
-        free(uname);
-        del_tList(&hdr);
-        free_Buffer(&buf);
-        send_https_error(ssock, sssl, ret);
-        exit(1);
-    }
-
-
-/*
-    struct sockaddr_in* addr_ptr = (struct sockaddr_in*)&addr;
-    
-    // モジュールの開始処理
-    DEBUG_MODE print_message("モジュールの初期処理．\n");
-    ClientIPaddr_num = get_ipaddr_num_ipv4(addr_ptr->sin_addr);
-    ClientIPaddr     = get_ipaddr_ipv4(addr_ptr->sin_addr);
-    ClientName       = get_hostname_bynum_ipv4(ClientIPaddr_num);
-    syslog(Log_Type, "[%s] session start.\n", ClientIPaddr);
-
-    if (!init_process(ssock, ClientName)) {
-        syslog(Log_Type, "module start error.");
-        print_message("モジュールの初期処理の失敗．(%d)\n", getpid());
-        exit(1);
-    }
-    DEBUG_MODE print_message("モジュールの初期処理完了．(%d)\n", getpid());
-*/
-
-    // for Server Connection
-    //Cofd = tcp_client_socket(hostname, cport);
-    //if (csock<=0) {
-    //    syslog(Log_Type, "tcp_client_socket() error: [%s]", strerror(errno));
-    //    print_message("サーバへの接続に失敗．(%d)\n", getpid());
-    //    exit(1);
-    //}
-    if (client_ctx!=NULL) {
-        cproto = dup_str("https");
+    if (ex_strcmp("https:", (char*)hdr->ldat.val.buf)) {
+        ClientSSL = ON;
+        //cproto = dup_str("https");
         cssl = ssl_client_socket(csock, client_ctx, OFF);
         if (cssl==NULL) {
-            DEBUG_MODE print_message("サーバへのSSL接続の失敗．(%d)\n", getpid());
+            DEBUG_MODE print_message("Failure to connect to server SSL port. (%d)\n", getpid());
+            sig_term(-1);
         }
     }
-
+    else {
+        ClientSSL = OFF;
+        //cproto = dup_str("http");
+    }
     
-    tList* ph = search_key_tList(hdr, "Host", 1);
-    add_protocol_header(ph, "X-Forwarded-Proto", "https");
-
-    Buffer snd = rebuild_http_Buffer(hdr, &buf);
-
-    cc = fe_client(ssock, csock, sssl, cssl, (char*)snd.buf, snd.vldsz);     // Server へ転送
+    // データ送信
+    cc = send_server(csock, cssl, hdr, buf, http_com, sproto); 
     if (cc<=0) {
         //if (cc<0) syslog(Log_Type, "error occurred in fe_client().");
     }
     del_tList(&hdr);
-    free_Buffer(&buf);
-
-//    set_http_host_header(hdr, "127.0.0.1", 8081);
-//    cc = send_https_Buffer(csock, cssl, hdr, &buf); 
-
-/*
-   cc = ssl_tcp_recv(ssock, sssl, msg, RECVBUFSZ);      // Client から受信
-   if (cc>0) {
-        cc = fe_client(ssock, csock, sssl, cssl, msg, cc);     // Server へ転送
-        if (cc<=0) {
-            if (cc<0) syslog(Log_Type, "error occurred in fe_client().");
-        }
-    }
-    else {
-       if (cc<0) {
-           print_message("ltictr_proxy: C->S: ");
-           jbxl_fprint_state(stderr, cc);
-       }
-    }
-    //cc = ssl_tcp_send(csock, cssl, msg, RECVBUFSZ);      // Client から受信
-*/
-
+    //free_Buffer(&buf);
 
 
 
     int range = Max(ssock, csock) + 1;
-
     //
     //do {
     timeout.tv_sec  = LTICTR_TIMEOUT;
@@ -616,14 +447,12 @@ void  receipt_child(char* hostname, int cport, int ssock, SSL_CTX* client_ctx, S
 
     DEBUG_MODE print_message("通信の中継処理開始．(%d)\n", getpid());
     while(nd>0 && (FD_ISSET(csock, &mask) || FD_ISSET(ssock, &mask))) {
-        // Client -> Server // fesrv はサーバ
-print_message("===> S socket = %d\n", ssock);
+        // Client -> Server // ltictr_proxy はサーバ
         if (FD_ISSET(ssock, &mask)) {
-            cc = ssl_tcp_recv(ssock, sssl, msg, RECVBUFSZ);      // Client から受信
+            cc = recv_https_Buffer(ssock, sssl, &hdr, &buf, 0, NULL, NULL);
             if (cc>0) {
-print_message("\nC -> S (%d)\n", getpid());
-print_message(msg);
-                cc = fe_client(ssock, csock, sssl, cssl, msg, cc);     // Server へ転送
+                http_com = get_http_header_method(hdr, NULL);
+                cc = send_server(csock, cssl, hdr, buf, http_com, sproto);     // Server へ転送
                 if (cc<=0) {
                     //if (cc<0) syslog(Log_Type, "error occurred in fe_client().");
                     break;
@@ -638,13 +467,11 @@ print_message(msg);
             }
         }
 
-        // Server -> Client // fesrv はクライアント
+        // Server -> Client // ltictr_proxy はクライアント
         if (FD_ISSET(csock, &mask)) {
-            cc = ssl_tcp_recv(csock, cssl, msg, RECVBUFSZ);      // Server から受信
-print_message("\nS -> C (%d)\n", getpid());
-print_message(msg);
+            cc = recv_https_Buffer(csock, cssl, &hdr, &buf, 0, NULL, NULL); 
             if (cc>0) {
-                cc = fe_server(csock, ssock, cssl, sssl, msg, cc);     // Client へ転送
+                cc = send_client(ssock, sssl, hdr, buf);     // Client へ転送
                 if (cc<=0) {
                     //if (cc<0) syslog(Log_Type, "error occurred in fe_server().");
                     break;
@@ -672,23 +499,75 @@ print_message(msg);
     ssl_close(cssl);
     ssl_close(sssl);
     socket_close(csock);
-    cssl = sssl = NULL;
-    //Cofd = 0;
+    socket_close(ssock);
+    free(sproto);
+    //free(cproto);
 
     //syslog(Log_Type, "[%s] session end.", ClientIPaddr);
 
-    // モジュールの終了処理
-    DEBUG_MODE print_message("Termination of the child process. (%d)\n", getpid());
-    if (!term_process(ssock)) {
-        //syslog(Log_Type, "Error of termination of the child process.");
-        print_message("Failure to terminate the child process. (%d)\n", getpid());
-        exit(1);
-    }
-
-    socket_close(ssock);
     DEBUG_MODE print_message("Termination of child process. (%d)\n", getpid());
 
     exit(0);
 }
  
 
+
+
+
+int  get_proxy_socket(tList* hdr, int* http_com, char* hostname, int cport, int use_ssl, tList* lproxy)
+{
+    char* path  = NULL;                                 // ex. /hub/lti/launch
+    int   com   = get_http_header_method(hdr, &path);                // get http command and path
+    char* uname = get_https_username(path);            // get user name from path
+    if (http_com!=NULL) *http_com = com;
+    if (path!=NULL)  free(path);
+    if (uname==NULL) return -400;
+
+    // Proxy 処理
+    int csock = 0;
+    tList* lp = strncasecmp_tList(lproxy, uname, 0, 1);
+    if (lp!=NULL) {
+        csock = (int)lp->ldat.id;
+        if (csock<=0) {
+            DEBUG_MODE print_message("socket for %s is invalid. Reopen socket.\n", uname);
+            //
+            char* hp = (char*)lp->ldat.val.buf + lp->ldat.val.vldsz;
+            while(*hp!='/') hp--;
+            char* hname = dup_str(hp + 1);
+            csock = tcp_client_socket(hname, lp->ldat.lv);
+            free(hname);
+            //
+            if (csock>0) {
+                char* lasttime = get_local_timestamp(time(0), "%Y-%b-%dT%H:%M:%SZ");
+                lp->ldat.id = csock;
+                if (lp->ldat.ptr!=NULL) free(lp->ldat.ptr);
+                lp->ldat.ptr = lasttime;
+                lp->ldat.sz  = strlen(lasttime) + 1;
+            }
+            else csock = -500;
+        }
+    }
+    // リストに無い
+    else {
+        if (hostname!=NULL) {
+            csock = tcp_client_socket(hostname, cport);
+            if (csock>0) {
+                char* lasttime = get_local_timestamp(time(0), "%Y-%b-%dT%H:%M:%SZ");
+                Buffer hnm;
+                if (use_ssl==ON) hnm = make_Buffer_str("https://");
+                else             hnm = make_Buffer_str("http://");
+                cat_s2Buffer(hostname, &hnm);
+                //
+                tList* end = find_tList_end(lproxy);
+                add_tList_node_bystr(end, csock, cport, uname, (char*)hnm.buf, lasttime, strlen(lasttime)+1);
+                free(lasttime);
+                free_Buffer(&hnm);
+            }
+            else csock = -500;
+        }
+        else csock = -500;
+    }
+
+    free(uname);
+    return csock;
+}

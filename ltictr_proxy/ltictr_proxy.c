@@ -134,7 +134,7 @@ int main(int argc, char** argv)
     DEBUG_MODE print_message("Start initialization.\n");
     LogType = init_main(configfile);
     if (LogType<0) {
-        print_message("Initialization failure.\n");
+        print_message("Failure to initialize.\n");
         sig_term(-1);
     }
     free_Buffer(&configfile);
@@ -165,7 +165,7 @@ int main(int argc, char** argv)
     // Change effective user
     if (efctvuser.buf!=NULL) {
         int err = -1;
-        DEBUG_MODE print_message("Change effective user (%s)．\n", efctvuser.buf);
+        DEBUG_MODE print_message("Change to effective user (%s).\n", efctvuser.buf);
         if (isdigit(efctvuser.buf[0]) || efctvuser.buf[0]=='-') {
             err = seteuid(atoi((char*)efctvuser.buf));
         }
@@ -174,7 +174,7 @@ int main(int argc, char** argv)
             if (pw!=NULL) err = seteuid(pw->pw_uid);
         }
         if (err==-1) {
-            DEBUG_MODE print_message("Cannot change effective user (%s).\n", efctvuser.buf);
+            DEBUG_MODE print_message("Cannot change to effective user (%s).\n", efctvuser.buf);
         }
         free_Buffer(&efctvuser);
     }
@@ -186,8 +186,8 @@ int main(int argc, char** argv)
         DEBUG_MODE print_message("Port open for api connection.\n");
         Mofd = tcp_server_socket(-aport);    // non block socket
         if (Mofd<0) {
-            syslog(LogType, "Open error of the port for api connection: [%s]", strerror(errno));
-            print_message("Open error of the port for api connection.\n");
+            syslog(LogType, "Failure to open the api socket: [%s]", strerror(errno));
+            print_message("Failure to open the api socket.\n");
             sig_term(-1);
         }
     }
@@ -196,18 +196,18 @@ int main(int argc, char** argv)
     DEBUG_MODE print_message("Server port open for client connection.\n");
     Nofd = tcp_server_socket(-sport);       // non block socket
     if (Nofd<0) {
-        syslog(LogType, "Open error of the server port for client connection: [%s]", strerror(errno));
-        print_message("Open error of the server port for client connection.\n");
+        syslog(LogType, "Failure to open the server port for client connection. [%s]", strerror(errno));
+        print_message("Failure to open the server port for client connection.\n");
         sig_term(-1);
     }
 
     // for SSL/TLS
-    if (ServerSSL==ON || ClientSSL==ON || APIPortSSL==ON) {
+    if (ServerSSL==ON || APIPortSSL==ON) {
         ssl_init();
         if (ServerSSL==ON)  Server_CTX  = ssl_server_setup(TLS_CertPem, TLS_KeyPem);
-        if (ClientSSL==ON)  Client_CTX  = ssl_client_setup(NULL);
         if (APIPortSSL==ON) APIPort_CTX = ssl_server_setup(TLS_CertPem, TLS_KeyPem);
     }
+    Client_CTX = ssl_client_setup(NULL);
 
     //
     DEBUG_MODE print_message("Start main loop.\n");
@@ -246,7 +246,7 @@ int main(int argc, char** argv)
                 if (assl==NULL) {
                     socket_close(Aofd);
                     Aofd = 0;
-                    DEBUG_MODE print_message("Failure to create SSL socket for API port. \n");
+                    DEBUG_MODE print_message("Unable to open SSL socket for API port. \n");
                     continue;
                 }
             }
@@ -310,7 +310,7 @@ int  init_main(Buffer configfile)
         DEBUG_MODE print_message("Readed access allow list\n");
     }
     else {
-        DEBUG_MODE print_message("Failure to read access allow list. No access control is performed.\n");
+        DEBUG_MODE print_message("Unable to read access allow list. No access control is performed.\n");
     }
 
     init_xmlrpc_header();
