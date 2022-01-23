@@ -220,16 +220,16 @@ int  add_user_api(char* uname, Buffer buf, tList* lst)
         del_tList_node(&exist);
     }
     // port open
-    int sock = tcp_client_socket((char*)srvfqdn.buf, (int)port);
-    if (sock<=0) {
-        free_Buffer(&srvfqdn);
-        free_Buffer(&protocol);
-        return 500;
-    }
+    //int sock = tcp_client_socket((char*)srvfqdn.buf, (int)port);
+    //if (sock<=0) {
+    //    free_Buffer(&srvfqdn);
+    //    free_Buffer(&protocol);
+    //    return 500;
+    //}
     //
     char* lasttime = get_local_timestamp(time(0), "%Y-%b-%dT%H:%M:%SZ");
     lst = find_tList_end(lst);
-    add_tList_node_bystr(lst, sock, (int)port, uname, (char*)protocol.buf, lasttime, strlen(lasttime)+1);
+    add_tList_node_bystr(lst, 0, (int)port, uname, (char*)protocol.buf, lasttime, strlen(lasttime)+1);
     free_Buffer(&srvfqdn);
     free_Buffer(&protocol);
     free(lasttime);

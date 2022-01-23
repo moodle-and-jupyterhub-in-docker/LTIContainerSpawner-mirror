@@ -6,7 +6,8 @@
 
 
 
-#define  LTICTR_TIMEOUT    900       // 15m
+#define  LTICTR_IDLETIME   900       // 15m
+#define  LTICTR_TIMEOUT    30        // 30s
 
 #define  SESSION_ID_KEY    "session_id="
 #define  SESSION_INFO_KEY  "lms_sessioninfo="           // Instance id, LTI id
@@ -164,11 +165,13 @@ int  term_process(int dummy)
 //
 //    Server -> Client 
 //
-int   send_client(int sock, SSL* ssl, tList* hdr, Buffer buf)
+int   send_client(int sock, SSL* ssl, tList* hdr, Buffer buf, int http_com)
 {
     if (hdr==NULL) return -1;
 
     //int http_res = OFF;
+
+    if (http_com!=HTTP_UNKNOWN_METHOD) {
 
     char*  resp = NULL;
     tList* lp = search_key_tList(hdr, HDLIST_FIRST_LINE_KEY, 1);
@@ -188,13 +191,17 @@ int   send_client(int sock, SSL* ssl, tList* hdr, Buffer buf)
         SessionInfo = NULL;
     }
 
+    }
+
     //////////////////////////////////////////////////////////
     Buffer snd = rebuild_http_Buffer(hdr, &buf);
-    int ret = ssl_tcp_send(sock, ssl, (char*)buf.buf, buf.vldsz);
+    int ret = ssl_tcp_send(sock, ssl, (char*)snd.buf, snd.vldsz);
     free_Buffer(&snd);
     //////////////////////////////////////////////////////////
 
+    if (http_com==HTTP_UNKNOWN_METHOD) {
 
+print_message("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
     //
     // Web Socket
     static char host[] = "server";
@@ -234,6 +241,7 @@ int   send_client(int sock, SSL* ssl, tList* hdr, Buffer buf)
         }
         del_json(&json);
     }
+    }
 
     return ret;
 }
@@ -250,6 +258,9 @@ int   send_server(int sock, SSL* ssl, tList* hdr, Buffer buf, int http_com, char
     tList* ph = search_key_tList(hdr, "Host", 1);
     add_protocol_header(ph, "X-Forwarded-Proto", proto);
 
+//print_message("++++> SEND SERVER \n");
+//print_tList(stderr, hdr);
+//print_message("%s\n", (char*)buf.buf);
     //////////////////////////////////////////////////////////
     Buffer snd = rebuild_http_Buffer(hdr, &buf);
     int cc = ssl_tcp_send(sock, ssl, (char*)snd.buf, snd.vldsz);
@@ -300,9 +311,14 @@ int   send_server(int sock, SSL* ssl, tList* hdr, Buffer buf, int http_com, char
             //    SessionInfo = get_info_from_sessioninfo((char*)buf.buf);  
             //}
         }
+        DEBUG_MODE {
+            if (SessionInfo!=NULL) print_message("Session Info = %s\n", SessionInfo);
+        }
     }
 
 
+    else {
+print_message("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
     //
     // Web Socket
     static char host[]  = "client";
@@ -336,6 +352,7 @@ int   send_server(int sock, SSL* ssl, tList* hdr, Buffer buf, int http_com, char
         }
         del_json(&json);
     }
+    }
 
     //
     return cc;
@@ -364,6 +381,8 @@ void  receipt_child(char* hostname, int cport, int ssock, SSL_CTX* client_ctx, S
     SSL* sssl = NULL;
     SSL* cssl = NULL;
     
+    //ssock = set_block_socket(ssock);
+
     // Client SSL connection for data recieve
     if (server_ctx!=NULL) {
         sproto = dup_str("https");
@@ -379,7 +398,7 @@ void  receipt_child(char* hostname, int cport, int ssock, SSL_CTX* client_ctx, S
     
     // データ受信
     buf = make_Buffer(RECVBUFSZ);
-    int ret = recv_https_Buffer(ssock, sssl, &hdr, &buf, 0, NULL, NULL);
+    int ret = recv_https_Buffer(ssock, sssl, &hdr, &buf, LTICTR_TIMEOUT, NULL, NULL);
     if (ret<=0) {           // 0 は正常切断
         free(sproto);
         del_tList(&hdr);
@@ -395,7 +414,7 @@ void  receipt_child(char* hostname, int cport, int ssock, SSL_CTX* client_ctx, S
     }
 
     DEBUG_MODE {
-        print_message("\n=== HTTP RECV ===\n");
+        print_message("\n=== HTTP FIRST RECV CLIENT ===\n");
         print_tList(stderr, hdr);
         print_message("%s\n", (char*)buf.buf);
     }
@@ -430,14 +449,11 @@ void  receipt_child(char* hostname, int cport, int ssock, SSL_CTX* client_ctx, S
         //if (cc<0) syslog(Log_Type, "error occurred in fe_client().");
     }
     del_tList(&hdr);
-    //free_Buffer(&buf);
-
-
 
     int range = Max(ssock, csock) + 1;
     //
     //do {
-    timeout.tv_sec  = LTICTR_TIMEOUT;
+    timeout.tv_sec  = LTICTR_IDLETIME;
     timeout.tv_usec = 0;
     FD_ZERO(&mask); 
     FD_SET(ssock,  &mask);
@@ -445,12 +461,17 @@ void  receipt_child(char* hostname, int cport, int ssock, SSL_CTX* client_ctx, S
     nd = select(range, &mask, NULL, NULL, &timeout);
     //} while (nd<0);
 
-    DEBUG_MODE print_message("通信の中継処理開始．(%d)\n", getpid());
+    DEBUG_MODE print_message("Child Proxy Loop(%d)\n", getpid());
     while(nd>0 && (FD_ISSET(csock, &mask) || FD_ISSET(ssock, &mask))) {
         // Client -> Server // ltictr_proxy はサーバ
         if (FD_ISSET(ssock, &mask)) {
-            cc = recv_https_Buffer(ssock, sssl, &hdr, &buf, 0, NULL, NULL);
+            cc = recv_https_Buffer(ssock, sssl, &hdr, &buf, LTICTR_TIMEOUT, NULL, NULL);
             if (cc>0) {
+                DEBUG_MODE {
+                    print_message("\n=== HTTP RECV CLIENT ===\n");
+                    print_tList(stderr, hdr);
+                    //print_message("%s\n", (char*)buf.buf);
+                }
                 http_com = get_http_header_method(hdr, NULL);
                 cc = send_server(csock, cssl, hdr, buf, http_com, sproto);     // Server へ転送
                 if (cc<=0) {
@@ -469,9 +490,15 @@ void  receipt_child(char* hostname, int cport, int ssock, SSL_CTX* client_ctx, S
 
         // Server -> Client // ltictr_proxy はクライアント
         if (FD_ISSET(csock, &mask)) {
-            cc = recv_https_Buffer(csock, cssl, &hdr, &buf, 0, NULL, NULL); 
+            cc = recv_https_Buffer(csock, cssl, &hdr, &buf, LTICTR_TIMEOUT, NULL, NULL); 
             if (cc>0) {
-                cc = send_client(ssock, sssl, hdr, buf);     // Client へ転送
+                DEBUG_MODE {
+                    print_message("\n=== HTTP RECV SERVER ===\n");
+                    print_tList(stderr, hdr);
+                    //print_message("%s\n", (char*)buf.buf);
+                }
+                http_com = get_http_header_method(hdr, NULL);
+                cc = send_client(ssock, sssl, hdr, buf, http_com);     // Client へ転送
                 if (cc<=0) {
                     //if (cc<0) syslog(Log_Type, "error occurred in fe_server().");
                     break;
@@ -502,6 +529,7 @@ void  receipt_child(char* hostname, int cport, int ssock, SSL_CTX* client_ctx, S
     socket_close(ssock);
     free(sproto);
     //free(cproto);
+    free_Buffer(&buf);
 
     //syslog(Log_Type, "[%s] session end.", ClientIPaddr);
 
@@ -527,8 +555,8 @@ int  get_proxy_socket(tList* hdr, int* http_com, char* hostname, int cport, int 
     int csock = 0;
     tList* lp = strncasecmp_tList(lproxy, uname, 0, 1);
     if (lp!=NULL) {
-        csock = (int)lp->ldat.id;
-        if (csock<=0) {
+ //       csock = (int)lp->ldat.id;
+ //       if (csock<=0) {
             DEBUG_MODE print_message("socket for %s is invalid. Reopen socket.\n", uname);
             //
             char* hp = (char*)lp->ldat.val.buf + lp->ldat.val.vldsz;
@@ -539,13 +567,14 @@ int  get_proxy_socket(tList* hdr, int* http_com, char* hostname, int cport, int 
             //
             if (csock>0) {
                 char* lasttime = get_local_timestamp(time(0), "%Y-%b-%dT%H:%M:%SZ");
-                lp->ldat.id = csock;
+                //lp->ldat.id = csock;
+                lp->ldat.id = 0;
                 if (lp->ldat.ptr!=NULL) free(lp->ldat.ptr);
                 lp->ldat.ptr = lasttime;
                 lp->ldat.sz  = strlen(lasttime) + 1;
             }
             else csock = -500;
-        }
+//        }
     }
     // リストに無い
     else {
@@ -559,7 +588,7 @@ int  get_proxy_socket(tList* hdr, int* http_com, char* hostname, int cport, int 
                 cat_s2Buffer(hostname, &hnm);
                 //
                 tList* end = find_tList_end(lproxy);
-                add_tList_node_bystr(end, csock, cport, uname, (char*)hnm.buf, lasttime, strlen(lasttime)+1);
+                add_tList_node_bystr(end, 0, cport, uname, (char*)hnm.buf, lasttime, strlen(lasttime)+1);
                 free(lasttime);
                 free_Buffer(&hnm);
             }

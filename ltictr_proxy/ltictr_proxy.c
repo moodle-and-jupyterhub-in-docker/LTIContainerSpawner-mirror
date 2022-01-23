@@ -183,23 +183,23 @@ int main(int argc, char** argv)
     // Network
     // Server API port
     if (aport!=0) {
-        DEBUG_MODE print_message("Port open for api connection.\n");
         Mofd = tcp_server_socket(-aport);    // non block socket
         if (Mofd<0) {
             syslog(LogType, "Failure to open the api socket: [%s]", strerror(errno));
             print_message("Failure to open the api socket.\n");
             sig_term(-1);
         }
+        DEBUG_MODE print_message("Port was opened for api connection. (%d)\n", aport);
     }
 
     // socket open for client
-    DEBUG_MODE print_message("Server port open for client connection.\n");
     Nofd = tcp_server_socket(-sport);       // non block socket
     if (Nofd<0) {
         syslog(LogType, "Failure to open the server port for client connection. [%s]", strerror(errno));
         print_message("Failure to open the server port for client connection.\n");
         sig_term(-1);
     }
+    DEBUG_MODE print_message("Server port was opened for client connection. (%d)\n", sport);
 
     // for SSL/TLS
     if (ServerSSL==ON || APIPortSSL==ON) {

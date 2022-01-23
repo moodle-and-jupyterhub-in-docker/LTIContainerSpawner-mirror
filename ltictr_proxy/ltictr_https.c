@@ -2,65 +2,9 @@
 #include "ltictr_https.h"
 
 
-//#define  LTICTR_MIN_PORT    48000
-//#define  LTICTR_MAX_PORT    50000
 
 #define  LTICTR_HTTPS_HUB   "/hub"
-#define  LTICTR_HTTPS_USER  "/hub"
-
-
-/*
-int  recv_https_request(int sock, SSL* ssl, tList** lst, Buffer* buf)
-{
-    int   len, hsz, csz;
-    int   connect;
-    int   tsecond = 30;
-    Buffer cnt;
-
-    if (lst==NULL || buf==NULL) return 400;
-
-    // Receive Header
-    hsz = recv_https_header(sock, ssl, lst, &len, NULL, &connect);
-    if (hsz<=0 || len==HTTP_HEADER_UNKNOWN_LEN) {
-        del_tList(lst);
-        return 400;         // 400: Bad Request
-    }
-    if (len==0) return 0;   // non Body
-
-    // ヘッダ中に紛れ込んだコンテンツの取り出し
-    *buf = make_Buffer(RECVBUFSZ);
-    cnt  = search_protocol_header(*lst, (char*)HDLIST_CONTENTS_KEY, 1);
-    if (cnt.buf!=NULL) {
-        csz = cnt.vldsz;
-        hsz = hsz - csz;
-        copy_Buffer(&cnt, buf);
-        free_Buffer(&cnt);
-    }
-    
-    // コンテンツの受信
-    int cc = 0;
-    if (connect) {
-        if (len>0) {
-            cc = recv_https_content(sock, ssl, buf, len, tsecond, NULL, &connect);
-        }
-        else if (len==HTTP_HEADER_CHUNKED) {
-            cc = recv_https_chunked(sock, ssl, buf, tsecond, NULL, &connect);
-        }
-        else { //if (len==HTTP_HEADER_CLOSED_SESSION) {
-            cc = recv_https_closed(sock, ssl, buf, tsecond, NULL);
-            connect = FALSE;
-        }
-    }
-    //
-    if (cc<0 || connect) {
-        del_tList(lst);
-        free_Buffer(buf);
-        return 400;        // 400: Bad Request
-    }
-
-    return 0;
-}
-*/
+#define  LTICTR_HTTPS_USER  "/hub/user/"
 
 
 
@@ -92,7 +36,7 @@ int  send_https_response(int sock, SSL* ssl, int num, Buffer* buf)
     int cc = send_https_Buffer(sock, ssl, hdr, buf);
 
     DEBUG_MODE {
-        print_message("\n=== HTTPS SEND ===\n");
+        print_message("\n=== HTTP SEND ===\n");
         print_tList(stderr, hdr);
         if (buf!=NULL) print_message("%s\n", buf->buf);
     }
@@ -132,41 +76,27 @@ int  send_https_error(int sock, SSL* ssl, int err)
 
 
 
-/*
-int  get_tcp_socket(int* port)
-{
-    int sock = tcp_server_socket(*port);
-    //
-    while (sock<=0 && *port<LTICTR_MAX_PORT) {
-        (*port)++;
-        sock = tcp_server_socket(*port);
-    }
-
-    if (sock<=0 && *port>=LTICTR_MAX_PORT) {
-        *port = LTICTR_MIN_PORT;
-        sock = tcp_server_socket(*port);
-        while (sock<0 && *port<LTICTR_MAX_PORT) {
-            (*port)++;
-            sock = tcp_server_socket(*port);
-        }
-    }
-
-    return sock;
-}
-*/
-          
-
 char*  get_https_username(char* path)
 {
     if (path==NULL) return NULL;
 
     char* str = NULL;
     
-    if (ex_strcmp(LTICTR_HTTPS_HUB, path)) {
-        str = dup_str((char*)"/");
+    char* pp = strstr(path, LTICTR_HTTPS_USER);
+    if (pp!=NULL) {
+        pp = pp + strlen(LTICTR_HTTPS_USER);
+        char* pt = pp;
+        while (*pt!='/' && *pt!='\0') pt++;
+        char bkp = *pt;
+        *pt = '\0';
+
+        str = dup_str(pp);
+        *pt = bkp;
+print_message(">>>>>>>>>>>>>>>>>>> %s\n", str);
     }
-    else if (ex_strcmp(LTICTR_HTTPS_USER, path)) {
-        str = NULL;
+    else {
+        pp = strstr(path, LTICTR_HTTPS_HUB);
+        if (pp!=NULL) str = dup_str((char*)"/");
     }
 
     return str;
