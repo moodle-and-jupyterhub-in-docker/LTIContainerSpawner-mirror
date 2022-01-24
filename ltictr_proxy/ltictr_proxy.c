@@ -6,7 +6,7 @@
 
 #include "ltictr_proxy.h"
 #include "ltictr_api.h"
-#include "ltictr_https.h"
+#include "ltictr_http.h"
 #include "ltictr_child.h"
 
 
@@ -27,7 +27,7 @@
 #define  MOODLE_HTTP_KEY    "Moodle_HTTP"
 
 
-int      LogType;
+int      LogType = LOG_INFO;;
 pid_t    RootPID;
 
 int      Nofd, Sofd;
@@ -37,7 +37,6 @@ int      ServerSSL      = OFF;     // クライアント側（自身はサーバ
 int      APIPortSSL     = OFF;     // APIポートのSSL 接続
 
 SSL_CTX* Server_CTX     = NULL;
-SSL_CTX* Client_CTX     = NULL;
 SSL_CTX* APIPort_CTX    = NULL;
 
 tList*   ProxyList      = NULL;
@@ -127,14 +126,18 @@ int main(int argc, char** argv)
 
     ProxyList = add_tList_node_anchor();
     if (hostname.buf!=NULL) {
-        char* lasttime = get_local_timestamp(time(0), "%Y-%b-%dT%H:%M:%SZ");
-        add_tList_node_bystr(ProxyList, 0, cport, "/", (char*)hostname.buf, lasttime, strlen(lasttime)+1);
-        free(lasttime);
+        add_tList_node_bystr(ProxyList, 0, cport, "/", (char*)hostname.buf, NULL, 0);
     }
 
     //
     // Initialization
     DEBUG_MODE print_message("Start initialization.\n");
+    if (configfile.buf!=NULL) {
+        if (!file_exist((char*)configfile.buf)) {
+            print_message("Failure to check configuration file (%s). Can not read the configuration file.\n", (char*)configfile.buf);
+            sig_term(-1);
+        }
+    }
     LogType = init_main(configfile);
     if (LogType<0) {
         print_message("Failure to initialize.\n");
@@ -192,7 +195,7 @@ int main(int argc, char** argv)
             print_message("Failure to open the api socket.\n");
             sig_term(-1);
         }
-        DEBUG_MODE print_message("Port was opened for api connection. (%d)\n", aport);
+        DEBUG_MODE print_message("API port was opened for API connection. (%d)\n", aport);
     }
 
     // socket open for client
@@ -210,7 +213,7 @@ int main(int argc, char** argv)
         if (ServerSSL==ON)  Server_CTX  = ssl_server_setup(TLS_CertPem, TLS_KeyPem);
         if (APIPortSSL==ON) APIPort_CTX = ssl_server_setup(TLS_CertPem, TLS_KeyPem);
     }
-    Client_CTX = ssl_client_setup(NULL);
+    //Client_CTX = ssl_client_setup(NULL);
 
     //
     DEBUG_MODE print_message("Start main loop.\n");
@@ -238,7 +241,8 @@ int main(int argc, char** argv)
 
         //
         if (Sofd>0 && FD_ISSET(Sofd, &mask)) {
-            if (fork()==0) receipt_child(Sofd, Client_CTX, Server_CTX, ProxyList);
+            //if (fork()==0) receipt_child(Sofd, Client_CTX, Server_CTX, ProxyList);
+            if (fork()==0) receipt_child(Sofd, Server_CTX, ProxyList);
             close(Sofd);    // don't use socket_close() !
             Sofd = 0;
         }
@@ -334,7 +338,7 @@ void  term_main(int code)
     Sofd = Aofd = Nofd = Mofd = 0;
 
     if (Server_CTX!=NULL)  SSL_CTX_free(Server_CTX);
-    if (Client_CTX!=NULL)  SSL_CTX_free(Client_CTX);
+    //if (Client_CTX!=NULL)  SSL_CTX_free(Client_CTX);
     if (APIPort_CTX!=NULL) SSL_CTX_free(APIPort_CTX);
 
     //free_Buffer(&hostname);
@@ -389,8 +393,10 @@ void  sig_term(int signal)
     
     pid_t pid = getpid();
     print_message("sig_term: Exit program with signal = %d (%d)\n", signal, pid);
-    if (signal<0) exit(-signal);
-    exit(signal);
+
+    if (signal<0) signal = -signal;
+    if (pid==RootPID)  exit(signal);
+    else              _exit(signal);
 }
 
 

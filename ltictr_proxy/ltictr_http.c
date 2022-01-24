@@ -1,6 +1,6 @@
 
-#include "ltictr_https.h"
 
+#include "ltictr_http.h"
 
 
 #define  LTICTR_HTTPS_HUB   "/hub/"
@@ -37,8 +37,9 @@ int  send_https_response(int sock, SSL* ssl, int num, Buffer* buf)
 
     DEBUG_MODE {
         print_message("\n=== HTTP SEND ===\n");
-        print_tList(stderr, hdr);
-        if (buf!=NULL) print_message("%s\n", buf->buf);
+        Buffer hbuf = search_protocol_header(hdr, (char*)HDLIST_FIRST_LINE_KEY, 1);
+        print_message("%s\n", (char*)hbuf.buf);
+        free_Buffer(&hbuf);
     }
 
     del_tList(&hdr);
@@ -47,25 +48,30 @@ int  send_https_response(int sock, SSL* ssl, int num, Buffer* buf)
 
 
 
-int  send_https_error(int sock, SSL* ssl, int err)
+int  send_https_error(int sock, SSL* ssl, int err, Buffer* opt)
 {
     tList* hdr = NULL;
     tList* lst = NULL;
 
     if      (err==400) {
-        hdr = add_tList_node_str(NULL, HDLIST_FIRST_LINE_KEY, "HTTP/1.1 400 Bad Request");
+        lst = hdr = add_tList_node_str(NULL, HDLIST_FIRST_LINE_KEY, "HTTP/1.1 400 Bad Request");
     }
     else if (err==404) {
-        hdr = add_tList_node_str(NULL, HDLIST_FIRST_LINE_KEY, "HTTP/1.1 404 Not Found");
+        lst = hdr = add_tList_node_str(NULL, HDLIST_FIRST_LINE_KEY, "HTTP/1.1 404 Not Found");
+    }
+    else if (err==405) {
+        lst = hdr = add_tList_node_str(NULL, HDLIST_FIRST_LINE_KEY, "HTTP/1.1 405 Method Not Allowed");
+        if (opt!=NULL) {
+            lst = add_tList_node_str(lst, "Allow",  (char*)opt->buf);
+        }
     }
     else if (err==500) {
-        hdr = add_tList_node_str(NULL, HDLIST_FIRST_LINE_KEY, "HTTP/1.1 500 Internal Server Error");
+        lst = hdr = add_tList_node_str(NULL, HDLIST_FIRST_LINE_KEY, "HTTP/1.1 500 Internal Server Error");
     }
     else {
-        hdr = add_tList_node_str(NULL, HDLIST_FIRST_LINE_KEY, "HTTP/1.1 400 Bad Request");
+        lst = hdr = add_tList_node_str(NULL, HDLIST_FIRST_LINE_KEY, "HTTP/1.1 400 Bad Request");
     }
     //
-    lst = hdr;
     lst = add_tList_node_str(lst, "Connection", "close");
  
     int cc = send_https_header(sock, ssl, hdr, OFF);
@@ -76,7 +82,7 @@ int  send_https_error(int sock, SSL* ssl, int err)
 
 
 
-char*  get_https_username(tList* hdr)
+char*  get_username_http(tList* hdr)
 {
     if (hdr==NULL) return NULL;
 

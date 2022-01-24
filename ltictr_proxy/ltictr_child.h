@@ -1,21 +1,21 @@
 
 #include "ltictr_xmlrpc.h"
-#include "ltictr_https.h"
+#include "ltictr_http.h"
 #include "ipaddr_tool.h"
 
 
-void   receipt_child(int ssock, SSL_CTX* c_ctx, SSL_CTX* s_ctx, tList* lp);
+void   receipt_child(int ssock, SSL_CTX* s_ctx, tList* lp);
 
 char*  get_sessionid_from_header(tList* hdr);
 char*  get_info_from_cookie(tList* hdr);
-char*  get_info_from_sessioninfo();
+char*  get_info_from_sessioninfo(char* mesg);
 
 int    init_process(int dummy, char* client);
 int    term_process(int dummy);
 
 
-int    send_client(int sock, SSL* ssl, tList* hdr, Buffer buf, int http_com);
-int    send_server(int sock, SSL* ssl, tList* hdr, Buffer buf, int http_com, char* proto);
+int    send_client(int sock, SSL* ssl, tList* hdr, Buffer buf);
+int    send_server(int sock, SSL* ssl, tList* hdr, Buffer buf, char* proto);
 
-int    get_proxy_socket(tList* hdr, int* http_com, tList* lproxy);
-SSL*   get_proxy_ssl(int sock, tList* hdr, SSL_CTX* ctx);
+int    get_proxy_socket(tList* hdr);
+SSL*   get_proxy_ssl(int sock, SSL_CTX* ctx, tList* hdr);
