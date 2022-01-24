@@ -268,10 +268,10 @@ int  add_user_api(char* uname, Buffer buf, tList* lproxy)
     //free(lasttime);
 
     //
-    DEBUG_MODE {
-        print_message("\n=== ADD USER API ===\n");
-        print_tList(stderr, lproxy);
-    }
+    //DEBUG_MODE {
+    //    print_message("\n=== ADD USER API ===\n");
+    //    print_tList(stderr, lproxy);
+    //}
 
     return 0;
 }
@@ -289,10 +289,10 @@ int  del_user_api(char* uname, tList* lproxy)
     del_tList_node(&pp);
     
     //
-    DEBUG_MODE {
-        print_message("\n=== DEL USER API === (%s)\n", uname);
-        print_tList(stderr, lproxy);
-    }
+    //DEBUG_MODE {
+    //    print_message("\n=== DEL USER API === (%s)\n", uname);
+    //    print_tList(stderr, lproxy);
+    //}
 
     return 0;
 }

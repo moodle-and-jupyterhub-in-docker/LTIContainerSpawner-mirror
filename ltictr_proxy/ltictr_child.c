@@ -15,7 +15,7 @@
 
 char*    SessionInfo  = NULL;
 
-extern tList* AllowList;
+extern   tList* AllowList;
 
 
 //
