@@ -83,8 +83,8 @@ void  receipt_child(int ssock, SSL_CTX* server_ctx, tList* lproxy)
             }
             else {
                 if (cc<0) {
-                    print_message("ltictr_child: C->S: ");
-                    jbxl_fprint_state(stderr, cc);
+                    //print_message("ltictr_child: C->S: ");
+                    //jbxl_fprint_state(stderr, cc);
                 }
                 break;      // cc==0
             }
@@ -131,8 +131,8 @@ void  receipt_child(int ssock, SSL_CTX* server_ctx, tList* lproxy)
                     }
                     else {
                         if (cc<0) {
-                            print_message("ltictr_proxy: S->C: ");
-                            jbxl_fprint_state(stderr, cc);
+                            //print_message("ltictr_child: S->C: ");
+                            //jbxl_fprint_state(stderr, cc);
                         }
                         break;      // cc==0
                     }
@@ -336,10 +336,6 @@ int   send_server(int sock, SSL* ssl, tList* hdr, Buffer buf, char* proto)
             //    SessionInfo = get_info_from_sessioninfo((char*)buf.buf);  
             //}
         }
-        DEBUG_MODE {
-            if (SessionInfo!=NULL) print_message("Session Info = %s\n", SessionInfo);
-        }
-        if (SessionInfo!=NULL) print_message("Session Info = %s\n", SessionInfo);
     }
 
 
