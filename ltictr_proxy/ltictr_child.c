@@ -35,6 +35,7 @@ void  receipt_child(int ssock, SSL_CTX* server_ctx, tList* lproxy)
     SSL* cssl    = NULL;
     SSL_CTX* client_ctx = ssl_client_setup(NULL);
     
+    if (lproxy->ldat.id == TLIST_ANCHOR_NODE) lproxy = lproxy->next;
     //ssock = set_block_socket(ssock);
 
     // Client SSL connection for data recieve
