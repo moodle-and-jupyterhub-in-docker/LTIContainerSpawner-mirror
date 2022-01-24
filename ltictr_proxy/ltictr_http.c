@@ -37,9 +37,7 @@ int  send_https_response(int sock, SSL* ssl, int num, Buffer* buf)
 
     DEBUG_MODE {
         print_message("\n=== HTTP SEND ===\n");
-        Buffer hbuf = search_protocol_header(hdr, (char*)HDLIST_FIRST_LINE_KEY, 1);
-        print_message("%s\n", (char*)hbuf.buf);
-        free_Buffer(&hbuf);
+        print_protocol_header(hdr);
     }
 
     del_tList(&hdr);

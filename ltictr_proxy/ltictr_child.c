@@ -68,9 +68,7 @@ void  receipt_child(int ssock, SSL_CTX* server_ctx, tList* lproxy)
             if (cc>0) {
                 DEBUG_MODE {
                     print_message("\n=== HTTP RECV CLIENT ===\n");
-                    Buffer hbuf = search_protocol_header(hdr, (char*)HDLIST_FIRST_LINE_KEY, 1);
-                    print_message("%s\n", (char*)hbuf.buf);
-                    free_Buffer(&hbuf);
+                    print_protocol_header(hdr);
                 }
                 char* uname  = get_username_http(hdr);
                 if (uname==NULL) break;
@@ -121,9 +119,7 @@ void  receipt_child(int ssock, SSL_CTX* server_ctx, tList* lproxy)
                     if (cc>0) {
                         DEBUG_MODE {
                             print_message("\n=== HTTP RECV SERVER === (%d)\n", csock);
-                            Buffer hbuf = search_protocol_header(hdr, (char*)HDLIST_FIRST_LINE_KEY, 1);
-                            print_message("%s\n", (char*)hbuf.buf);
-                            free_Buffer(&hbuf);
+                            print_protocol_header(hdr);
                         }
                         cc = send_client(ssock, sssl, hdr, buf);     // Client へ転送
                         if (cc<=0) {
@@ -300,9 +296,11 @@ int   send_server(int sock, SSL* ssl, tList* hdr, Buffer buf, char* proto)
         //recv_buffer = init_Buffer();
         //
         char* sessionid = get_sessionid_from_header(hdr);   // URL パラメータから session_id を得る
+print_message("====> sessionid = %s\n", sessionid);
         if (sessionid!=NULL) {
             char* ssninfo = get_info_from_cookie(hdr);          // ヘッダから Cookie を得る
             if (ssninfo!=NULL) {
+print_message("====> ssninfo = %s\n", ssninfo);
                 struct ws_info info;
                 memset(&info, 0, sizeof(struct ws_info));
                 //
@@ -339,6 +337,7 @@ int   send_server(int sock, SSL* ssl, tList* hdr, Buffer buf, char* proto)
         DEBUG_MODE {
             if (SessionInfo!=NULL) print_message("Session Info = %s\n", SessionInfo);
         }
+        if (SessionInfo!=NULL) print_message("Session Info = %s\n", SessionInfo);
     }
 
 
@@ -544,16 +543,14 @@ int  init_process(int dummy, char* client)
 {
     UNUSED(dummy);
 
-    //EBUG_MODE print_message("接続許可・禁止の確認．\n");
     if (AllowList!=NULL) {
         unsigned char* ip_num = get_ipaddr_byname_num(client, AF_INET);
         char* client_ip = get_ipaddr_byname(client, AF_INET);
 
         if (is_host_in_list(AllowList, ip_num, client)) {
-            //DEBUG_MODE print_message("[%s] が許可ファイルにありました．\n", client_ip);
+            DEBUG_MODE print_message("[%s] is in the allow list. \n", client_ip);
         }
         else {
-            //syslog(Logtype, "[%s] is access denied by AllowtList.", client_ip);
             DEBUG_MODE print_message("[%s] is not in the allow list. \n", client_ip);
             return FALSE;
         }
