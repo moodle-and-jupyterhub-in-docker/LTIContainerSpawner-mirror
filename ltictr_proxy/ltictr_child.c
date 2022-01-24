@@ -35,7 +35,6 @@ void  receipt_child(int ssock, SSL_CTX* server_ctx, tList* lproxy)
     SSL* cssl    = NULL;
     SSL_CTX* client_ctx = ssl_client_setup(NULL);
     
-    if (lproxy->ldat.id == TLIST_ANCHOR_NODE) lproxy = lproxy->next;
     //ssock = set_block_socket(ssock);
 
     // Client SSL connection for data recieve
@@ -97,7 +96,8 @@ void  receipt_child(int ssock, SSL_CTX* server_ctx, tList* lproxy)
         FD_ZERO(&mask); 
         FD_SET(ssock, &mask);
         //
-        lst = lproxy->next;
+        lst = lproxy;
+        if (lst->ldat.id==TLIST_ANCHOR_NODE) lst = lst->next;
         while (lst!=NULL) {
             csock = lst->ldat.id;
             if (csock>0) {
@@ -110,7 +110,8 @@ void  receipt_child(int ssock, SSL_CTX* server_ctx, tList* lproxy)
 
         //
         // Server -> Client // ltictr_proxy はクライアント
-        lst = lproxy->next;
+        lst = lproxy;
+        if (lst->ldat.id==TLIST_ANCHOR_NODE) lst = lst->next;
         while (lst!=NULL) {
             csock = lst->ldat.id;
             if (csock>0) {
@@ -146,7 +147,8 @@ void  receipt_child(int ssock, SSL_CTX* server_ctx, tList* lproxy)
         FD_ZERO(&mask); 
         FD_SET(ssock, &mask);
         //
-        lst = lproxy->next;
+        lst = lproxy;
+        if (lst->ldat.id==TLIST_ANCHOR_NODE) lst = lst->next;
         while (lst!=NULL) {
             csock = lst->ldat.id;
             if (csock>0) {
@@ -162,7 +164,8 @@ void  receipt_child(int ssock, SSL_CTX* server_ctx, tList* lproxy)
     ssl_close(sssl);
     socket_close(ssock);
 
-    lst = lproxy->next;
+    lst = lproxy;
+    if (lst->ldat.id==TLIST_ANCHOR_NODE) lst = lst->next;
     while (lst!=NULL) {
         csock = lst->ldat.id;
         if (csock>0) {

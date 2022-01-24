@@ -13,8 +13,6 @@ int  api_process(int sock, SSL* ssl, tList* lproxy)
     tList* hdr = NULL;             // 受信ヘッダ
     Buffer buf = init_Buffer();    // 受信ボディ
 
-   if (lproxy->ldat.id == TLIST_ANCHOR_NODE) lproxy = lproxy->next;
-
     //
     buf = make_Buffer(RECVBUFSZ);
     int ret = recv_https_Buffer(sock, ssl, &hdr, &buf, 0, NULL, NULL);
@@ -151,7 +149,7 @@ int  get_user_api(char* uname, Buffer* buf, tList* lproxy)
     tList* pp  = NULL;
     tJson* res = json_parse_prop(NULL, "{}", 0);
 
-    if (lproxy->ldat.id == TLIST_ANCHOR_NODE) lproxy = lproxy->next;
+    if (lproxy!=NULL && lproxy->ldat.id==TLIST_ANCHOR_NODE) lproxy = lproxy->next;
 
     if (!strcmp("/", uname)) {
         pp = lproxy;
