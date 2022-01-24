@@ -191,25 +191,25 @@ int   send_client(int sock, SSL* ssl, tList* hdr, Buffer buf)
     int http_com = get_http_header_method(hdr);
     //int http_res = OFF;
 
-    if (http_com>HTTP_UNKNOWN_METHOD) {
+    if (http_com > HTTP_UNKNOWN_METHOD) {
 
-    char*  resp = NULL;
-    tList* lp = search_key_tList(hdr, HDLIST_FIRST_LINE_KEY, 1);
-    if (lp!=NULL) resp = (char*)lp->ldat.val.buf;
+        char*  resp = NULL;
+        tList* lp = search_key_tList(hdr, HDLIST_FIRST_LINE_KEY, 1);
+        if (lp!=NULL) resp = (char*)lp->ldat.val.buf;
 
-    // add cookie
-    // Session Info を lms_sessioninfo の値として cookie に追加
-    if (SessionInfo!=NULL && resp!=NULL && ex_strcmp("HTTP/", resp)) {
-        //http_res = ON;
-        lp = search_key_tList(hdr, "Set-Cookie", 1);
-        if (lp==NULL) lp = search_key_tList(hdr, "Host", 1);
-        //
-        char cookie[LMESG];
-        snprintf(cookie, LMESG-1, "%s%s; HttpOnly; Path=/; Secure", SESSION_INFO_KEY, SessionInfo);
-        add_protocol_header(lp, "Set-Cookie", cookie);
-        free(SessionInfo);
-        SessionInfo = NULL;
-    }
+        // add cookie
+        // Session Info を lms_sessioninfo の値として cookie に追加
+        if (SessionInfo!=NULL && resp!=NULL && ex_strcmp("HTTP/", resp)) {
+            //http_res = ON;
+            lp = search_key_tList(hdr, "Set-Cookie", 1);
+            if (lp==NULL) lp = search_key_tList(hdr, "Host", 1);
+            //
+            char cookie[LMESG];
+            snprintf(cookie, LMESG-1, "%s%s; HttpOnly; Path=/; Secure", SESSION_INFO_KEY, SessionInfo);
+            add_protocol_header(lp, "Set-Cookie", cookie);
+            free(SessionInfo);
+            SessionInfo = NULL;
+        }
     }
 
 
@@ -296,11 +296,9 @@ int   send_server(int sock, SSL* ssl, tList* hdr, Buffer buf, char* proto)
         //recv_buffer = init_Buffer();
         //
         char* sessionid = get_sessionid_from_header(hdr);   // URL パラメータから session_id を得る
-print_message("====> sessionid = %s\n", sessionid);
         if (sessionid!=NULL) {
             char* ssninfo = get_info_from_cookie(hdr);          // ヘッダから Cookie を得る
             if (ssninfo!=NULL) {
-print_message("====> ssninfo = %s\n", ssninfo);
                 struct ws_info info;
                 memset(&info, 0, sizeof(struct ws_info));
                 //
