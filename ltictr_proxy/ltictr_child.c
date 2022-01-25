@@ -70,9 +70,27 @@ void  receipt_child(int ssock, SSL_CTX* server_ctx, tList* lproxy)
                     print_message("\n=== HTTP RECV CLIENT ===\n");
                     print_protocol_header(hdr);
                 }
-                char* uname  = get_username_http(hdr);
+                char* uname = get_username_client(hdr);
                 if (uname==NULL) break;
                 lst = strncasecmp_tList(lproxy, uname, 0, 1);
+
+                if (lst==NULL) {
+                    Buffer target = get_user_proxyinfo("127.0.0.1", 8001, NULL, uname, "ABC");
+                    if (target.buf!=NULL) {
+                        char* pp = (char*)target.buf;
+                        char* pt = pp + strlen((char*)target.buf);
+                        while (*pt!=':') pt--;
+                        *pt = '\0';
+                        pt++;
+                        lst = add_tList_node_bystr(lproxy, 0, atoi(pt), uname, pp, NULL, 0);
+                        free_Buffer(&target);
+                    }
+//print_message("=== child user (%s) =============================== (%d)\n", uname, getpid());
+//print_tList(stderr, lproxy);
+//print_message("---------------------------------------------- (%d)\n", getpid());
+//print_tList(stderr, lst);
+//print_message("=== user end ================================= (%d)\n", getpid());
+                }
                 free(uname);
 
                 csock = get_proxy_socket(lst);
@@ -181,6 +199,7 @@ void  receipt_child(int ssock, SSL_CTX* server_ctx, tList* lproxy)
     //syslog(Log_Type, "[%s] session end.", ClientIPaddr);
 
     DEBUG_MODE print_message("Termination of child process. (%d)\n", getpid());
+    print_message("Termination of child process. (%d)\n", getpid());
     _exit(0);
 }
 

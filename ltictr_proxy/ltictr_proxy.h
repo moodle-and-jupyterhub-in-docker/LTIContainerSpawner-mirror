@@ -18,7 +18,6 @@
 #include <unistd.h>
 #include <syslog.h>
 #include <sys/socket.h>
-//#include <signal.h>
 #include <sys/wait.h>
 #include <dlfcn.h>
 #include <errno.h>
@@ -31,10 +30,7 @@
 int   main(int argc, char** argv);
 int   init_main(Buffer file);
 void  term_main(int code);
-void  close_all_socket(tList* lp);
-
-//void  sig_term(int signal);
-//void  sig_child(int signal);
+//void  close_all_socket(tList* lp);
 
 
 

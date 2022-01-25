@@ -1,34 +1,73 @@
 
 #include "ltictr_api.h"
+#include "ltictr_signal.h"
 #include "tjson.h"
 
 
-#define  LTICTR_API_ROUTES  "/api/routes"
-#define  LTICTR_API_USER    "/api/routes/user/"
+
+extern int   Aofd, Mofd;
+extern pid_t APIPid;
+
+
+int  api_server(int port, SSL_CTX* a_ctx, tList* lproxy)
+{
+    struct sockaddr cl_addr;
+    socklen_t cdlen = sizeof(cl_addr);
+    APIPid = getpid();
+
+    print_message("[LTICTR_API] Start API Server. (%d)\n", getpid());
+    
+    Mofd = tcp_server_socket(port);
+    if (Mofd<0) {
+        print_message("[LTICTR_API] Failure to open the server port for API server.\n");
+        sig_term(-1);
+    }
+
+    //DEBUG_MODE print_message("[LTICTR_API] Start API Loop.\n");
+    //
+    print_message("[LTICTR_API] Start API Loop.\n");
+    SSL* assl = NULL;
+    Loop {
+        Aofd = accept_intr(Mofd, &cl_addr, &cdlen); 
+        if (Aofd>0) {
+            if (a_ctx!=NULL) assl = ssl_server_socket(Aofd, a_ctx);
+            api_main_process(Aofd, assl, lproxy);
+            ssl_close(assl);
+            //socket_close(Aofd);
+            close(Aofd);
+        }
+    }
+
+    // Unreachable
+    //DEBUG_MODE print_message("[LTICTR_API] Stop  API Loop.\n");
+    print_message("[LTICTR_API] Stop  API Loop.\n");
+    //
+    _exit(0);
+}
 
 
 
-int  api_process(int sock, SSL* ssl, tList* lproxy)
+int  api_main_process(int sock, SSL* ssl, tList* lproxy)
 {
     tList* hdr = NULL;             // 受信ヘッダ
     Buffer buf = init_Buffer();    // 受信ボディ
 
     //
     buf = make_Buffer(RECVBUFSZ);
-    int ret = recv_https_Buffer(sock, ssl, &hdr, &buf, 0, NULL, NULL);
+    int ret = recv_https_Buffer(sock, ssl, &hdr, &buf, HTTP_TIMEOUT, NULL, NULL);
     if (ret<=0) {           // 0 は正常切断
         del_tList(&hdr);
         free_Buffer(&buf);
-        if (ret<0) send_https_error(sock, ssl, 400, NULL);
+        if (ret<0) send_http_error(sock, ssl, 400, NULL);
         return -1;          // -1 は切断
     }
     int com = get_http_header_method(hdr);
 
     //
     DEBUG_MODE {
-        print_message("\n=== API RECV ===\n");
+        print_message("[LTICTR_API] \n=== API RECV ===\n");
         Buffer hbuf = search_protocol_header(hdr, (char*)HDLIST_FIRST_LINE_KEY, 1);
-        print_message("%s\n", (char*)hbuf.buf);
+        print_message("[LTICTR_API] %s\n", (char*)hbuf.buf);
         free_Buffer(&hbuf);
     }
 
@@ -37,8 +76,8 @@ int  api_process(int sock, SSL* ssl, tList* lproxy)
     del_tList(&hdr);
     if (uname==NULL) {
         free_Buffer(&buf);
-        if (com<=HTTP_UNKNOWN_METHOD) send_https_error(sock, ssl, 400, NULL);
-        else                          send_https_error(sock, ssl, 404, NULL);
+        if (com<=HTTP_UNKNOWN_METHOD) send_http_error(sock, ssl, 400, NULL);
+        else                          send_http_error(sock, ssl, 404, NULL);
         return -1;
     }
 
@@ -49,11 +88,11 @@ int  api_process(int sock, SSL* ssl, tList* lproxy)
         Buffer res = init_Buffer();
         ret = get_user_api(uname, &res, lproxy);
         if (ret==0) {
-            send_https_response(sock, ssl, 200, &res);
+            send_http_response(sock, ssl, 200, &res);
         }
         else {
             free_Buffer(&res);
-            send_https_error(sock, ssl, ret, NULL);
+            send_http_error(sock, ssl, ret, NULL);
             err = -1;
         }
         free_Buffer(&res);
@@ -62,38 +101,42 @@ int  api_process(int sock, SSL* ssl, tList* lproxy)
     else if (com==HTTP_POST_METHOD) {
         ret = add_user_api(uname, buf, lproxy);
         if (ret==0) {
-            send_https_response(sock, ssl, 201, NULL);
+            send_http_response(sock, ssl, 201, NULL);
         }
         else {
             err = -1;
-            send_https_error(sock, ssl, ret, NULL);
+            send_http_error(sock, ssl, ret, NULL);
         }
     }
     // DELETE
     else if (com==HTTP_DELETE_METHOD) {
         ret = del_user_api(uname, lproxy);
         if (ret==0) {
-            send_https_response(sock, ssl, 204, NULL);
+            send_http_response(sock, ssl, 204, NULL);
         }
         else {
             err = -1;
-            send_https_error(sock, ssl, ret, NULL);
+            send_http_error(sock, ssl, ret, NULL);
         }
     }
     else {
-        print_message("Not Supported Method : %d \n", com);
+        print_message("[LTICTR_API] Not Supported Method : %d \n", com);
         err = -1;
         Buffer opt = make_Buffer_str("GET, POST, DELETE");
-        send_https_error(sock, ssl, 405, &opt);          // Method Not Allowed
+        send_http_error(sock, ssl, 405, &opt);          // Method Not Allowed
     }
 
     //
-    if (uname!=NULL) free(uname);
+    free(uname);
     free_Buffer(&buf);
     //
     return err;
 }
 
+
+
+#define  LTICTR_API_ROUTES  "/api/routes"
+#define  LTICTR_API_USER    "/api/routes/user/"
 
 
 char*  get_username_api(tList* hdr)
@@ -268,10 +311,11 @@ int  add_user_api(char* uname, Buffer buf, tList* lproxy)
     //free(lasttime);
 
     //
-    //DEBUG_MODE {
-    //    print_message("\n=== ADD USER API ===\n");
-    //    print_tList(stderr, lproxy);
-    //}
+    DEBUG_MODE {
+        print_message("[LTICTR_API] Add user (%s)\n", uname);
+        print_tList(stderr, lproxy);
+        print_message("\n");
+    }
 
     return 0;
 }
@@ -289,10 +333,11 @@ int  del_user_api(char* uname, tList* lproxy)
     del_tList_node(&pp);
     
     //
-    //DEBUG_MODE {
-    //    print_message("\n=== DEL USER API === (%s)\n", uname);
-    //    print_tList(stderr, lproxy);
-    //}
+    DEBUG_MODE {
+        print_message("[LTICTR_API] Delete user (%s)\n", uname);
+        print_tList(stderr, lproxy);
+        print_message("\n");
+    }
 
     return 0;
 }
