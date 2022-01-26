@@ -7,13 +7,10 @@
 #include "ltictr_proxy.h"
 #include "ltictr_proxy_server.h"
 
-#define  NO_SYSLOG          999
-
-#define  LTICTR_ALLOW_FILE  "LTICTR_Allow_File"
 #define  LTICTR_PID_FILE    "LTICTR_Pid_File"
 #define  LTICTR_SERVER_CERT "LTICTR_Server_Cert"
 #define  LTICTR_PRIVATE_KEY "LTICTR_Private_Key"
-#define  LTICTR_API_TOKEN   "TICTR_API_Token"
+#define  LTICTR_API_TOKEN   "LTICTR_API_Token"
 
 #define  MOODLE_HOST_KEY    "Moodle_Host"
 #define  MOODLE_PORT_KEY    "Moodle_Port"
@@ -24,28 +21,27 @@
 #define  MOODLE_TLS_KEY     "Moodle_TLS"
 #define  MOODLE_HTTP_KEY    "Moodle_HTTP"
 
-#define  API_SERVER         "./ltictr_api_server"
+#define  API_SERVER_COM     "ltictr_api_server"
+#define  API_SERVER_NAME    "ltictr_api_server"
+#define  API_SERVER_URL     "http://127.0.0.1:8001"
 
 
-int      LogType        = LOG_INFO;;
 pid_t    RootPid;
 
-int      APIServer      = ON;
+int      APIServerExec  = ON;
 
 int      Nofd = 0, Sofd = 0;
 int      ServerSSL      = OFF;     // クライアント側（自身はサーバ）とのSSL 接続
 SSL_CTX* ServerCTX      = NULL;
 
-tList*   AllowList      = NULL;
 tList*   ProxyList      = NULL;
 tList*   PidList        = NULL;
 
 // config file
-char*    AllowFile      = "/usr/local/etc/ltictr_allow.list";
 char*    PidFile        = "/var/run/ltictr_proxy.pid";
 char*    TLS_CertPem    = "/etc/pki/tls/certs/server.pem";
 char*    TLS_KeyPem     = "/etc/pki/tls/private/key.pem";
-char*    API_Token      = "1234abcdefg";
+char*    API_Token      = "default_token";
 
 char*    Moodle_Host    = "localhost";
 char*    Moodle_URL     = "/webservice/xmlrpc/server.php";
@@ -61,36 +57,37 @@ int      Moodle_TLS     = FALSE;
 //
 int main(int argc, char** argv)
 {
-    int    sport = 0, aport = 0;
+    int    sport = 0;
     struct passwd* pw;
 
     Buffer hostname;
+    Buffer apihost;
     Buffer efctvuser;
     Buffer pidfile;
     Buffer certfile;
     Buffer keyfile;
-    Buffer allowfile;
     Buffer configfile;
 
     // for arguments
     hostname   = init_Buffer();
+    apihost    = init_Buffer();
     efctvuser  = init_Buffer();
     pidfile    = init_Buffer();
     certfile   = init_Buffer();
     keyfile    = init_Buffer();
     configfile = init_Buffer();
-    allowfile  = init_Buffer();
 
     for (int i=1; i<argc; i++) {
         if      (!strcmp(argv[i],"-p")) {if (i!=argc-1) sport = atoi(argv[i+1]);}
-        else if (!strcmp(argv[i],"-a")) {if (i!=argc-1) aport = atoi(argv[i+1]);}
-        else if (!strcmp(argv[i],"-h")) {if (i!=argc-1) hostname  = make_Buffer_bystr(argv[i+1]);}
+        else if (!strcmp(argv[i],"-s")) {if (i!=argc-1) hostname  = make_Buffer_bystr(argv[i+1]);}
+        else if (!strcmp(argv[i],"-a")) {if (i!=argc-1) apihost   = make_Buffer_bystr(argv[i+1]);}
         else if (!strcmp(argv[i],"-u")) {if (i!=argc-1) efctvuser = make_Buffer_bystr(argv[i+1]);}
         else if (!strcmp(argv[i],"-c")) ServerSSL = ON;
         else if (!strcmp(argv[i],"-d")) DebugMode = ON;
-        else if (!strcmp(argv[i],"-n")) APIServer = OFF;
-        //
-        else if (!strcmp(argv[i],"--allow"))  {if (i!=argc-1) allowfile  = make_Buffer_bystr(argv[i+1]);}
+
+        else if (!strcmp(argv[i],"-n"))          APIServerExec = OFF;
+        else if (!strcmp(argv[i],"--noexecapi")) APIServerExec = OFF; 
+
         else if (!strcmp(argv[i],"--pid"))    {if (i!=argc-1) pidfile    = make_Buffer_bystr(argv[i+1]);}
         else if (!strcmp(argv[i],"--cert"))   {if (i!=argc-1) certfile   = make_Buffer_bystr(argv[i+1]);}
         else if (!strcmp(argv[i],"--key"))    {if (i!=argc-1) keyfile    = make_Buffer_bystr(argv[i+1]);}
@@ -100,8 +97,8 @@ int main(int argc, char** argv)
         else if (*argv[i]=='-') print_message("[LTICTR_PROXY_SERVER] Unknown argument: %s\n", argv[i]);
     }
     if (sport==0) {
-        print_message("Usage... %s [-h host_name[:port]] -p client_side_port [-a api_port] [-s] [-c] [-i] [-u user] [-d] \n", argv[0]);
-        print_message("            [--allow allow_file] [--pid pid_file] [--conf config_file]  [--cert cert_file] [--key key_file]\n");
+        print_message("Usage... %s -p client_side_port [-c] [-s server_host[:port]] [-a [api_host:]port] [-u user] [-d] \n", argv[0]);
+        print_message("            [--noexecapi] [--conf config_file]  [--cert cert_file] [--key key_file] [--pid pid_file]\n");
         sig_term(-1);
     }
     //
@@ -116,21 +113,29 @@ int main(int argc, char** argv)
         }
     }
     if (cport==0) cport = sport;
-
-    if (pidfile.buf  !=NULL) PidFile     = (char*)pidfile.buf;
-    if (allowfile.buf!=NULL) AllowFile   = (char*)allowfile.buf;
-    if (certfile.buf !=NULL) TLS_CertPem = (char*)certfile.buf;
-    if (keyfile.buf  !=NULL) TLS_KeyPem  = (char*)keyfile.buf;
-
-    ProxyList = add_tList_node_anchor();
-    PidList   = add_tList_node_anchor();
-
     if (hostname.buf!=NULL) {
         if (!ex_strcmp("http://", (char*)hostname.buf) && !ex_strcmp("https://", (char*)hostname.buf)) {
             ins_s2Buffer("http://", &hostname);
         }
         add_tList_node_bystr(ProxyList, 0, cport, "/", (char*)hostname.buf, NULL, 0);
+        DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] Default Target Server is %s:%d.\n", (char*)hostname.buf, cport);
     }
+
+    //
+    if (apihost.buf==NULL) apihost = make_Buffer_bystr(API_SERVER_URL);
+    if (strstr((char*)apihost.buf, ":")==NULL) ins_s2Buffer(":", &apihost);
+    if (!ex_strcmp("http://", (char*)apihost.buf) && !ex_strcmp("https://", (char*)apihost.buf)) {
+        ins_s2Buffer("http://", &apihost);
+    }
+    DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] API Server is %s\n", (char*)apihost.buf);
+
+    //
+    if (pidfile.buf  !=NULL) PidFile     = (char*)pidfile.buf;
+    if (certfile.buf !=NULL) TLS_CertPem = (char*)certfile.buf;
+    if (keyfile.buf  !=NULL) TLS_KeyPem  = (char*)keyfile.buf;
+
+    ProxyList = add_tList_node_anchor();
+    PidList   = add_tList_node_anchor();
 
     //
     // Initialization
@@ -141,13 +146,8 @@ int main(int argc, char** argv)
             sig_term(-1);
         }
     }
-    LogType = init_main(configfile);
-    if (LogType<0) {
-        print_message("[LTICTR_PROXY_SERVER] Failure to initialize.\n");
-        sig_term(-1);
-    }
+    init_main(configfile);
     free_Buffer(&configfile);
-    free_Buffer(&allowfile);
     DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] Initialization is finished.\n");
 
     //
@@ -203,7 +203,6 @@ int main(int argc, char** argv)
     // socket open for client
     Nofd = tcp_server_socket(sport);       // block socket
     if (Nofd<0) {
-        syslog(LogType, "Failure to open the server port for client connection. [%s]", strerror(errno));
         print_message("[LTICTR_PROXY_SERVER] Failure to open the server port for client connection.\n");
         sig_term(-1);
     }
@@ -211,17 +210,13 @@ int main(int argc, char** argv)
 
     //////////////////////////////////////////////////
     // API Server Process の起動
-    if (APIServer==ON) {
-        if (aport==0) {
-            DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] API Server Posrt is not specified.\n");
-            sig_term(-1);
-        }
+    if (APIServerExec==ON) {
         //
         DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] Start LTICTR_API_SERVER.\n");
         pid_t pid = fork();
         if (pid==0) {
-            argv[0] = dup_str("ltictr_api_server");
-            execv(API_SERVER, argv);
+            argv[0] = dup_str(API_SERVER_NAME);
+            execv(API_SERVER_COM, argv);
             _exit(0);
         }
         add_tList_node_int(PidList, (int)pid, 0);
@@ -236,12 +231,12 @@ int main(int argc, char** argv)
         Sofd = accept_intr(Nofd, &cl_addr, &cdlen);
         if (Sofd>0) {
             pid_t pid = fork();
-            if (pid==0) receipt_proxy(Sofd, ServerCTX, ProxyList);
+            if (pid==0) receipt_proxy(Sofd, ServerCTX, apihost, ProxyList);
             close(Sofd);    // don't use socket_close() !
 
             tList* lp = find_tList_end(PidList);
             add_tList_node_int(lp, (int)pid, 0);
-            DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] Fort proxy process. (%d)\n", pid);
+            DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] For proxy process. (%d)\n", pid);
         }
     }
 
@@ -256,11 +251,6 @@ int main(int argc, char** argv)
 
 int  init_main(Buffer configfile)
 {
-    int logtype = LOG_INFO;
-    //int logtype = NO_SYSLOG;
-
-    openlog("LTICTR_PROXY_SERVER LOG", LOG_PERROR | LOG_PID, LOG_AUTH);
-
     // config file
     tList* filelist = NULL;
     if (configfile.buf!=NULL) {
@@ -268,7 +258,6 @@ int  init_main(Buffer configfile)
         //
         if (filelist!=NULL) {
             PidFile        = get_str_param_tList (filelist, LTICTR_PID_FILE,    PidFile);
-            AllowFile      = get_str_param_tList (filelist, LTICTR_ALLOW_FILE,  AllowFile);
             TLS_CertPem    = get_str_param_tList (filelist, LTICTR_SERVER_CERT, TLS_CertPem);
             TLS_KeyPem     = get_str_param_tList (filelist, LTICTR_PRIVATE_KEY, TLS_KeyPem);
             API_Token      = get_str_param_tList (filelist, LTICTR_API_TOKEN,   API_Token);
@@ -289,18 +278,7 @@ int  init_main(Buffer configfile)
         }
     }
 
-    // 接続許可・禁止ファイルの読み込み
-    AllowList = read_ipaddr_file(AllowFile);
-    if (AllowList!=NULL) {
-        DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] Readed access allow list\n");
-    }
-    else {
-        DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] Unable to read access allow list. No access control is performed.\n");
-    }
-
-    init_xmlrpc_header();
-
-    return  logtype;
+    return  0;
 }
 
 
@@ -313,7 +291,6 @@ void  term_main(int code)
     //
     pid_t pid = getpid();
     if (pid==RootPid) {
-        closelog(); // close syslog 
         if (PidFile!=NULL) remove(PidFile);
         //
         tList* lpid = PidList;

@@ -38,7 +38,7 @@ void  send_xmlrpc_data(char* host, int port, int tls, tList* header, int respons
     int sock = tcp_client_socket(host, port);
     if (sock<0) {
         DEBUG_MODE {
-            print_message("ltictr_xmlrpc: Failure to connect to server (%s:%d) : ", host, port);
+            print_message("[LTICTR_XMLRPC] Failure to connect to server (%s:%d) : ", host, port);
             jbxl_fprint_state(stderr, sock);
         }
         return;
@@ -56,7 +56,8 @@ void  send_xmlrpc_data(char* host, int port, int tls, tList* header, int respons
     if (response) { 
         char ans[RECVBUFSZ];
         ssl_tcp_recv(sock, ssl, ans, RECVBUFSZ-1);
-        print_message("%s\n", ans);
+        print_message("[LTICTR_XMLRPC] === ANS of XMLRPC ===\n");
+        print_message("%s\n\n", ans);
     }
 
     if (tls) {

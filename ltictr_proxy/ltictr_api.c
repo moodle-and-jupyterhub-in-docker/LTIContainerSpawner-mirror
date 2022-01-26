@@ -24,6 +24,7 @@ int  api_main_process(int sock, SSL* ssl, tList* lproxy)
         if (ret<0) send_http_error(sock, ssl, 400, NULL);
         return -1;
     }
+
     int com = get_http_header_method(hdr);
     if (com <= HTTP_UNKNOWN_METHOD) {
         del_tList(&hdr);
@@ -36,14 +37,17 @@ int  api_main_process(int sock, SSL* ssl, tList* lproxy)
     int check_token = OFF;
     Buffer tbuf = search_protocol_header(hdr, "Authorization", 1);
     char* token = (char*)tbuf.buf;
-    if (ex_strcmp(LTICTR_API_TOKEN_PRE, token)) {
-        if (!strcmp(API_Token, token + strlen(LTICTR_API_TOKEN_PRE))) check_token = ON;
+    if (token!=NULL) {
+        if (ex_strcmp(LTICTR_API_TOKEN_PRE, token)) {
+            token += strlen(LTICTR_API_TOKEN_PRE);
+            if (!strcmp(API_Token, token)) check_token = ON;
+        }
     }
     free_Buffer(&tbuf);
     if (check_token==OFF) {
         del_tList(&hdr);
         free_Buffer(&buf);
-        DEBUG_MODE print_message("[LTICTR_API] Missmatch Token string! (%s) (%s)\n", API_Token, token + strlen(LTICTR_API_TOKEN_PRE));
+        DEBUG_MODE print_message("[LTICTR_API] Missmatch Token string!\n");
         send_http_error(sock, ssl, 401, NULL);
         return -1;
     }

@@ -16,12 +16,10 @@
 #include <pwd.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <syslog.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
 #include <dlfcn.h>
 #include <errno.h>
-
 
 
 
@@ -30,8 +28,8 @@
 int   main(int argc, char** argv);
 int   init_main(Buffer file);
 void  term_main(int code);
-//void  close_all_socket(tList* lp);
 
+//void  close_all_socket(tList* lp);
 
 
 #endif

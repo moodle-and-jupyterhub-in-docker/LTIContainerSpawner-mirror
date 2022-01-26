@@ -34,6 +34,7 @@ int main(int argc, char** argv)
     int    aport = 0;
     struct passwd* pw;
 
+    Buffer apihost;
     Buffer efctvuser;
     Buffer pidfile;
     Buffer certfile;
@@ -41,6 +42,7 @@ int main(int argc, char** argv)
     Buffer configfile;
 
     // for arguments
+    apihost    = init_Buffer();
     efctvuser  = init_Buffer();
     pidfile    = init_Buffer();
     certfile   = init_Buffer();
@@ -48,9 +50,8 @@ int main(int argc, char** argv)
     configfile = init_Buffer();
 
     for (int i=1; i<argc; i++) {
-        if      (!strcmp(argv[i],"-a")) {if (i!=argc-1) aport = atoi(argv[i+1]);}
+        if      (!strcmp(argv[i],"-a")) {if (i!=argc-1) apihost   = make_Buffer_bystr(argv[i+1]);}
         else if (!strcmp(argv[i],"-u")) {if (i!=argc-1) efctvuser = make_Buffer_bystr(argv[i+1]);}
-        else if (!strcmp(argv[i],"-i")) APIPortSSL = ON;
         else if (!strcmp(argv[i],"-d")) DebugMode  = ON;
         //
         else if (!strcmp(argv[i],"--apid"))   {if (i!=argc-1) pidfile    = make_Buffer_bystr(argv[i+1]);}
@@ -61,12 +62,27 @@ int main(int argc, char** argv)
         //
         //else if (*argv[i]=='-') print_message("[LTICTR_API_SERVER] Unknown argument: %s\n", argv[i]);
     }
-    if (aport==0) {
-        print_message("Usage... %s -a api_port [-i] [-u user] [-d] \n", argv[0]);
+    if (apihost.buf==NULL) {
+        print_message("Usage... %s -a [api_host:]port [-u user] [-d] \n", argv[0]);
         print_message("            [--apid pid_file] [--conf config_file]  [--cert cert_file] [--key key_file]\n");
         sig_term(-1);
     }
-    //
+
+    if (strstr((char*)apihost.buf, ":")!=NULL) {
+        Buffer protocol = init_Buffer();
+        unsigned short port;
+        decomp_url(apihost, NULL, &protocol, NULL, &port, NULL);
+        if (ex_strcmp("https", (char*)protocol.buf)) APIPortSSL = ON;
+        free_Buffer(&protocol);
+        aport = (int)port;
+    }
+    else {
+        aport = atoi((char*)apihost.buf);
+    }
+    if (aport<=0) {
+        print_message("[LTICTR_API_SERVER] API Server Port num = (%d). Can not open port.\n", aport);
+        sig_term(-1);
+    }
 
     if (pidfile.buf  !=NULL) PidFile     = (char*)pidfile.buf;
     if (certfile.buf !=NULL) TLS_CertPem = (char*)certfile.buf;
@@ -174,10 +190,10 @@ int  init_main(Buffer configfile)
         filelist = read_index_tList_file((char*)configfile.buf, '=');
         //
         if (filelist!=NULL) {
-            PidFile        = get_str_param_tList (filelist, LTICTR_PID_FILE,    PidFile);
-            TLS_CertPem    = get_str_param_tList (filelist, LTICTR_SERVER_CERT, TLS_CertPem);
-            TLS_KeyPem     = get_str_param_tList (filelist, LTICTR_PRIVATE_KEY, TLS_KeyPem);
-            API_Token      = get_str_param_tList (filelist, LTICTR_API_TOKEN,   API_Token);
+            PidFile     = get_str_param_tList (filelist, LTICTR_PID_FILE,    PidFile);
+            TLS_CertPem = get_str_param_tList (filelist, LTICTR_SERVER_CERT, TLS_CertPem);
+            TLS_KeyPem  = get_str_param_tList (filelist, LTICTR_PRIVATE_KEY, TLS_KeyPem);
+            API_Token   = get_str_param_tList (filelist, LTICTR_API_TOKEN,   API_Token);
             //
             del_tList(&filelist);
         }

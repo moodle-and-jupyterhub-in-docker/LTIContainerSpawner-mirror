@@ -5,7 +5,6 @@
 #include "ltictr_signal.h"
 
 
-
 #define  LTICTR_IDLETIME   900       // 15m
 #define  LTICTR_TIMEOUT    30        // 30s
 
@@ -15,42 +14,53 @@
 
 char*    SessionInfo  = NULL;
 
-extern   tList* AllowList;
+extern char*  API_Token;
 
 
 //
-void  receipt_proxy(int ssock, SSL_CTX* server_ctx, tList* lproxy)
+void  receipt_proxy(int ssock, SSL_CTX* server_ctx, Buffer api_host, tList* lproxy)
 {
     int    cc, nd;
     fd_set mask;
     struct timeval timeout;
 
-    Buffer buf   = make_Buffer(RECVBUFSZ);  // 受信ボディ
-    tList* hdr   = NULL;                    // 受信ヘッダ
+    Buffer buf   = init_Buffer();   // 受信ボディ
+    tList* hdr   = NULL;            // 受信ヘッダ
     tList* lst   = NULL;
     char* sproto = NULL;
 
     int  csock   = 0;
     SSL* sssl    = NULL;
     SSL* cssl    = NULL;
-    SSL_CTX* client_ctx = ssl_client_setup(NULL);
     
-    //ssock = set_block_socket(ssock);
+    SSL_CTX* client_ctx = NULL;
+    Buffer aserver  = init_Buffer();
+    Buffer protocol = init_Buffer();
+    unsigned short aport = 0;
 
+    //
+    decomp_url(api_host, NULL, &protocol, &aserver, &aport, NULL);
+    if (ex_strcmp("https", (char*)protocol.buf)) {
+        client_ctx = ssl_client_setup(NULL);
+    }
+    free_Buffer(&protocol);
+    //
     // Client SSL connection for data recieve
     if (server_ctx!=NULL) {
         sproto = dup_str("https");
         sssl = ssl_server_socket(ssock, server_ctx);
         if (sssl==NULL) {
             free(sproto);
-            print_message("Failure to create the client socket. (%d)\n", getpid());
+            close(ssock);
+            print_message("[LTICTR_PROXY] Failure to create the client socket. (%d)\n", getpid());
             sig_term(-1);
         }
-        DEBUG_MODE print_message("Opened socket for SSL server. (%d)\n", getpid());
+        DEBUG_MODE print_message("[LTICTR_PROXY] Opened socket for SSL server. (%d)\n", getpid());
     }
     else sproto = dup_str("http");
     
     //
+    buf = make_Buffer(RECVBUFSZ);
     int range = ssock;
     timeout.tv_sec  = LTICTR_IDLETIME;
     timeout.tv_usec = 0;
@@ -59,7 +69,7 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, tList* lproxy)
     nd = select(range+1, &mask, NULL, NULL, &timeout);
 
     // Main Loop
-    DEBUG_MODE print_message("Child Proxy Loop(%d)\n", getpid());
+    DEBUG_MODE print_message("[LTICTR_PROXY] Start Main Loop. (%d)\n", getpid());
     while(nd>0) {
         //
         // Client -> Server // ltictr_proxy_server はサーバ
@@ -67,15 +77,16 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, tList* lproxy)
             cc = recv_https_Buffer(ssock, sssl, &hdr, &buf, LTICTR_TIMEOUT, NULL, NULL);
             if (cc>0) {
                 DEBUG_MODE {
-                    print_message("\n=== HTTP RECV CLIENT ===\n");
+                    print_message("[LTICTR_PROXY] === HTTP RECV CLIENT ===\n");
                     print_protocol_header(hdr);
+                    print_message("\n");
                 }
                 char* uname = get_proxy_username(hdr);
                 if (uname==NULL) break;
                 lst = strncasecmp_tList(lproxy, uname, 0, 1);
 
                 if (lst==NULL) {
-                    Buffer target = get_proxy_target("127.0.0.1", 8001, NULL, uname, "ABC");
+                    Buffer target = get_proxy_target((char*)aserver.buf, (int)aport, client_ctx, uname, API_Token);
                     if (target.buf!=NULL) {
                         char* pp = (char*)target.buf;
                         char* pt = pp + strlen((char*)target.buf);
@@ -95,14 +106,12 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, tList* lproxy)
                 if (cc<=0) break;
             }
             else {
-                if (cc<0) {
-                    //print_message("ltictr_proxy: C->S: ");
-                    //jbxl_fprint_state(stderr, cc);
-                }
+                del_tList(&hdr);
                 break;      // cc==0
             }
         }
 
+        //
         range = ssock;
         timeout.tv_sec  = LTICTR_TIMEOUT;
         timeout.tv_usec = 0;
@@ -133,12 +142,13 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, tList* lproxy)
                     cc = recv_https_Buffer(csock, cssl, &hdr, &buf, LTICTR_TIMEOUT, NULL, NULL); 
                     if (cc>0) {
                         DEBUG_MODE {
-                            print_message("\n=== HTTP RECV SERVER === (%d)\n", csock);
+                            print_message("[LTICTR_PROXY] === HTTP RECV SERVER === (%d)\n", csock);
                             print_protocol_header(hdr);
+                            print_message("\n");
                         }
                         cc = send_client(ssock, sssl, hdr, buf);     // Client へ転送
                         if (cc<=0) {
-                            //if (cc<0) syslog(Log_Type, "error occurred in fe_server().");
+                            ssl_close(cssl);
                             close(csock);
                             lst->ldat.id = 0;
                             if (lst->ldat.ptr!=NULL) free(lst->ldat.ptr);
@@ -147,21 +157,20 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, tList* lproxy)
                         }
                     }
                     else {
-                        if (cc<0) {
-                            //print_message("ltictr_proxy: S->C: ");
-                            //jbxl_fprint_state(stderr, cc);
-                        }
+                        ssl_close(cssl);
                         close(csock);
                         lst->ldat.id = 0;
                         if (lst->ldat.ptr!=NULL) free(lst->ldat.ptr);
                         lst->ldat.sz = 0;
                         //break;      // cc==0
                     }
+                    del_tList(&hdr);
                 }
             }
             lst = lst->next;
         }
 
+        //
         range = ssock;
         timeout.tv_sec  = LTICTR_TIMEOUT;
         timeout.tv_usec = 0;
@@ -180,7 +189,7 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, tList* lproxy)
         }
         nd = select(range+1, &mask, NULL, NULL, &timeout);
     }
-    DEBUG_MODE print_message("End of communication. (%d)\n", getpid());
+    DEBUG_MODE print_message("[LTICTR_PROXY] Stop  Main Loop. (%d)\n", getpid());
 
     ssl_close(sssl);
     socket_close(ssock);
@@ -190,7 +199,8 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, tList* lproxy)
     while (lst!=NULL) {
         csock = lst->ldat.id;
         if (csock>0) {
-            ssl_close((SSL*)lst->ldat.ptr);
+            if (lst->ldat.ptr!=NULL) ssl_close((SSL*)lst->ldat.ptr);
+            lst->ldat.sz = 0;
             socket_close(csock);
         }
         lst = lst->next;
@@ -198,10 +208,8 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, tList* lproxy)
     if (client_ctx!=NULL) SSL_CTX_free(client_ctx);
 
     free(sproto);
-    free_Buffer(&buf);
-    //syslog(Log_Type, "[%s] session end.", ClientIPaddr);
 
-    DEBUG_MODE print_message("Termination of proxy process. (%d)\n", getpid());
+    DEBUG_MODE print_message("[LTICTR_PROXY] Termination of Process. (%d)\n", getpid());
     _exit(0);
 }
 
@@ -409,7 +417,7 @@ int  get_proxy_socket(tList* lst)
     //
     sock = (int)lst->ldat.id;
     if (sock<=0) {
-        DEBUG_MODE print_message("socket for %s is invalid. Reopen socket. (%d)\n", (char*)lst->ldat.key.buf, sock);
+        DEBUG_MODE print_message("[LTICTR_PROXY] Socket for %s is invalid. Reopen socket. (%d)\n", (char*)lst->ldat.key.buf, sock);
         //
         char* hp = (char*)lst->ldat.val.buf + lst->ldat.val.vldsz;
         while(*hp!='/') hp--;
@@ -444,12 +452,118 @@ SSL*  get_proxy_ssl(int sock, SSL_CTX* ctx, tList* lst)
                 lst->ldat.sz  = sizeof(SSL*);
             }
             else {
-                DEBUG_MODE print_message("Failure to connect to server SSL port. (%d)\n", getpid());
+                DEBUG_MODE print_message("[LTICTR_PROXY] Failure to connect to server SSL port. (%d)\n", getpid());
                 sig_term(-1);
             }
         }
     }
     return ssl;
+}
+
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#define  LTICTR_HTTPS_HUB   "/hub/"
+#define  LTICTR_HTTPS_USER  "/user/"
+
+
+char*  get_proxy_username(tList* hdr)
+{
+    if (hdr==NULL) return NULL;
+
+    char*  path = NULL;
+    Buffer hbuf = search_protocol_header(hdr, (char*)HDLIST_FIRST_LINE_KEY, 1);
+
+    if (hbuf.buf!=NULL) {
+        path = cawk((char*)hbuf.buf, ' ', 2);
+        if (path!=NULL && *path!='/') {
+            free(path);
+            path = NULL;
+        }
+        free_Buffer(&hbuf);
+    }
+    if (path==NULL) return NULL;
+
+    //
+    char* unm = NULL;
+
+    if (ex_strcmp(LTICTR_HTTPS_USER, path)) {
+        char* pp = path + strlen(LTICTR_HTTPS_USER);
+        char* pt = pp;
+        while (*pt!='/' && *pt!='\0') pt++;
+        *pt = '\0';
+        unm = dup_str(pp);
+    }
+    //else if (ex_strcmp(LTICTR_HTTPS_HUB, path)) {
+    //    unm = dup_str("/");
+    //}
+    else {
+        unm = dup_str("/");
+    }
+    free(path);
+
+    return unm;
+}
+
+
+
+Buffer  get_proxy_target(char* api_host, int api_port, SSL_CTX* ctx, char* uname, char* token)
+{
+    char localip[] = "127.0.0.1";
+
+    Buffer target = init_Buffer();
+    if (api_host==NULL || api_port<=0 || uname==NULL) return target;
+    if (api_host[0]=='\0') api_host = localip;
+
+    SSL* ssl = NULL;
+    int sofd = tcp_client_socket(api_host, api_port);
+    if (sofd<=0) return target;
+    if (ctx!=NULL) {
+        ssl = ssl_client_socket(sofd, ctx, OFF);
+    }
+
+    char get_data[LDATA];
+    char get_request[] = "GET /api/routes/user/%s HTTP/1.1";
+    snprintf(get_data, LDATA-1, get_request, uname);
+
+    Buffer token_data = make_Buffer_str("token ");
+    cat_s2Buffer(token, &token_data);
+
+    tList* http_header = NULL;
+    tList* lp = NULL;
+
+    lp = add_tList_node_bystr(lp, 0, 0, HDLIST_FIRST_LINE_KEY, get_data, NULL, 0);
+    http_header = lp;
+    lp = add_tList_node_bystr(lp, 0, 0, "Host", "", NULL, 0);
+    set_http_host_header(lp, api_host, (unsigned short)api_port);
+    lp = add_tList_node_bystr(lp, 0, 0, "Accept", "*/*", NULL, 0);
+    lp = add_tList_node_bystr(lp, 0, 0, "Connection", "close",  NULL, 0);
+    lp = add_tList_node_bystr(lp, 0, 0, "Content-Length", "0", NULL, 0);
+    lp = add_tList_node_bystr(lp, 0, 0, "Authorization", (char*)token_data.buf, NULL, 0);
+    lp = add_tList_node_bystr(lp, 0, 0, HDLIST_END_KEY, "",  NULL, 0);
+    free_Buffer(&token_data);
+
+    send_https_header(sofd, ssl, http_header, OFF);
+    del_tList(&http_header);
+
+    Buffer buf = make_Buffer(RECVBUFSZ);
+    recv_https_Buffer(sofd, ssl, &http_header, &buf, LTICTR_TIMEOUT, NULL, NULL);
+    ssl_close(ssl);
+    socket_close(sofd);
+
+    tJson* json = json_parse_prop(NULL, (char*)buf.buf, 99);
+    free_Buffer(&buf);
+    del_tList(&http_header);
+
+    buf = get_key_json_val(json, "user", 1);
+    if ((buf.buf!=NULL && !strcmp((char*)buf.buf, uname)) || !strcmp("/", uname)) {
+        target = get_key_json_val(json, "target", 1);
+    }
+    free_Buffer(&buf);
+    del_json(&json);
+
+    return target;
 }
 
 
@@ -546,150 +660,4 @@ char*  get_info_from_sessioninfo(char* mesg)
 
     return ssninfo;
 }
-
-
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-//
-// プロセス毎の初期化処理
-//
-int  init_process(int dummy, char* client)
-{
-    UNUSED(dummy);
-
-    if (AllowList!=NULL) {
-        unsigned char* ip_num = get_ipaddr_byname_num(client, AF_INET);
-        char* client_ip = get_ipaddr_byname(client, AF_INET);
-
-        if (is_host_in_list(AllowList, ip_num, client)) {
-            DEBUG_MODE print_message("[%s] is in the allow list. \n", client_ip);
-        }
-        else {
-            DEBUG_MODE print_message("[%s] is not in the allow list. \n", client_ip);
-            return FALSE;
-        }
-    }
-
-    //
-    return TRUE;
-}
-
-
-
-//
-// プロセス毎の終了処理
-//
-int  term_process(int dummy)
-{
-    UNUSED(dummy);
-
-    del_all_tList(&AllowList);
-
-    if (SessionInfo!=NULL) free(SessionInfo);
-    SessionInfo = NULL;
-
-    return TRUE;
-}
-
-
-
-#define  LTICTR_HTTPS_HUB   "/hub/"
-#define  LTICTR_HTTPS_USER  "/user/"
-
-
-char*  get_proxy_username(tList* hdr)
-{
-    if (hdr==NULL) return NULL;
-
-    char*  path = NULL;
-    Buffer hbuf = search_protocol_header(hdr, (char*)HDLIST_FIRST_LINE_KEY, 1);
-
-    if (hbuf.buf!=NULL) {
-        path = cawk((char*)hbuf.buf, ' ', 2);
-        if (path!=NULL && *path!='/') {
-            free(path);
-            path = NULL;
-        }
-        free_Buffer(&hbuf);
-    }
-    if (path==NULL) return NULL;
-
-    //
-    char* unm = NULL;
-
-    if (ex_strcmp(LTICTR_HTTPS_USER, path)) {
-        char* pp = path + strlen(LTICTR_HTTPS_USER);
-        char* pt = pp;
-        while (*pt!='/' && *pt!='\0') pt++;
-        *pt = '\0';
-        unm = dup_str(pp);
-    }
-    //else if (ex_strcmp(LTICTR_HTTPS_HUB, path)) {
-    //    unm = dup_str("/");
-    //}
-    else {
-        unm = dup_str("/");
-    }
-    free(path);
-
-    return unm;
-}
-
-
-
-Buffer  get_proxy_target(char* api_host, int api_port, SSL_CTX* ctx, char* uname, char* token)
-{
-    Buffer target = init_Buffer();
-
-    if (uname==NULL || api_host==NULL || api_port<=0) return target;
-
-    SSL* ssl = NULL;
-    int sofd = tcp_client_socket(api_host, api_port);
-    if (sofd<=0) return target;
-    if (ctx!=NULL) ssl = ssl_client_socket(sofd, ctx, OFF);
-
-    char get_data[LDATA];
-    char get_request[] = "GET /api/routes/user/%s HTTP/1.1";
-    snprintf(get_data, LDATA-1, get_request, uname);
-
-    Buffer token_data = make_Buffer_str("token ");
-    cat_s2Buffer(token, &token_data);
-
-    tList* http_header = NULL;
-    tList* lp = NULL;
-
-    lp = add_tList_node_bystr(lp, 0, 0, HDLIST_FIRST_LINE_KEY, get_data, NULL, 0);
-    http_header = lp;
-    lp = add_tList_node_bystr(lp, 0, 0, "Host", "", NULL, 0);
-    set_http_host_header(lp, api_host, (unsigned short)api_port);
-    lp = add_tList_node_bystr(lp, 0, 0, "Accept", "*/*", NULL, 0);
-    lp = add_tList_node_bystr(lp, 0, 0, "Connection", "close",  NULL, 0);
-    lp = add_tList_node_bystr(lp, 0, 0, "Content-Length", "0", NULL, 0);
-    set_protocol_header(lp, "Authorization", (char*)token_data.buf, 1, ON);
-    lp = add_tList_node_bystr(lp, 0, 0, HDLIST_END_KEY, "",  NULL, 0);
-    free_Buffer(&token_data);
-
-    send_https_header(sofd, ssl, http_header, OFF);
-    del_tList(&http_header);
-
-    Buffer buf = make_Buffer(RECVBUFSZ);
-    recv_https_Buffer(sofd, ssl, &http_header, &buf, LTICTR_TIMEOUT, NULL, NULL);
-    ssl_close(ssl);
-    socket_close(sofd);
-
-    tJson* json = json_parse_prop(NULL, (char*)buf.buf, 99);
-    free_Buffer(&buf);
-    del_tList(&http_header);
-
-    buf = get_key_json_val(json, "user", 1);
-    if ((buf.buf!=NULL && !strcmp((char*)buf.buf, uname)) || !strcmp("/", uname)) {
-        target = get_key_json_val(json, "target", 1);
-    }
-    free_Buffer(&buf);
-    del_json(&json);
-
-    return target;
-}
-
 

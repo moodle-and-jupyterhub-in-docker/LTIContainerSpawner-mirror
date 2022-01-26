@@ -16,7 +16,6 @@
 #include <pwd.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <syslog.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
 #include <dlfcn.h>
