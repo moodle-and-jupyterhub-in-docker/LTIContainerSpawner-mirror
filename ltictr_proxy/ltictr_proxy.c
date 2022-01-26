@@ -26,16 +26,19 @@
 #define  MOODLE_TLS_KEY     "Moodle_TLS"
 #define  MOODLE_HTTP_KEY    "Moodle_HTTP"
 
+#define  API_SERVER         "./ltictr_api"
+
 
 int      LogType        = LOG_INFO;;
 pid_t    RootPid;
-pid_t    APIPid;
+pid_t    APIPid         = 0;
 
 int      Nofd = 0, Sofd = 0;
 int      Mofd = 0, Aofd = 0;
 
 int      ServerSSL      = OFF;     // クライアント側（自身はサーバ）とのSSL 接続
 int      APIPortSSL     = OFF;     // APIポートのSSL 接続
+int      APIServer      = ON;
 
 SSL_CTX* Server_CTX     = NULL;
 SSL_CTX* APIPort_CTX    = NULL;
@@ -120,6 +123,7 @@ int main(int argc, char** argv)
         }
     }
     if (cport==0) cport = sport;
+    if (aport==0) APIServer = OFF;
 
     if (pidfile.buf  !=NULL) PidFile     = (char*)pidfile.buf;
     if (allowfile.buf!=NULL) AllowFile   = (char*)allowfile.buf;
@@ -232,11 +236,13 @@ int main(int argc, char** argv)
 
     //////////////////////////////////////////////////
     // API Server Process の起動
-    APIPid = fork();
-    if (APIPid==0) {
-        api_server(aport, APIPort_CTX, ProxyList);
-        //execl("ltictr_api", "ltictr_api"
-        _exit(0);
+    if (APIServer==ON) {
+        APIPid = fork();
+        if (APIPid==0) {
+            argv[0] = dup_str("ltictr_api");
+            execv(API_SERVER, argv);
+            _exit(0);
+        }
     }
 
     //
@@ -400,11 +406,11 @@ void  term_main(int code)
         closelog(); // close syslog 
         if (PidFile!=NULL) remove(PidFile);
         //
-        kill(APIPid, SIGTERM);
+        if (APIPid>0) kill(APIPid, SIGTERM);
         tList* lpid = PidList;
         if (lpid!=NULL && lpid->ldat.id==TLIST_ANCHOR_NODE) lpid = lpid->next;
         while (lpid!=NULL) {
-            kill((pid_t)lpid->ldat.id, SIGTERM);   
+            if (lpid->ldat.id>0) kill((pid_t)lpid->ldat.id, SIGTERM);   
             lpid = lpid->next;   
         }
         sleep(1);
