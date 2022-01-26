@@ -6,7 +6,6 @@
 
 #include "ltictr_proxy.h"
 #include "ltictr_api.h"
-#include "ltictr_http.h"
 #include "ltictr_child.h"
 
 
@@ -235,8 +234,8 @@ int main(int argc, char** argv)
     // API Server Process の起動
     APIPid = fork();
     if (APIPid==0) {
-        //api_server(aport, APIPort_CTX, ProxyList);
-        execl("ltictr_api", "ltictr_api"
+        api_server(aport, APIPort_CTX, ProxyList);
+        //execl("ltictr_api", "ltictr_api"
         _exit(0);
     }
 
