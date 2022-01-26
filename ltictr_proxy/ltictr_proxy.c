@@ -117,6 +117,7 @@ int main(int argc, char** argv)
         if (hostname.buf[i]==':') {
             cport = atoi((char*)&(hostname.buf[i+1]));
             hostname.buf[i] = '\0';
+            hostname.vldsz = strlen((char*)hostname.buf);
         }
     }
     if (cport==0) cport = sport;
@@ -130,6 +131,9 @@ int main(int argc, char** argv)
     PidList   = add_tList_node_anchor();
 
     if (hostname.buf!=NULL) {
+        if (!ex_strcmp("http://", (char*)hostname.buf) && !ex_strcmp("https://", (char*)hostname.buf)) {
+            ins_s2Buffer("http://", &hostname);
+        }
         add_tList_node_bystr(ProxyList, 0, cport, "/", (char*)hostname.buf, NULL, 0);
     }
 
@@ -231,7 +235,8 @@ int main(int argc, char** argv)
     // API Server Process の起動
     APIPid = fork();
     if (APIPid==0) {
-        api_server(aport, APIPort_CTX, ProxyList);
+        //api_server(aport, APIPort_CTX, ProxyList);
+        execl("ltictr_api", "ltictr_api"
         _exit(0);
     }
 
