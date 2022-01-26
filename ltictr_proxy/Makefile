@@ -5,7 +5,7 @@ VERSION = 0.1.0
 
 #
 #
-SUBJ = ltictr_proxy 
+SUBJ = ltictr_proxy_server ltictr_api_server
 #
 all: $(SUBJ)
 
@@ -41,8 +41,11 @@ ELIB = -L$(LIB_EXT_DIR) -lextend
 
 #
 #
-ltictr_proxy: ltictr_proxy.o ltictr_api.o ltictr_child.o ltictr_xmlrpc.o ltictr_ws.o $(LIB_BSC) $(LIB_EXT)
-	$(CC) $(@).o ltictr_api.o ltictr_child.o ltictr_xmlrpc.o ltictr_ws.o $(ELIB) $(SLIB) -O2 -o $@ 
+ltictr_proxy_server: ltictr_proxy_server.o ltictr_proxy.o ltictr_xmlrpc.o ltictr_ws.o $(LIB_BSC) $(LIB_EXT)
+	$(CC) $(@).o ltictr_proxy.o ltictr_xmlrpc.o ltictr_ws.o $(ELIB) $(SLIB) -O2 -o $@ 
+
+ltictr_api_server: ltictr_api_server.o ltictr_api.o $(LIB_BSC) $(LIB_EXT)
+	$(CC) $(@).o ltictr_api.o $(ELIB) $(SLIB) -O2 -o $@ 
 
 
 $(LIB_BSC):
@@ -53,9 +56,10 @@ $(LIB_EXT):
 
 
 
-install: ltictr_proxy 
-	install -m 0755 ltictr_proxy /usr/local/bin
-	chmod 0755 /var/ltictr_proxy
+install: ltictr_proxy_server  ltictr_api_server
+	install -m 0755 ltictr_proxy_server /usr/local/bin
+	install -m 0755 ltictr_api_server   /usr/local/bin
+	chmod 0755 /var/ltictr
 
 
 clean:

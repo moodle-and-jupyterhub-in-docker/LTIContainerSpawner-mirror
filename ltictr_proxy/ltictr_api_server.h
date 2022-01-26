@@ -1,7 +1,7 @@
 /* vi: set tabstop=4 nocindent noautoindent: */
 
-#ifndef _LTICTRPROXY_H
-#define _LTICTRPROXY_H
+#ifndef _LTICTR_API_SERVER_H
+#define _LTICTR_API_SERVER_H
 
 
 #include "tools.h"

@@ -1,7 +1,7 @@
 /* vi: set tabstop=4 nocindent noautoindent: */
 
 
-#include "ltictr_child.h"
+#include "ltictr_proxy.h"
 #include "ltictr_signal.h"
 
 

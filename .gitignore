@@ -3,7 +3,6 @@ ltictr_proxy/ltictr_proxy_server
 ltictr_proxy/ltictr_proxy_server.o
 ltictr_proxy/ltictr_proxy.o
 ltictr_proxy/ltictr_ws.o
-ltictr_proxy/ltictr_child.o
 ltictr_proxy/ltictr_xmlrpc.o
 ltictr_proxy/ltictr_api_server
 ltictr_proxy/ltictr_api_server.o

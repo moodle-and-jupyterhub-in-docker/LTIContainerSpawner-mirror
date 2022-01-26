@@ -5,48 +5,6 @@
 
 
 
-extern int    Aofd, Mofd;
-extern pid_t  APIPid;
-
-
-int  api_server(int port, SSL_CTX* a_ctx, tList* lproxy)
-{
-    struct sockaddr cl_addr;
-    socklen_t cdlen = sizeof(cl_addr);
-    APIPid = getpid();
-
-    print_message("[LTICTR_API] Start API Server. (%d)\n", getpid());
-    
-    Mofd = tcp_server_socket(port);
-    if (Mofd<0) {
-        print_message("[LTICTR_API] Failure to open the server port for API server.\n");
-        sig_term(-1);
-    }
-
-    //DEBUG_MODE print_message("[LTICTR_API] Start API Loop.\n");
-    print_message("[LTICTR_API] Start API Loop.\n");
-
-    SSL* assl = NULL;
-    Loop {
-        Aofd = accept_intr(Mofd, &cl_addr, &cdlen); 
-        if (Aofd>0) {
-            if (a_ctx!=NULL) assl = ssl_server_socket(Aofd, a_ctx);
-            api_main_process(Aofd, assl, lproxy);
-            ssl_close(assl);
-            //socket_close(Aofd);
-            close(Aofd);
-        }
-    }
-
-    // Unreachable
-    //DEBUG_MODE print_message("[LTICTR_API] Stop  API Loop.\n");
-    print_message("[LTICTR_API] Stop  API Loop.\n");
-    //
-    _exit(0);
-}
-
-
-
 int  api_main_process(int sock, SSL* ssl, tList* lproxy)
 {
     tList* hdr = NULL;             // 受信ヘッダ
@@ -65,7 +23,7 @@ int  api_main_process(int sock, SSL* ssl, tList* lproxy)
 
     //
     DEBUG_MODE {
-        print_message("[LTICTR_API] \n=== API RECV ===\n");
+        print_message("[LTICTR_API] === API RECV ===\n");
         Buffer hbuf = search_protocol_header(hdr, (char*)HDLIST_FIRST_LINE_KEY, 1);
         print_message("[LTICTR_API] %s\n", (char*)hbuf.buf);
         free_Buffer(&hbuf);
