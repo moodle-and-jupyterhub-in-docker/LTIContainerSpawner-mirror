@@ -97,8 +97,8 @@ int main(int argc, char** argv)
         else if (*argv[i]=='-') print_message("[LTICTR_PROXY_SERVER] Unknown argument: %s\n", argv[i]);
     }
     if (sport==0) {
-        print_message("Usage... %s -p client_side_port [-c] [-s server_host[:port]] [-a [api_host:]port] [-u user] [-d] \n", argv[0]);
-        print_message("            [--noexecapi] [--conf config_file]  [--cert cert_file] [--key key_file] [--pid pid_file]\n");
+        print_message("Usage... %s -p client_side_port [-c] [-s server_url[:port]] [-a [api_url:]port] [-u user] [-d] \n", argv[0]);
+        print_message("                          [--noexecapi] [--conf config_file]  [--cert cert_file] [--key key_file] [--pid pid_file]\n");
         sig_term(-1);
     }
     //

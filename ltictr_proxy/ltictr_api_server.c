@@ -8,7 +8,7 @@
 #include "ltictr_api.h"
 
 
-#define  LTICTR_PID_FILE    "LTICTR_Pid_File"
+#define  LTICTR_PID_FILE    "LTICTR_API_Pid_File"
 #define  LTICTR_SERVER_CERT "LTICTR_Server_Cert"
 #define  LTICTR_PRIVATE_KEY "LTICTR_Private_Key"
 #define  LTICTR_API_TOKEN   "LTICTR_API_Token"
@@ -63,8 +63,7 @@ int main(int argc, char** argv)
         //else if (*argv[i]=='-') print_message("[LTICTR_API_SERVER] Unknown argument: %s\n", argv[i]);
     }
     if (apihost.buf==NULL) {
-        print_message("Usage... %s -a [api_host:]port [-u user] [-d] \n", argv[0]);
-        print_message("            [--apid pid_file] [--conf config_file]  [--cert cert_file] [--key key_file]\n");
+        print_message("Usage... %s -a [api_url:]port [-u user] [-d] [--apid pid_file] [--conf config_file] [--cert cert_file] [--key key_file]\n", argv[0]);
         sig_term(-1);
     }
 
