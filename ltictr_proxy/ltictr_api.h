@@ -1,5 +1,5 @@
 
-#include "ltictr_http.h"
+#include "https_tool.h"
 
 
 /** 
@@ -24,4 +24,6 @@ int    get_user_api(char* uname, Buffer* res, tList* lproxy);
 int    add_user_api(char* uname, Buffer  buf, tList* lproxy);
 int    del_user_api(char* uname, tList*  lproxy);
 
+int    send_http_response(int sock, SSL* ssl, int num, Buffer* buf);
+int    send_http_error(int sock, SSL* ssl, int err, Buffer* opt);
 

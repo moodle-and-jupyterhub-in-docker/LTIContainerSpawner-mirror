@@ -5,8 +5,8 @@
 
 
 
-extern int   Aofd, Mofd;
-extern pid_t APIPid;
+extern int    Aofd, Mofd;
+extern pid_t  APIPid;
 
 
 int  api_server(int port, SSL_CTX* a_ctx, tList* lproxy)
@@ -24,8 +24,8 @@ int  api_server(int port, SSL_CTX* a_ctx, tList* lproxy)
     }
 
     //DEBUG_MODE print_message("[LTICTR_API] Start API Loop.\n");
-    //
     print_message("[LTICTR_API] Start API Loop.\n");
+
     SSL* assl = NULL;
     Loop {
         Aofd = accept_intr(Mofd, &cl_addr, &cdlen); 
@@ -294,21 +294,10 @@ int  add_user_api(char* uname, Buffer buf, tList* lproxy)
         if (exist->ldat.id>0) socket_close(exist->ldat.id);
         del_tList_node(&exist);
     }
-    // port open
-    //int sock = tcp_client_socket((char*)srvfqdn.buf, (int)port);
-    //if (sock<=0) {
-    //    free_Buffer(&srvfqdn);
-    //    free_Buffer(&protocol);
-    //    return 500;
-    //}
-    //
-    //char* lasttime = get_local_timestamp(time(0), "%Y-%b-%dT%H:%M:%SZ");
     lproxy = find_tList_end(lproxy);
-    //add_tList_node_bystr(lproxy, 0, (int)port, uname, (char*)protocol.buf, lasttime, strlen(lasttime)+1);
     add_tList_node_bystr(lproxy, 0, (int)port, uname, (char*)protocol.buf, NULL, 0);
     free_Buffer(&srvfqdn);
     free_Buffer(&protocol);
-    //free(lasttime);
 
     //
     DEBUG_MODE {
@@ -329,7 +318,6 @@ int  del_user_api(char* uname, tList* lproxy)
     tList* pp = strncasecmp_tList(lproxy, uname, 0, 1);
     if (pp==NULL) return 404;      // user does not exist
 
-    //socket_close(pp->ldat.id);
     del_tList_node(&pp);
     
     //
@@ -340,6 +328,83 @@ int  del_user_api(char* uname, tList* lproxy)
     }
 
     return 0;
+}
+
+
+
+////////////////////////////////////////////////////////////////////////
+// HTTP
+//
+
+//
+int  send_http_response(int sock, SSL* ssl, int num, Buffer* buf)
+{
+    tList* hdr = NULL;
+    tList* lst = NULL;
+
+    if (num==200) {
+        lst = hdr = add_tList_node_str(NULL, HDLIST_FIRST_LINE_KEY, "HTTP/1.1 200 OK");
+        lst = add_tList_node_str(lst, "Content-Type", "application/json");
+        lst = add_tList_node_str(lst, "Content-Length", "0");
+    }
+    else if (num==201) {
+        lst = hdr = add_tList_node_str(NULL, HDLIST_FIRST_LINE_KEY, "HTTP/1.1 201 Created");
+        lst = add_tList_node_str(lst, "Content-Length", "0");
+    }
+    else if (num==204) {
+        lst = hdr = add_tList_node_str(NULL, HDLIST_FIRST_LINE_KEY, "HTTP/1.1 204 Not Content");
+    }
+
+    lst = add_tList_node_str(lst, "Connection", "close");
+    char* date = get_http_header_date(time(0));
+    if (date!=NULL) {
+        lst = add_tList_node_str(lst, "Date", date);
+        free(date);
+    }
+
+    int cc = send_https_Buffer(sock, ssl, hdr, buf);
+
+    DEBUG_MODE {
+        print_message("\n=== HTTP SEND ===\n");
+        print_protocol_header(hdr);
+    }
+
+    del_tList(&hdr);
+    return cc;
+}
+
+
+
+int  send_http_error(int sock, SSL* ssl, int err, Buffer* opt)
+{
+    tList* hdr = NULL;
+    tList* lst = NULL;
+
+    if      (err==400) {
+        lst = hdr = add_tList_node_str(NULL, HDLIST_FIRST_LINE_KEY, "HTTP/1.1 400 Bad Request");
+    }
+    else if (err==404) {
+        lst = hdr = add_tList_node_str(NULL, HDLIST_FIRST_LINE_KEY, "HTTP/1.1 404 Not Found");
+    }
+    else if (err==405) {
+        lst = hdr = add_tList_node_str(NULL, HDLIST_FIRST_LINE_KEY, "HTTP/1.1 405 Method Not Allowed");
+        if (opt!=NULL) {
+            lst = add_tList_node_str(lst, "Allow",  (char*)opt->buf);
+        }
+    }
+    else if (err==500) {
+        lst = hdr = add_tList_node_str(NULL, HDLIST_FIRST_LINE_KEY, "HTTP/1.1 500 Internal Server Error");
+    }
+    else {
+        lst = hdr = add_tList_node_str(NULL, HDLIST_FIRST_LINE_KEY, "HTTP/1.1 400 Bad Request");
+    }
+    //
+    lst = add_tList_node_str(lst, "Connection", "close");
+ 
+    int cc = send_https_header(sock, ssl, hdr, OFF);
+    del_tList(&hdr);
+
+    return cc;
 }
 
 

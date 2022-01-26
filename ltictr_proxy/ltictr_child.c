@@ -70,12 +70,12 @@ void  receipt_child(int ssock, SSL_CTX* server_ctx, tList* lproxy)
                     print_message("\n=== HTTP RECV CLIENT ===\n");
                     print_protocol_header(hdr);
                 }
-                char* uname = get_username_client(hdr);
+                char* uname = get_proxy_username(hdr);
                 if (uname==NULL) break;
                 lst = strncasecmp_tList(lproxy, uname, 0, 1);
 
                 if (lst==NULL) {
-                    Buffer target = get_user_proxyinfo("127.0.0.1", 8001, NULL, uname, "ABC");
+                    Buffer target = get_proxy_target("127.0.0.1", 8001, NULL, uname, "ABC");
                     if (target.buf!=NULL) {
                         char* pp = (char*)target.buf;
                         char* pt = pp + strlen((char*)target.buf);
@@ -593,4 +593,108 @@ int  term_process(int dummy)
 
     return TRUE;
 }
+
+
+
+#define  LTICTR_HTTPS_HUB   "/hub/"
+#define  LTICTR_HTTPS_USER  "/user/"
+
+
+char*  get_proxy_username(tList* hdr)
+{
+    if (hdr==NULL) return NULL;
+
+    char*  path = NULL;
+    Buffer hbuf = search_protocol_header(hdr, (char*)HDLIST_FIRST_LINE_KEY, 1);
+
+    if (hbuf.buf!=NULL) {
+        path = cawk((char*)hbuf.buf, ' ', 2);
+        if (path!=NULL && *path!='/') {
+            free(path);
+            path = NULL;
+        }
+        free_Buffer(&hbuf);
+    }
+    if (path==NULL) return NULL;
+
+    //
+    char* str = NULL;
+    char* pp  = strstr(path, LTICTR_HTTPS_HUB);
+    //
+    if (pp!=NULL) {
+        str = dup_str((char*)"/");
+    }
+    else {
+        pp  = strstr(path, LTICTR_HTTPS_USER);
+        if (pp!=NULL) {
+            pp = pp + strlen(LTICTR_HTTPS_USER);
+            char* pt = pp;
+            while (*pt!='/' && *pt!='\0') pt++;
+            char bkup = *pt;
+            *pt = '\0';
+            str = dup_str(pp);
+            *pt = bkup;
+        }
+    }
+    free(path);
+
+    return str;
+}
+
+
+
+Buffer  get_proxy_target(char* api_host, int api_port, SSL_CTX* ctx, char* uname, char* token)
+{
+    Buffer target = init_Buffer();
+
+    if (uname==NULL || api_host==NULL || api_port<=0) return target;
+
+    SSL* ssl = NULL;
+    int sofd = tcp_client_socket(api_host, api_port);
+    if (sofd<=0) return target;
+    if (ctx!=NULL) ssl = ssl_client_socket(sofd, ctx, OFF);
+
+    char get_data[LDATA];
+    char get_request[] = "GET /api/routes/user/%s HTTP/1.1";
+    snprintf(get_data, LDATA-1, get_request, uname);
+
+    Buffer token_data = make_Buffer_str("token ");
+    cat_s2Buffer(token, &token_data);
+
+    tList* http_header = NULL;
+    tList* lp = NULL;
+
+    lp = add_tList_node_bystr(lp, 0, 0, HDLIST_FIRST_LINE_KEY, get_data, NULL, 0);
+    http_header = lp;
+    lp = add_tList_node_bystr(lp, 0, 0, "Host", "", NULL, 0);
+    set_http_host_header(lp, api_host, (unsigned short)api_port);
+    lp = add_tList_node_bystr(lp, 0, 0, "Accept", "*/*", NULL, 0);
+    lp = add_tList_node_bystr(lp, 0, 0, "Connection", "close",  NULL, 0);
+    lp = add_tList_node_bystr(lp, 0, 0, "Content-Length", "0", NULL, 0);
+    set_protocol_header(lp, "Authorization", (char*)token_data.buf, 1, ON);
+    lp = add_tList_node_bystr(lp, 0, 0, HDLIST_END_KEY, "",  NULL, 0);
+    free_Buffer(&token_data);
+
+    send_https_header(sofd, ssl, http_header, OFF);
+    del_tList(&http_header);
+
+    Buffer buf = make_Buffer(RECVBUFSZ);
+    recv_https_Buffer(sofd, ssl, &http_header, &buf, HTTP_TIMEOUT, NULL, NULL);
+    ssl_close(ssl);
+    socket_close(sofd);
+
+    tJson* json = json_parse_prop(NULL, (char*)buf.buf, 99);
+    free_Buffer(&buf);
+    del_tList(&http_header);
+
+    buf = get_key_json_val(json, "user", 1);
+    if ((buf.buf!=NULL && !strcmp((char*)buf.buf, uname)) || !strcmp("/", uname)) {
+        target = get_key_json_val(json, "target", 1);
+    }
+    free_Buffer(&buf);
+    del_json(&json);
+
+    return target;
+}
+
 
