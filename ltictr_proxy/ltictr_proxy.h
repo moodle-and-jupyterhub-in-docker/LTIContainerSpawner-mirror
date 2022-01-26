@@ -1,38 +1,24 @@
-/* vi: set tabstop=4 nocindent noautoindent: */
 
-#ifndef _LTICTRPROXY_H
-#define _LTICTRPROXY_H
-
-
-#include "tools.h"
-#include "buffer.h"
-#include "tlist.h"
-#include "network.h"
-#include "ssl_tool.h"
+#include "ltictr_xmlrpc.h"
 #include "ipaddr_tool.h"
-#include "protocol.h"
-#include "ltictr_signal.h"
-
-#include <pwd.h>
-#include <sys/types.h>
-#include <unistd.h>
-#include <syslog.h>
-#include <sys/socket.h>
-#include <sys/wait.h>
-#include <dlfcn.h>
-#include <errno.h>
+#include "https_tool.h"
 
 
+void   receipt_child(int ssock, SSL_CTX* s_ctx, tList* lp);
 
+char*  get_sessionid_from_header(tList* hdr);
+char*  get_info_from_cookie(tList* hdr);
+char*  get_info_from_sessioninfo(char* mesg);
 
-///////////////////////////////////////////////////////////////////////////////////
+int    init_process(int dummy, char* client);
+int    term_process(int dummy);
 
-int   main(int argc, char** argv);
-int   init_main(Buffer file);
-void  term_main(int code);
-//void  close_all_socket(tList* lp);
+int    send_client(int sock, SSL* ssl, tList* hdr, Buffer buf);
+int    send_server(int sock, SSL* ssl, tList* hdr, Buffer buf, char* proto);
 
+int    get_proxy_socket(tList* hdr);
+SSL*   get_proxy_ssl(int sock, SSL_CTX* ctx, tList* hdr);
 
-
-#endif
+char*  get_proxy_username(tList* hdr);
+Buffer get_proxy_target(char* api_host, int api_port, SSL_CTX* ctx, char* uname, char* token);
 

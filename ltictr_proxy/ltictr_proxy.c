@@ -1,496 +1,700 @@
-/*  
-    Proxy Server for JupyterHub and LTIConrainerSpawner
-        
-                by Fumi.Iseki '22 01/22   BSD License.
-*/
+/* vi: set tabstop=4 nocindent noautoindent: */
 
-#include "ltictr_proxy.h"
-#include "ltictr_api.h"
+
 #include "ltictr_child.h"
+#include "ltictr_signal.h"
 
 
-#define  NO_SYSLOG          999
 
-#define  LTICTR_ALLOW_FILE  "LTICTR_Allow_File"
-#define  LTICTR_PID_FILE    "LTICTR_Pid_File"
-#define  LTICTR_SERVER_CERT "LTICTR_Server_Cert"
-#define  LTICTR_PRIVATE_KEY "LTICTR_Private_Key"
-#define  LTICTR_API_TOKEN   "LTICTR_API_Token"
+#define  LTICTR_IDLETIME   900       // 15m
+#define  LTICTR_TIMEOUT    30        // 30s
 
-#define  MOODLE_HOST_KEY    "Moodle_Host"
-#define  MOODLE_PORT_KEY    "Moodle_Port"
-#define  MOODLE_URL_KEY     "Moodle_URL"
-#define  MOODLE_TOKEN_KEY   "Moodle_Token"
-#define  MOODLE_SERVICE_KEY "Moodle_Servide"
-#define  MOODLE_DBANS_KEY   "Moodle_DBAns"
-#define  MOODLE_TLS_KEY     "Moodle_TLS"
-#define  MOODLE_HTTP_KEY    "Moodle_HTTP"
-
-#define  API_SERVER         "./ltictr_api"
+#define  SESSION_ID_KEY    "session_id="
+#define  SESSION_INFO_KEY  "lms_sessioninfo="           // Instance id, LTI id
 
 
-int      LogType        = LOG_INFO;;
-pid_t    RootPid;
-pid_t    APIPid         = 0;
+char*    SessionInfo  = NULL;
 
-int      Nofd = 0, Sofd = 0;
-int      Mofd = 0, Aofd = 0;
-
-int      ServerSSL      = OFF;     // クライアント側（自身はサーバ）とのSSL 接続
-int      APIPortSSL     = OFF;     // APIポートのSSL 接続
-int      APIServer      = ON;
-
-SSL_CTX* Server_CTX     = NULL;
-SSL_CTX* APIPort_CTX    = NULL;
-
-tList*   AllowList      = NULL;
-tList*   ProxyList      = NULL;
-tList*   PidList        = NULL;
-
-// config file
-char*    AllowFile      = "/usr/local/etc/ltictr_allow.list";
-char*    PidFile        = "/var/run/ltictr_proxy.pid";
-char*    TLS_CertPem    = "/etc/pki/tls/certs/server.pem";
-char*    TLS_KeyPem     = "/etc/pki/tls/private/key.pem";
-
-char*    API_Token      = "1234abcdefg";
-
-char*    Moodle_Host    = "localhost";
-char*    Moodle_URL     = "/webservice/xmlrpc/server.php";
-char*    Moodle_Token   = "";
-char*    Moodle_Service = "mod_lticontainer_write_nbdata";
-char*    Moodle_HTTP    = "1.1";
-int      Moodle_Port    = 80;
-int      Moodle_DBAns   = FALSE;
-int      Moodle_TLS     = FALSE;
-
+extern   tList* AllowList;
 
 
 //
-int main(int argc, char** argv)
+void  receipt_child(int ssock, SSL_CTX* server_ctx, tList* lproxy)
 {
-    int  sport=0, cport=0, aport=0;
-    struct passwd*  pw;
+    int    cc, nd;
+    fd_set mask;
+    struct timeval timeout;
 
-    Buffer hostname;
-    Buffer efctvuser;
-    Buffer pidfile;
-    Buffer certfile;
-    Buffer keyfile;
-    Buffer allowfile;
-    Buffer configfile;
+    Buffer buf   = make_Buffer(RECVBUFSZ);  // 受信ボディ
+    tList* hdr   = NULL;                    // 受信ヘッダ
+    tList* lst   = NULL;
+    char* sproto = NULL;
 
-    // for arguments
-    hostname   = init_Buffer();
-    efctvuser  = init_Buffer();
-    pidfile    = init_Buffer();
-    certfile   = init_Buffer();
-    keyfile    = init_Buffer();
-    configfile = init_Buffer();
-    allowfile  = init_Buffer();
+    int  csock   = 0;
+    SSL* sssl    = NULL;
+    SSL* cssl    = NULL;
+    SSL_CTX* client_ctx = ssl_client_setup(NULL);
+    
+    //ssock = set_block_socket(ssock);
 
-    for (int i=1; i<argc; i++) {
-        if      (!strcmp(argv[i],"-p")) {if (i!=argc-1) sport = atoi(argv[i+1]);}
-        else if (!strcmp(argv[i],"-a")) {if (i!=argc-1) aport = atoi(argv[i+1]);}
-        else if (!strcmp(argv[i],"-h")) {if (i!=argc-1) hostname  = make_Buffer_bystr(argv[i+1]);}
-        else if (!strcmp(argv[i],"-u")) {if (i!=argc-1) efctvuser = make_Buffer_bystr(argv[i+1]);}
-        else if (!strcmp(argv[i],"-c")) ServerSSL  = ON;
-        else if (!strcmp(argv[i],"-i")) APIPortSSL = ON;
-        else if (!strcmp(argv[i],"-d")) DebugMode  = ON;
-        //
-        else if (!strcmp(argv[i],"--allow"))  {if (i!=argc-1) allowfile  = make_Buffer_bystr(argv[i+1]);}
-        else if (!strcmp(argv[i],"--pid"))    {if (i!=argc-1) pidfile    = make_Buffer_bystr(argv[i+1]);}
-        else if (!strcmp(argv[i],"--cert"))   {if (i!=argc-1) certfile   = make_Buffer_bystr(argv[i+1]);}
-        else if (!strcmp(argv[i],"--key"))    {if (i!=argc-1) keyfile    = make_Buffer_bystr(argv[i+1]);}
-        else if (!strcmp(argv[i],"--conf"))   {if (i!=argc-1) configfile = make_Buffer_bystr(argv[i+1]);}
-        else if (!strcmp(argv[i],"--config")) {if (i!=argc-1) configfile = make_Buffer_bystr(argv[i+1]);}
-        //
-        else if (*argv[i]=='-') print_message("[LTICTR_PROXY] Unknown argument: %s\n", argv[i]);
-    }
-    if (sport==0) {
-        print_message("Usage... %s [-h host_name[:port]] -p client_side_port [-a api_port] [-s] [-c] [-i] [-u user] [-d] \n", argv[0]);
-        print_message("            [--allow allow_file] [--pid pid_file] [--conf config_file]  [--cert cert_file] [--key key_file]\n");
-        sig_term(-1);
-    }
-    //
-    int i = 0;
-    if (hostname.buf!=NULL) {
-        while(hostname.buf[i]!='\0' && hostname.buf[i]!=':') i++;
-        if (hostname.buf[i]==':') {
-            cport = atoi((char*)&(hostname.buf[i+1]));
-            hostname.buf[i] = '\0';
-            hostname.vldsz = strlen((char*)hostname.buf);
-        }
-    }
-    if (cport==0) cport = sport;
-    if (aport==0) APIServer = OFF;
-
-    if (pidfile.buf  !=NULL) PidFile     = (char*)pidfile.buf;
-    if (allowfile.buf!=NULL) AllowFile   = (char*)allowfile.buf;
-    if (certfile.buf !=NULL) TLS_CertPem = (char*)certfile.buf;
-    if (keyfile.buf  !=NULL) TLS_KeyPem  = (char*)keyfile.buf;
-
-    ProxyList = add_tList_node_anchor();
-    PidList   = add_tList_node_anchor();
-
-    if (hostname.buf!=NULL) {
-        if (!ex_strcmp("http://", (char*)hostname.buf) && !ex_strcmp("https://", (char*)hostname.buf)) {
-            ins_s2Buffer("http://", &hostname);
-        }
-        add_tList_node_bystr(ProxyList, 0, cport, "/", (char*)hostname.buf, NULL, 0);
-    }
-
-    //
-    // Initialization
-    DEBUG_MODE print_message("[LTICTR_PROXY] Start initialization.\n");
-    if (configfile.buf!=NULL) {
-        if (!file_exist((char*)configfile.buf)) {
-            print_message("[LTICTR_PROXY] Failure to check configuration file (%s). Can not read the configuration file.\n", (char*)configfile.buf);
+    // Client SSL connection for data recieve
+    if (server_ctx!=NULL) {
+        sproto = dup_str("https");
+        sssl = ssl_server_socket(ssock, server_ctx);
+        if (sssl==NULL) {
+            free(sproto);
+            print_message("Failure to create the client socket. (%d)\n", getpid());
             sig_term(-1);
         }
+        DEBUG_MODE print_message("Opened socket for SSL server. (%d)\n", getpid());
     }
-    LogType = init_main(configfile);
-    if (LogType<0) {
-        print_message("[LTICTR_PROXY] Failure to initialize.\n");
-        sig_term(-1);
-    }
-    free_Buffer(&configfile);
-    free_Buffer(&allowfile);
-    DEBUG_MODE print_message("[LTICTR_PROXY] Initialization is finished.\n");
-
+    else sproto = dup_str("http");
+    
     //
-    // Signal handling
-    struct sigaction sa;
-    memset(&sa, 0, sizeof(sa));
-    sa.sa_handler = sig_term;
-    sa.sa_flags   = 0;
-    sigemptyset(&sa.sa_mask);
-    sigaction(SIGHUP,  &sa, NULL);
-    sigaction(SIGINT,  &sa, NULL);      // ^C
-    sigaction(SIGTERM, &sa, NULL);
-    #
-    set_sigterm_child(sig_child);       // Setting of child process is terminated
+    int range = ssock;
+    timeout.tv_sec  = LTICTR_IDLETIME;
+    timeout.tv_usec = 0;
+    FD_ZERO(&mask); 
+    FD_SET(ssock, &mask);
+    nd = select(range+1, &mask, NULL, NULL, &timeout);
 
-    //
-    // Pid file
-    RootPid = getpid();
-    FILE* fp = fopen((char*)PidFile, "w");
-    if (fp!=NULL) {
-        fprintf(fp, "%d", (int)RootPid);
-        fclose(fp);
-    }
+    // Main Loop
+    DEBUG_MODE print_message("Child Proxy Loop(%d)\n", getpid());
+    //while(nd>0 && (FD_ISSET(csock, &mask) || FD_ISSET(ssock, &mask))) {
+    while(nd>0) {
+        // Client -> Server // ltictr_proxy はサーバ
+        if (FD_ISSET(ssock, &mask)) {
+            cc = recv_https_Buffer(ssock, sssl, &hdr, &buf, LTICTR_TIMEOUT, NULL, NULL);
+            if (cc>0) {
+                DEBUG_MODE {
+                    print_message("\n=== HTTP RECV CLIENT ===\n");
+                    print_protocol_header(hdr);
+                }
+                char* uname = get_proxy_username(hdr);
+                if (uname==NULL) break;
+                lst = strncasecmp_tList(lproxy, uname, 0, 1);
 
-    //
-    // Change effective user
-    if (efctvuser.buf!=NULL) {
-        int err = -1;
-        DEBUG_MODE print_message("[LTICTR_PROXY] Change to effective user (%s).\n", efctvuser.buf);
-        if (isdigit(efctvuser.buf[0]) || efctvuser.buf[0]=='-') {
-            err = seteuid(atoi((char*)efctvuser.buf));
-        }
-        else {
-            pw = getpwnam((char*)efctvuser.buf);
-            if (pw!=NULL) err = seteuid(pw->pw_uid);
-        }
-        if (err==-1) {
-            DEBUG_MODE print_message("[LTICTR_PROXY] Cannot change to effective user (%s).\n", efctvuser.buf);
-        }
-        free_Buffer(&efctvuser);
-    }
+                if (lst==NULL) {
+                    Buffer target = get_proxy_target("127.0.0.1", 8001, NULL, uname, "ABC");
+                    if (target.buf!=NULL) {
+                        char* pp = (char*)target.buf;
+                        char* pt = pp + strlen((char*)target.buf);
+                        while (*pt!=':') pt--;
+                        *pt = '\0';
+                        pt++;
+                        lst = add_tList_node_bystr(lproxy, 0, atoi(pt), uname, pp, NULL, 0);
+                        free_Buffer(&target);
+                    }
+//print_message("=== child user (%s) =============================== (%d)\n", uname, getpid());
+//print_tList(stderr, lproxy);
+//print_message("---------------------------------------------- (%d)\n", getpid());
+//print_tList(stderr, lst);
+//print_message("=== user end ================================= (%d)\n", getpid());
+                }
+                free(uname);
 
-    DEBUG_MODE print_message("[LTICTR_PROXY] Start LTICTR_PROXY. (%d)\n", RootPid);
-
-    //
-    // Network
-    // for SSL/TLS
-    if (ServerSSL==ON || APIPortSSL==ON) {
-        ssl_init();
-        if (ServerSSL==ON)  Server_CTX  = ssl_server_setup(TLS_CertPem, TLS_KeyPem);
-        if (APIPortSSL==ON) APIPort_CTX = ssl_server_setup(TLS_CertPem, TLS_KeyPem);
-    }
-    //Client_CTX = ssl_client_setup(NULL);
-
-/*
-    // Server API port
-    if (aport!=0) {
-        Mofd = tcp_server_socket(-aport);    // non block socket
-        if (Mofd<0) {
-            syslog(LogType, "Failure to open the api socket: [%s]", strerror(errno));
-            print_message("[LTICTR_PROXY] Failure to open the api socket.\n");
-            sig_term(-1);
-        }
-        DEBUG_MODE print_message("[LTICTR_PROXY] API port was opened for API connection. (%d)\n", aport);
-    }
-*/
-
-    // socket open for client
-    //Nofd = tcp_server_socket(-sport);       // non block socket
-    Nofd = tcp_server_socket(sport);       // block socket
-    if (Nofd<0) {
-        syslog(LogType, "Failure to open the server port for client connection. [%s]", strerror(errno));
-        print_message("[LTICTR_PROXY] Failure to open the server port for client connection.\n");
-        sig_term(-1);
-    }
-    DEBUG_MODE print_message("[LTICTR_PROXY] Server port was opened for client connection. (%d)\n", sport);
-
-
-    //////////////////////////////////////////////////
-    // API Server Process の起動
-    if (APIServer==ON) {
-        APIPid = fork();
-        if (APIPid==0) {
-            argv[0] = dup_str("ltictr_api");
-            execv(API_SERVER, argv);
-            _exit(0);
-        }
-    }
-
-    //
-    DEBUG_MODE print_message("[LTICTR_PROXY] Start LTICTR_PROXY Main Loop. (%d)\n", RootPid);
-    struct sockaddr cl_addr;
-    socklen_t cdlen = sizeof(cl_addr);
-    //pdlen = sizeof(pl_addr);
-    //
-    //fd_set mask;
-    //struct timeval timeout;
-
-    //Sofd = Aofd = 0;
-    //SSL* assl = NULL;
-    //timeout.tv_sec  = 0;
-    //timeout.tv_usec = 0;
-
-    // main loop
-    Loop {
-        Sofd = accept_intr(Nofd, &cl_addr, &cdlen);
-        if (Sofd>0) {
-            pid_t pid = fork();
-            if (pid==0) receipt_child(Sofd, Server_CTX, ProxyList);
-            close(Sofd);    // don't use socket_close() !
-
-            tList* lp = find_tList_end(PidList);
-            add_tList_node_int(lp, (int)pid, 0);
+                csock = get_proxy_socket(lst);
+                cssl  = get_proxy_ssl(csock, client_ctx, lst);
+                cc = send_server(csock, cssl, hdr, buf, sproto);     // Server へ転送
+                del_tList(&hdr);
+                if (cc<=0) break;
+            }
+            else {
+                if (cc<0) {
+                    //print_message("ltictr_child: C->S: ");
+                    //jbxl_fprint_state(stderr, cc);
+                }
+                break;      // cc==0
+            }
         }
 
-/*
-        if (Sofd<=0) Sofd = accept(Nofd, &cl_addr, &cdlen);
-        //if (Aofd<=0) Aofd = accept(Mofd, &pl_addr, &pdlen);
-        int range = Max(Sofd, Aofd);
-
+        range = ssock;
+        timeout.tv_sec  = LTICTR_TIMEOUT;
+        timeout.tv_usec = 0;
         FD_ZERO(&mask); 
-        if (Sofd>0) FD_SET(Sofd, &mask);
-        if (Aofd>0) FD_SET(Aofd, &mask);
-        if (Aofd>0 || Sofd>0) select(range+1, &mask, NULL, NULL, &timeout);
+        FD_SET(ssock, &mask);
+        //
+        lst = lproxy;
+        if (lst->ldat.id==TLIST_ANCHOR_NODE) lst = lst->next;
+        while (lst!=NULL) {
+            csock = lst->ldat.id;
+            if (csock>0) {
+                FD_SET(csock, &mask);
+                range = Max(range, csock);
+            }
+            lst = lst->next;
+        }
+        nd = select(range+1, &mask, NULL, NULL, &timeout);
 
         //
-        if (Sofd>0 && FD_ISSET(Sofd, &mask)) {
-            //if (fork()==0) receipt_child(Sofd, Client_CTX, Server_CTX, ProxyList);
-            if (fork()==0) receipt_child(Sofd, Server_CTX, ProxyList);
-            close(Sofd);    // don't use socket_close() !
-            Sofd = 0;
-        }
-        //
-        if (Aofd>0 && FD_ISSET(Aofd, &mask)) {
-            if (assl==NULL && APIPort_CTX!=NULL) {
-                assl = ssl_server_socket(Aofd, APIPort_CTX);
-                if (assl==NULL) {
-                    socket_close(Aofd);
-                    Aofd = 0;
-                    DEBUG_MODE print_message("[LTICTR_PROXY] Unable to open SSL socket for API port. \n");
-                    continue;
+        // Server -> Client // ltictr_proxy はクライアント
+        lst = lproxy;
+        if (lst->ldat.id==TLIST_ANCHOR_NODE) lst = lst->next;
+        while (lst!=NULL) {
+            csock = lst->ldat.id;
+            if (csock>0) {
+                if (FD_ISSET(csock, &mask)) {
+                    cssl = get_proxy_ssl(csock, client_ctx, lst);
+                    cc = recv_https_Buffer(csock, cssl, &hdr, &buf, LTICTR_TIMEOUT, NULL, NULL); 
+                    if (cc>0) {
+                        DEBUG_MODE {
+                            print_message("\n=== HTTP RECV SERVER === (%d)\n", csock);
+                            print_protocol_header(hdr);
+                        }
+                        cc = send_client(ssock, sssl, hdr, buf);     // Client へ転送
+                        if (cc<=0) {
+                            //if (cc<0) syslog(Log_Type, "error occurred in fe_server().");
+                            break;
+                        }
+                    }
+                    else {
+                        if (cc<0) {
+                            //print_message("ltictr_child: S->C: ");
+                            //jbxl_fprint_state(stderr, cc);
+                        }
+                        break;      // cc==0
+                    }
                 }
             }
-            int ret = api_process(Aofd, assl, ProxyList);
-            if (ret<0) {
-                ssl_close(assl);
-                socket_close(Aofd);
-                Aofd = 0;
-                assl = NULL;
-                DEBUG_MODE print_message("[LTICTR_PROXY] End of API session.\n");
-            }
+            lst = lst->next;
         }
-*/
-    }
 
-    // Unreachable
-    DEBUG_MODE print_message("[LTICTR_PROXY] Stop main loop.\n");
-    term_main(99999);
-    //
-    exit(0);
+        range = ssock;
+        timeout.tv_sec  = LTICTR_TIMEOUT;
+        timeout.tv_usec = 0;
+        FD_ZERO(&mask); 
+        FD_SET(ssock, &mask);
+        //
+        lst = lproxy;
+        if (lst->ldat.id==TLIST_ANCHOR_NODE) lst = lst->next;
+        while (lst!=NULL) {
+            csock = lst->ldat.id;
+            if (csock>0) {
+                FD_SET(csock, &mask);
+                range = Max(range, csock);
+            }
+            lst = lst->next;
+        }
+        nd = select(range+1, &mask, NULL, NULL, &timeout);
+    }
+    DEBUG_MODE print_message("End of communication. (%d)\n", getpid());
+
+    ssl_close(sssl);
+    socket_close(ssock);
+
+    lst = lproxy;
+    if (lst->ldat.id==TLIST_ANCHOR_NODE) lst = lst->next;
+    while (lst!=NULL) {
+        csock = lst->ldat.id;
+        if (csock>0) {
+            ssl_close((SSL*)lst->ldat.ptr);
+            socket_close(csock);
+        }
+        lst = lst->next;
+    }
+    if (client_ctx!=NULL) SSL_CTX_free(client_ctx);
+
+    free(sproto);
+    free_Buffer(&buf);
+    //syslog(Log_Type, "[%s] session end.", ClientIPaddr);
+
+    DEBUG_MODE print_message("Termination of child process. (%d)\n", getpid());
+    print_message("Termination of child process. (%d)\n", getpid());
+    _exit(0);
 }
 
 
-
-int  init_main(Buffer configfile)
+//
+//    Server -> Client 
+//
+int   send_client(int sock, SSL* ssl, tList* hdr, Buffer buf)
 {
-    int logtype = LOG_INFO;
-    //int logtype = NO_SYSLOG;
+    if (hdr==NULL) return -1;
 
-    openlog("LTICTR_PROXY LOG", LOG_PERROR | LOG_PID, LOG_AUTH);
+    int http_com = get_http_header_method(hdr);
+    //int http_res = OFF;
 
-    // config file
-    tList* filelist = NULL;
-    if (configfile.buf!=NULL) {
-        filelist = read_index_tList_file((char*)configfile.buf, '=');
-        //
-        if (filelist!=NULL) {
-            PidFile        = get_str_param_tList (filelist, LTICTR_PID_FILE,    PidFile);
-            AllowFile      = get_str_param_tList (filelist, LTICTR_ALLOW_FILE,  AllowFile);
-            TLS_CertPem    = get_str_param_tList (filelist, LTICTR_SERVER_CERT, TLS_CertPem);
-            TLS_KeyPem     = get_str_param_tList (filelist, LTICTR_PRIVATE_KEY, TLS_KeyPem);
-            API_Token      = get_str_param_tList (filelist, LTICTR_API_TOKEN,   API_Token);
+    if (http_com > HTTP_UNKNOWN_METHOD) {
+
+        char*  resp = NULL;
+        tList* lp = search_key_tList(hdr, HDLIST_FIRST_LINE_KEY, 1);
+        if (lp!=NULL) resp = (char*)lp->ldat.val.buf;
+
+        // add cookie
+        // Session Info を lms_sessioninfo の値として cookie に追加
+        if (SessionInfo!=NULL && resp!=NULL && ex_strcmp("HTTP/", resp)) {
+            //http_res = ON;
+            lp = search_key_tList(hdr, "Set-Cookie", 1);
+            if (lp==NULL) lp = search_key_tList(hdr, "Host", 1);
             //
-            Moodle_Host    = get_str_param_tList (filelist, MOODLE_HOST_KEY,    Moodle_Host);
-            Moodle_URL     = get_str_param_tList (filelist, MOODLE_URL_KEY ,    Moodle_URL);
-            Moodle_Token   = get_str_param_tList (filelist, MOODLE_TOKEN_KEY,   Moodle_Token);
-            Moodle_Service = get_str_param_tList (filelist, MOODLE_SERVICE_KEY, Moodle_Service);
-            Moodle_HTTP    = get_str_param_tList (filelist, MOODLE_HTTP_KEY,    Moodle_HTTP);
-            Moodle_Port    = get_int_param_tList (filelist, MOODLE_PORT_KEY,    Moodle_Port);
-            Moodle_DBAns   = get_bool_param_tList(filelist, MOODLE_DBANS_KEY,   Moodle_DBAns);
-            Moodle_TLS     = get_bool_param_tList(filelist, MOODLE_TLS_KEY,     Moodle_TLS);
+            char cookie[LMESG];
+            snprintf(cookie, LMESG-1, "%s%s; HttpOnly; Path=/; Secure", SESSION_INFO_KEY, SessionInfo);
+            add_protocol_header(lp, "Set-Cookie", cookie);
+            free(SessionInfo);
+            SessionInfo = NULL;
+        }
+    }
 
-            if (Moodle_Token[0]=='\0') {
-                DEBUG_MODE print_message("[LTICTR_PROXY] The token used to connect to the Moodle Web Service has not been specified.\n");
+
+    //////////////////////////////////////////////////////////
+    Buffer snd = rebuild_http_Buffer(hdr, &buf);
+    int ret = ssl_tcp_send(sock, ssl, (char*)snd.buf, snd.vldsz);
+    free_Buffer(&snd);
+    //////////////////////////////////////////////////////////
+
+    if (http_com>HTTP_UNKNOWN_METHOD) {
+
+    //
+    // Web Socket
+    static char host[] = "server";
+
+    tJson* temp = NULL;
+    tJson* json = NULL;
+    //if (*(unsigned char*)mesg==0x81) json = ws_json(mesg, cc);
+    if (json!=NULL) {
+        //print_json(stderr, json);
+        struct ws_info info;
+        memset(&info, 0, sizeof(struct ws_info));
+        //
+        char* type = get_string_from_json(search_key_json(json, "msg_type", TRUE, 1));
+        if (type!=NULL && ex_strcmp("execute_reply", type)) { 
+            info.status = get_string_from_json(find_double_key_json(json, "content", "status"));
+            if (info.status!=NULL) {
+                temp = find_double_key_json(json, "header", "username");
+                info.username = get_string_from_json(temp);
+                if (info.username!=NULL) {
+                    info.date = get_string_from_json(find_key_sister_json(temp, "date"));
+                    temp = find_double_key_json(json, "parent_header", "session");
+                    info.session = get_string_from_json(temp);
+                    if (info.session!=NULL) {
+                        info.message = get_string_from_json(find_key_sister_json(temp, "msg_id"));
+                        info.host    = host;
+                        post_xmlrpc_server(&info);
+                        //
+                        if (info.message!=NULL) free(info.message);
+                        free(info.session);
+                    }
+                    if (info.date!=NULL) free(info.date);
+                    free(info.username);
+                }
+                free(info.status);
             }
-            del_tList(&filelist);
+            free(type);
+        }
+        del_json(&json);
+    }
+    }
+
+    return ret;
+}
+
+
+
+//
+//    Client -> Server 
+//
+int   send_server(int sock, SSL* ssl, tList* hdr, Buffer buf, char* proto)
+{
+    if (hdr==NULL) return -1;
+
+    int http_com = get_http_header_method(hdr);
+    //
+    tList* ph = search_key_tList(hdr, "Host", 1);
+    add_protocol_header(ph, "X-Forwarded-Proto", proto);
+
+//print_message("++++> SEND SERVER \n");
+//print_tList(stderr, hdr);
+//print_message("%s\n", (char*)buf.buf);
+    //////////////////////////////////////////////////////////
+    Buffer snd = rebuild_http_Buffer(hdr, &buf);
+    int cc = ssl_tcp_send(sock, ssl, (char*)snd.buf, snd.vldsz);
+    free_Buffer(&snd);
+    //////////////////////////////////////////////////////////
+
+    static char ltictr[] = "ltictr";
+    //
+    // GET session_id と cookie の lms_sessionifo (course_id+%2C+lti_id) を関連付けて XMLRPC で送る．
+    if (http_com == HTTP_GET_METHOD) {
+        //content_length = 0;
+        //recv_buffer = init_Buffer();
+        //
+        char* sessionid = get_sessionid_from_header(hdr);   // URL パラメータから session_id を得る
+        if (sessionid!=NULL) {
+            char* ssninfo = get_info_from_cookie(hdr);          // ヘッダから Cookie を得る
+            if (ssninfo!=NULL) {
+                struct ws_info info;
+                memset(&info, 0, sizeof(struct ws_info));
+                //
+                char* pt = ssninfo;
+                while (*pt!='%' && *pt!='\0') pt++;
+                if (*pt=='%') {
+                    *pt = '\0';
+                    pt = pt + 3;
+                }
+                info.host    = ltictr;
+                info.inst_id = ssninfo;
+                info.lti_id  = pt;
+                info.session = sessionid;
+                //
+                post_xmlrpc_server(&info);
+                //
+                free(ssninfo);
+                free(sessionid);
+            }
         }
     }
 
-    // 接続許可・禁止ファイルの読み込み
-    AllowList = read_ipaddr_file(AllowFile);
-    if (AllowList!=NULL) {
-        DEBUG_MODE print_message("[LTICTR_PROXY] Readed access allow list\n");
-    }
-    else {
-        DEBUG_MODE print_message("[LTICTR_PROXY] Unable to read access allow list. No access control is performed.\n");
-    }
-
-    init_xmlrpc_header();
-
-    return  logtype;
-}
-
-
-//
-void  term_main(int code)
-{
-    socket_close(Sofd);
-    socket_close(Aofd);
-    socket_close(Nofd);
-    socket_close(Mofd);
-
     //
-    // もうどうせ死んじゃうんだから，後始末はシステムにお任せ!
-    //
-    //close_all_socket(ProxyList);
-
-    //Sofd = Aofd = Nofd = Mofd = 0;
-
-    //if (Server_CTX!=NULL)  SSL_CTX_free(Server_CTX);
-    //if (Client_CTX!=NULL)  SSL_CTX_free(Client_CTX);
-    //if (APIPort_CTX!=NULL) SSL_CTX_free(APIPort_CTX);
-
-    //free_Buffer(&hostname);
-    ////free_Buffer(&efctvuser);
-    //free_Buffer(&pidfile);      // PidFile
-    //free_Buffer(&certfile);
-    //free_Buffer(&keyfile);
-    ////free_Buffer(&allowfile);  // AllowFile
-    ////free_Buffer(&configfile);
-
-    //del_tList(&ProxyList);
-    //del_tList(&AllowList);
-
-    //
-    pid_t pid = getpid();
-    if (pid==RootPid) {
-        closelog(); // close syslog 
-        if (PidFile!=NULL) remove(PidFile);
-        //
-        if (APIPid>0) kill(APIPid, SIGTERM);
-        tList* lpid = PidList;
-        if (lpid!=NULL && lpid->ldat.id==TLIST_ANCHOR_NODE) lpid = lpid->next;
-        while (lpid!=NULL) {
-            if (lpid->ldat.id>0) kill((pid_t)lpid->ldat.id, SIGTERM);   
-            lpid = lpid->next;   
+    else if (http_com == HTTP_POST_METHOD) {
+        if (SessionInfo==NULL) {
+            if (ex_strcmp("oauth_version", (char*)buf.buf)) {
+                SessionInfo = get_info_from_sessioninfo((char*)buf.buf);  
+            }
+            // 
+            //if (SessionInfo==NULL && strstr(buf.buf,  SESSION_INFO_KEY) != NULL) {
+            //    SessionInfo = get_info_from_sessioninfo((char*)buf.buf);  
+            //}
         }
-        sleep(1);
-        //
-        DEBUG_MODE print_message("[LTICTR_PROXY] Shutdown root LTICTR_PROXY process with code = (%d)\n", code);
-        print_message("[LTICTR_PROXY] Shutdown root LTICTR_PROXY process with code = (%d)\n", code);
     }
+
+
     else {
-        DEBUG_MODE print_message("[LTICTR_PROXY] Shutdown child LTICTR_PROXY process with code = (%d)\n", code);
-        print_message("[LTICTR_PROXY] Shutdown child LTICTR_PROXY process with code = (%d)\n", code);
+    //
+    // Web Socket
+    static char host[]  = "client";
+
+    tJson* temp = NULL;
+    tJson* json = NULL;
+    //if (*(unsigned char*)mesg==0x81) json = ws_json(mesg, cc);
+    if (http_com==0) json = ws_json_client((char*)buf.buf, buf.vldsz);
+    if (json!=NULL) {
+        struct ws_info info;
+        memset(&info, 0, sizeof(struct ws_info));
+        //
+        temp = find_double_key_json(json, "metadata", "cellId");
+        info.cell_id = get_string_from_json(temp);
+        if (info.cell_id!=NULL) {
+            info.tags = get_string_from_json(find_key_sister_json(temp, "tags"));
+            temp = find_double_key_json(json, "header", "session");
+            info.session = get_string_from_json(temp);
+            if (info.session!=NULL) {
+                info.date     = get_string_from_json(find_key_sister_json(temp, "date"));
+                info.message  = get_string_from_json(find_key_sister_json(temp, "msg_id"));
+                info.host     = host;
+                post_xmlrpc_server(&info);
+                //
+                if (info.message!=NULL) free(info.message);
+                if (info.date   !=NULL) free(info.date);
+                free(info.session);
+            }
+            if (info.tags!=NULL) free(info.tags);
+            free(info.cell_id);
+        }
+        del_json(&json);
     }
-    return;
-}
-
-
-/*
-void  close_all_socket(tList* lp)
-{
-    if (lp==NULL) return;
-    if (lp->ldat.id==TLIST_ANCHOR_NODE) lp = lp->next;
-
-    while (lp!=NULL) {
-        //if (lp->ldat.id>0) close(lp->ldat.id);
-        if (lp->ldat.id>0) socket_close(lp->ldat.id);
-        lp = lp->next;
     }
-    
-    return;
-}
-*/
 
-
-//
-// Termination of program
-//
-void  sig_term(int signal)
-{
-    term_main(signal);
-    
-    pid_t pid = getpid();
-    //DEBUG_MODE print_message("[LTICTR_PROXY] sig_term: Exit program with signal = %d (%d)\n", signal, pid);
-    print_message("[LTICTR_PROXY] sig_term: Exit program with signal = %d (%d)\n", signal, pid);
-
-    if (signal<0) signal = -signal;
-    if (signal==SIGTERM) signal = 0;    // by systemctl stop ....
-
-    if (pid==RootPid)  exit(signal);
-    else               exit(signal);
+    //
+    return cc;
 }
 
 
 
-//
-// Termination of child process
-//
-void  sig_child(int signal)
+int  get_proxy_socket(tList* lst)
 {
-    pid_t pid = 0;
+    int sock = 0;
+    if (lst==NULL) return -400;
+    //
+    sock = (int)lst->ldat.id;
+    if (sock<=0) {
+        DEBUG_MODE print_message("socket for %s is invalid. Reopen socket.\n", (char*)lst->ldat.key.buf);
+        //
+        char* hp = (char*)lst->ldat.val.buf + lst->ldat.val.vldsz;
+        while(*hp!='/') hp--;
+        char* hname = dup_str(hp + 1);
+        sock = tcp_client_socket(hname, lst->ldat.lv);
+        free(hname);
+        //
+        if (sock>0) {
+            //char* lasttime = get_local_timestamp(time(0), "%Y-%b-%dT%H:%M:%SZ");
+            lst->ldat.id  = sock;
+            //if (lst->ldat.ptr!=NULL) free(lst->ldat.ptr);
+            //lst->ldat.ptr = lasttime;
+            //lst->ldat.sz  = strlen(lasttime) + 1;
+        }
+        else sock = -500;
+    }
 
-    //UNUSED(signal);
-    //DEBUG_MODE print_message("[LTICTR_PROXY] SIG_CHILD: signal = %d\n", signal);
-    print_message("[LTICTR_PROXY] SIG_CHILD: signal = %d\n", signal);
+    return sock;
+}
 
-    int ret;
-    pid = waitpid(-1, &ret, WNOHANG);
-    while(pid>0) {
-        if (pid==APIPid) {
-            DEBUG_MODE print_message("[LTICYR_PROXY] API Server is down. LTICUR_PROXY to shutdown ...\n");
-            print_message("[LTICYR_PROXY] API Server is down. LTICUR_PROXY to shutdown ...\n");
-            kill(RootPid, SIGTERM);
+
+
+SSL*  get_proxy_ssl(int sock, SSL_CTX* ctx, tList* lst)
+{
+    SSL* ssl = NULL;
+    if (sock<=0 || ctx==NULL || lst==NULL) return NULL;
+    //
+    if (ex_strcmp("https:", (char*)lst->ldat.val.buf)) {
+        if (lst->ldat.ptr!=NULL) {
+            ssl = (SSL*)lst->ldat.ptr;
         }
         else {
-            tList* lst = search_id_tList(PidList, pid, 1);
-            if (lst!=NULL) del_tList_node(&lst);
+            ssl = ssl_client_socket(sock, ctx, OFF);
+            if (ssl!=NULL) {
+                lst->ldat.ptr = (void*)ssl;
+                lst->ldat.sz  = sizeof(SSL*);
+            }
+            else {
+                DEBUG_MODE print_message("Failure to connect to server SSL port. (%d)\n", getpid());
+                sig_term(-1);
+            }
         }
-        //
-        pid = waitpid(-1, &ret, WNOHANG);
+    }
+    return ssl;
+}
+
+
+
+///////////////////////////////////////////////////////////////////////
+// get information from HTTP
+
+//
+// URL パラメータから，存在するならば セッションID を取り出す．
+// SESSION_ID_KEY はクライアント（Webブラウザ）からのリクエスト中のボディデータ中に設定されている値．
+// 要 free
+//
+char*  get_sessionid_from_header(tList* hdr)
+{
+    if (hdr==NULL) return NULL;
+    //
+    tList* lp = search_key_tList(hdr, HDLIST_FIRST_LINE_KEY, 1);
+    if (lp==NULL)  return NULL;
+    char* url = dup_str((char*)lp->ldat.val.buf);
+    if (url==NULL) return NULL;
+
+    char* pp = strstr(url, SESSION_ID_KEY);
+    if (pp==NULL) {
+        free(url);
+        return NULL;
+    }
+    pp = pp + strlen(SESSION_ID_KEY);
+
+    char* pt = pp;
+    while(*pt!=' ' && *pt!='&' && *pt!='%' && *pt!='\0') pt++;
+
+    *pt = '\0';
+    char* sid = dup_str(pp);
+
+    free(url);
+    return sid;
+}
+
+
+//
+// クライアント（Webブラウザ）のクッキーから コースIDとLTIのインスタンスID を取り出す．
+// 要 free
+//
+char*  get_info_from_cookie(tList* hdr)
+{
+    if (hdr==NULL) return NULL;
+
+    tList* lp = search_key_tList(hdr, "Cookie", 1);
+    if (lp==NULL)  return NULL;
+    char* cke = dup_str((char*)lp->ldat.val.buf);
+    if (cke==NULL) return NULL;
+
+    char* pp = strstr(cke, SESSION_INFO_KEY);
+    if (pp==NULL) {
+        free(cke);
+        return NULL;
+    }
+    pp = pp + strlen(SESSION_INFO_KEY);
+
+    char* pt = pp; 
+    while (*pt!=';' && *pt!='\0') pt++;
+
+    *pt = '\0';
+    char* ssninfo = dup_str(pp);
+
+    free(cke);
+    return ssninfo;
+}
+
+
+
+//
+// HTTPのPOST受信データ（mesg）のボディから コースIDとLTIのインスタンスID を取り出す．
+// mesg は LTI コンシューマ（クライアント: Moodle）からのデータ．
+// 要 free
+//
+char*  get_info_from_sessioninfo(char* mesg)
+{
+    if (mesg==NULL) return NULL;
+
+    // Search in the Body
+    char* pp = strstr(mesg, SESSION_INFO_KEY);
+    if (pp==NULL) return NULL;
+    pp = pp + strlen(SESSION_INFO_KEY);
+    //
+    char* pt = pp; 
+    while (*pt!='&' && *pt!='\0') pt++;
+
+    char bkup = *pt;
+    *pt = '\0';
+    char* ssninfo = dup_str(pp);
+    *pt = bkup;
+    //print_message("lms_sessioninfo = %s\n", ssninfo);
+
+    return ssninfo;
+}
+
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//
+// プロセス毎の初期化処理
+//
+int  init_process(int dummy, char* client)
+{
+    UNUSED(dummy);
+
+    if (AllowList!=NULL) {
+        unsigned char* ip_num = get_ipaddr_byname_num(client, AF_INET);
+        char* client_ip = get_ipaddr_byname(client, AF_INET);
+
+        if (is_host_in_list(AllowList, ip_num, client)) {
+            DEBUG_MODE print_message("[%s] is in the allow list. \n", client_ip);
+        }
+        else {
+            DEBUG_MODE print_message("[%s] is not in the allow list. \n", client_ip);
+            return FALSE;
+        }
     }
 
-    return;
+    //
+    return TRUE;
+}
+
+
+
+//
+// プロセス毎の終了処理
+//
+int  term_process(int dummy)
+{
+    UNUSED(dummy);
+
+    del_all_tList(&AllowList);
+
+    if (SessionInfo!=NULL) free(SessionInfo);
+    SessionInfo = NULL;
+
+    return TRUE;
+}
+
+
+
+#define  LTICTR_HTTPS_HUB   "/hub/"
+#define  LTICTR_HTTPS_USER  "/user/"
+
+
+char*  get_proxy_username(tList* hdr)
+{
+    if (hdr==NULL) return NULL;
+
+    char*  path = NULL;
+    Buffer hbuf = search_protocol_header(hdr, (char*)HDLIST_FIRST_LINE_KEY, 1);
+
+    if (hbuf.buf!=NULL) {
+        path = cawk((char*)hbuf.buf, ' ', 2);
+        if (path!=NULL && *path!='/') {
+            free(path);
+            path = NULL;
+        }
+        free_Buffer(&hbuf);
+    }
+    if (path==NULL) return NULL;
+
+    //
+    char* str = NULL;
+    char* pp  = strstr(path, LTICTR_HTTPS_HUB);
+    //
+    if (pp!=NULL) {
+        str = dup_str((char*)"/");
+    }
+    else {
+        pp  = strstr(path, LTICTR_HTTPS_USER);
+        if (pp!=NULL) {
+            pp = pp + strlen(LTICTR_HTTPS_USER);
+            char* pt = pp;
+            while (*pt!='/' && *pt!='\0') pt++;
+            char bkup = *pt;
+            *pt = '\0';
+            str = dup_str(pp);
+            *pt = bkup;
+        }
+    }
+    free(path);
+
+    return str;
+}
+
+
+
+Buffer  get_proxy_target(char* api_host, int api_port, SSL_CTX* ctx, char* uname, char* token)
+{
+    Buffer target = init_Buffer();
+
+    if (uname==NULL || api_host==NULL || api_port<=0) return target;
+
+    SSL* ssl = NULL;
+    int sofd = tcp_client_socket(api_host, api_port);
+    if (sofd<=0) return target;
+    if (ctx!=NULL) ssl = ssl_client_socket(sofd, ctx, OFF);
+
+    char get_data[LDATA];
+    char get_request[] = "GET /api/routes/user/%s HTTP/1.1";
+    snprintf(get_data, LDATA-1, get_request, uname);
+
+    Buffer token_data = make_Buffer_str("token ");
+    cat_s2Buffer(token, &token_data);
+
+    tList* http_header = NULL;
+    tList* lp = NULL;
+
+    lp = add_tList_node_bystr(lp, 0, 0, HDLIST_FIRST_LINE_KEY, get_data, NULL, 0);
+    http_header = lp;
+    lp = add_tList_node_bystr(lp, 0, 0, "Host", "", NULL, 0);
+    set_http_host_header(lp, api_host, (unsigned short)api_port);
+    lp = add_tList_node_bystr(lp, 0, 0, "Accept", "*/*", NULL, 0);
+    lp = add_tList_node_bystr(lp, 0, 0, "Connection", "close",  NULL, 0);
+    lp = add_tList_node_bystr(lp, 0, 0, "Content-Length", "0", NULL, 0);
+    set_protocol_header(lp, "Authorization", (char*)token_data.buf, 1, ON);
+    lp = add_tList_node_bystr(lp, 0, 0, HDLIST_END_KEY, "",  NULL, 0);
+    free_Buffer(&token_data);
+
+    send_https_header(sofd, ssl, http_header, OFF);
+    del_tList(&http_header);
+
+    Buffer buf = make_Buffer(RECVBUFSZ);
+    recv_https_Buffer(sofd, ssl, &http_header, &buf, HTTP_TIMEOUT, NULL, NULL);
+    ssl_close(ssl);
+    socket_close(sofd);
+
+    tJson* json = json_parse_prop(NULL, (char*)buf.buf, 99);
+    free_Buffer(&buf);
+    del_tList(&http_header);
+
+    buf = get_key_json_val(json, "user", 1);
+    if ((buf.buf!=NULL && !strcmp((char*)buf.buf, uname)) || !strcmp("/", uname)) {
+        target = get_key_json_val(json, "target", 1);
+    }
+    free_Buffer(&buf);
+    del_json(&json);
+
+    return target;
 }
 
 
