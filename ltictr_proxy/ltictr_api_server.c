@@ -64,7 +64,7 @@ int main(int argc, char** argv)
     }
     if (apihost.buf==NULL) {
         print_message("Usage... %s -a [api_url:]port [-u user] [-d] [--apid pid_file] [--conf config_file] [--cert cert_file] [--key key_file]\n", argv[0]);
-        sig_term(-1);
+        exit(1);
     }
 
     if (strstr((char*)apihost.buf, ":")!=NULL) {

@@ -99,7 +99,7 @@ int main(int argc, char** argv)
     if (sport==0) {
         print_message("Usage... %s -p client_side_port [-c] [-s server_url[:port]] [-a [api_url:]port] [-u user] [-d] \n", argv[0]);
         print_message("                          [--noexecapi] [--conf config_file]  [--cert cert_file] [--key key_file] [--pid pid_file]\n");
-        sig_term(-1);
+        exit(1);
     }
     //
     int cport = 0;

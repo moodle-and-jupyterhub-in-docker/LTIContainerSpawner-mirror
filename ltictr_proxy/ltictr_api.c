@@ -25,6 +25,13 @@ int  api_main_process(int sock, SSL* ssl, tList* lproxy)
         return -1;
     }
 
+    //
+    DEBUG_MODE {
+        print_message("[LTICTR_API] === API RECV HEADER ===\n");
+        print_protocol_header(hdr);
+        print_message("\n");
+    }
+
     int com = get_http_header_method(hdr);
     if (com <= HTTP_UNKNOWN_METHOD) {
         del_tList(&hdr);
@@ -50,13 +57,6 @@ int  api_main_process(int sock, SSL* ssl, tList* lproxy)
         DEBUG_MODE print_message("[LTICTR_API] Missmatch Token string!\n");
         send_http_error(sock, ssl, 401, NULL);
         return -1;
-    }
-
-    //
-    DEBUG_MODE {
-        print_message("[LTICTR_API] === API RECV HEADER ===\n");
-        print_protocol_header(hdr);
-        print_message("\n");
     }
 
     // Get User Name
