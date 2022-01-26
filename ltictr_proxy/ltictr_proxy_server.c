@@ -24,7 +24,7 @@
 #define  MOODLE_TLS_KEY     "Moodle_TLS"
 #define  MOODLE_HTTP_KEY    "Moodle_HTTP"
 
-#define  API_SERVER         "./ltictr_api"
+#define  API_SERVER         "./ltictr_api_server"
 
 
 int      LogType        = LOG_INFO;;
@@ -190,7 +190,7 @@ int main(int argc, char** argv)
         free_Buffer(&efctvuser);
     }
 
-    DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] Start LTICTR_PROXY. (%d)\n", RootPid);
+    DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] Start LTICTR_PROXY_SERVER. (%d)\n", RootPid);
 
     //
     // Network
@@ -216,10 +216,11 @@ int main(int argc, char** argv)
             DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] API Server Posrt is not specified.\n");
             sig_term(-1);
         }
-
+        //
+        DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] Start LTICTR_API_SERVER.\n");
         pid_t pid = fork();
         if (pid==0) {
-            argv[0] = dup_str("ltictr_api");
+            argv[0] = dup_str("ltictr_api_server");
             execv(API_SERVER, argv);
             _exit(0);
         }
@@ -341,7 +342,7 @@ void  term_main(int code)
             if (lpid->ldat.id>0) kill((pid_t)lpid->ldat.id, SIGTERM);   
             lpid = lpid->next;   
         }
-        sleep(1);
+        //sleep(1);
         //
         DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] Shutdown root LTICTR_PROXY process with code = (%d)\n", code);
         print_message("[LTICTR_PROXY_SERVER] Shutdown root LTICTR_PROXY process with code = (%d)\n", code);

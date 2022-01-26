@@ -65,7 +65,7 @@ int main(int argc, char** argv)
         else if (!strcmp(argv[i],"--conf"))   {if (i!=argc-1) configfile = make_Buffer_bystr(argv[i+1]);}
         else if (!strcmp(argv[i],"--config")) {if (i!=argc-1) configfile = make_Buffer_bystr(argv[i+1]);}
         //
-        else if (*argv[i]=='-') print_message("[LTICTR_API_SERVER] Unknown argument: %s\n", argv[i]);
+        //else if (*argv[i]=='-') print_message("[LTICTR_API_SERVER] Unknown argument: %s\n", argv[i]);
     }
     if (aport==0) {
         print_message("Usage... %s -a api_port [-i] [-u user] [-d] \n", argv[0]);
