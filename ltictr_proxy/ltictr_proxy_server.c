@@ -26,7 +26,7 @@
 #define  API_SERVER_URL     "http://127.0.0.1:8001"
 
 
-pid_t    RootPid;
+pid_t    RootPID;
 
 int      APIServerExec  = ON;
 
@@ -35,10 +35,10 @@ int      ServerSSL      = OFF;     // クライアント側（自身はサーバ
 SSL_CTX* ServerCTX      = NULL;
 
 tList*   ProxyList      = NULL;
-tList*   PidList        = NULL;
+tList*   PIDList        = NULL;
 
 // config file
-char*    PidFile        = "/var/run/ltictr_proxy.pid";
+char*    PIDFile        = "/var/run/ltictr_proxy.pid";
 char*    TLS_CertPem    = "/etc/pki/tls/certs/server.pem";
 char*    TLS_KeyPem     = "/etc/pki/tls/private/key.pem";
 char*    API_Token      = "default_token";
@@ -130,12 +130,12 @@ int main(int argc, char** argv)
     DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] API Server is %s\n", (char*)apihost.buf);
 
     //
-    if (pidfile.buf  !=NULL) PidFile     = (char*)pidfile.buf;
+    if (pidfile.buf  !=NULL) PIDFile     = (char*)pidfile.buf;
     if (certfile.buf !=NULL) TLS_CertPem = (char*)certfile.buf;
     if (keyfile.buf  !=NULL) TLS_KeyPem  = (char*)keyfile.buf;
 
     ProxyList = add_tList_node_anchor();
-    PidList   = add_tList_node_anchor();
+    PIDList   = add_tList_node_anchor();
 
     //
     // Initialization
@@ -164,11 +164,11 @@ int main(int argc, char** argv)
     set_sigterm_child(sig_child);       // Setting of proxy process is terminated
 
     //
-    // Pid file
-    RootPid = getpid();
-    FILE* fp = fopen((char*)PidFile, "w");
+    // PID file
+    RootPID = getpid();
+    FILE* fp = fopen((char*)PIDFile, "w");
     if (fp!=NULL) {
-        fprintf(fp, "%d", (int)RootPid);
+        fprintf(fp, "%d", (int)RootPID);
         fclose(fp);
     }
 
@@ -190,7 +190,7 @@ int main(int argc, char** argv)
         free_Buffer(&efctvuser);
     }
 
-    DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] Start LTICTR_PROXY_SERVER. (%d)\n", RootPid);
+    DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] Start LTICTR_PROXY_SERVER. (%d)\n", RootPID);
 
     //
     // Network
@@ -219,7 +219,7 @@ int main(int argc, char** argv)
             execv(API_SERVER_COM, argv);
             _exit(0);
         }
-        add_tList_node_int(PidList, (int)pid, 0);
+        add_tList_node_int(PIDList, (int)pid, 0);
     }
 
     //
@@ -234,7 +234,7 @@ int main(int argc, char** argv)
             if (pid==0) receipt_proxy(Sofd, ServerCTX, apihost, ProxyList);
             close(Sofd);    // don't use socket_close() !
 
-            tList* lp = find_tList_end(PidList);
+            tList* lp = find_tList_end(PIDList);
             add_tList_node_int(lp, (int)pid, 0);
             DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] For proxy process. (%d)\n", pid);
         }
@@ -257,7 +257,7 @@ int  init_main(Buffer configfile)
         filelist = read_index_tList_file((char*)configfile.buf, '=');
         //
         if (filelist!=NULL) {
-            PidFile        = get_str_param_tList (filelist, LTICTR_PID_FILE,    PidFile);
+            PIDFile        = get_str_param_tList (filelist, LTICTR_PID_FILE,    PIDFile);
             TLS_CertPem    = get_str_param_tList (filelist, LTICTR_SERVER_CERT, TLS_CertPem);
             TLS_KeyPem     = get_str_param_tList (filelist, LTICTR_PRIVATE_KEY, TLS_KeyPem);
             API_Token      = get_str_param_tList (filelist, LTICTR_API_TOKEN,   API_Token);
@@ -290,10 +290,10 @@ void  term_main(int code)
 
     //
     pid_t pid = getpid();
-    if (pid==RootPid) {
-        if (PidFile!=NULL) remove(PidFile);
+    if (pid==RootPID) {
+        if (PIDFile!=NULL) remove(PIDFile);
         //
-        tList* lpid = PidList;
+        tList* lpid = PIDList;
         if (lpid!=NULL && lpid->ldat.id==TLIST_ANCHOR_NODE) lpid = lpid->next;
         while (lpid!=NULL) {
             if (lpid->ldat.id>0) kill((pid_t)lpid->ldat.id, SIGTERM);   
@@ -340,7 +340,7 @@ void  sig_term(int signal)
     if (signal<0) signal = -signal;
     if (signal==SIGTERM) signal = 0;    // by systemctl stop ....
 
-    if (pid==RootPid)  exit(signal);
+    if (pid==RootPID)  exit(signal);
     else              _exit(signal);
 }
 
@@ -358,7 +358,7 @@ void  sig_child(int signal)
     int ret;
     pid = waitpid(-1, &ret, WNOHANG);
     while(pid>0) {
-        tList* lst = search_id_tList(PidList, pid, 1);
+        tList* lst = search_id_tList(PIDList, pid, 1);
         if (lst!=NULL) del_tList_node(&lst);
         DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] SIGCHILD: signal = %d (%d)\n", signal, pid);
         //

@@ -21,7 +21,7 @@ SSL_CTX* APIPortCTX     = NULL;
 tList*   ProxyList      = NULL;
 
 // config file
-char*    PidFile        = "/var/run/ltictr_api.pid";
+char*    PIDFile        = "/var/run/ltictr_api.pid";
 char*    TLS_CertPem    = "/etc/pki/tls/certs/server.pem";
 char*    TLS_KeyPem     = "/etc/pki/tls/private/key.pem";
 char*    API_Token      = "default_token";
@@ -83,7 +83,7 @@ int main(int argc, char** argv)
         sig_term(-1);
     }
 
-    if (pidfile.buf  !=NULL) PidFile     = (char*)pidfile.buf;
+    if (pidfile.buf  !=NULL) PIDFile     = (char*)pidfile.buf;
     if (certfile.buf !=NULL) TLS_CertPem = (char*)certfile.buf;
     if (keyfile.buf  !=NULL) TLS_KeyPem  = (char*)keyfile.buf;
     //
@@ -115,8 +115,8 @@ int main(int argc, char** argv)
     sigaction(SIGTERM, &sa, NULL);
 
     //
-    // Pid file
-    FILE* fp = fopen((char*)PidFile, "w");
+    // PID file
+    FILE* fp = fopen((char*)PIDFile, "w");
     if (fp!=NULL) {
         fprintf(fp, "%d", (int)getpid());
         fclose(fp);
@@ -189,7 +189,7 @@ int  init_main(Buffer configfile)
         filelist = read_index_tList_file((char*)configfile.buf, '=');
         //
         if (filelist!=NULL) {
-            PidFile     = get_str_param_tList (filelist, LTICTR_PID_FILE,    PidFile);
+            PIDFile     = get_str_param_tList (filelist, LTICTR_PID_FILE,    PIDFile);
             TLS_CertPem = get_str_param_tList (filelist, LTICTR_SERVER_CERT, TLS_CertPem);
             TLS_KeyPem  = get_str_param_tList (filelist, LTICTR_PRIVATE_KEY, TLS_KeyPem);
             API_Token   = get_str_param_tList (filelist, LTICTR_API_TOKEN,   API_Token);
@@ -208,7 +208,7 @@ void  term_main(int code)
     socket_close(Nofd);
 
     //
-    if (PidFile!=NULL) remove(PidFile);
+    if (PIDFile!=NULL) remove(PIDFile);
     //
     DEBUG_MODE print_message("[LTICTR_API_SERVER] Shutdown root LTICTR_API_SERVER process with code = (%d)\n", code);
     return;
