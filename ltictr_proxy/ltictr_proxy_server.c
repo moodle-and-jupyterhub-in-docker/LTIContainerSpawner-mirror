@@ -7,7 +7,7 @@
 #include "ltictr_proxy.h"
 #include "ltictr_proxy_server.h"
 
-#define  LTICTR_PID_FILE    "LTICTR_Pid_File"
+#define  LTICTR_PID_FILE    "LTICTR_PID_File"
 #define  LTICTR_SERVER_CERT "LTICTR_Server_Cert"
 #define  LTICTR_PRIVATE_KEY "LTICTR_Private_Key"
 #define  LTICTR_API_TOKEN   "LTICTR_API_Token"
