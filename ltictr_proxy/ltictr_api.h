@@ -18,12 +18,12 @@ tList_data 構造体
 
 int    api_server(int port, SSL_CTX* ctx,  tList* lproxy);
 int    api_main_process(int sock, SSL* ssl, tList* lproxy);
-char*  get_username_api(tList* hdr);
 
-int    get_user_api(char* uname, Buffer* res, tList* lproxy);
-int    add_user_api(char* uname, Buffer  buf, tList* lproxy);
-int    del_user_api(char* uname, tList*  lproxy);
+int    api_get_user(char* uname, Buffer* res, tList* lproxy);
+int    api_add_user(char* uname, Buffer  buf, tList* lproxy);
+int    api_del_user(char* uname, tList*  lproxy);
 
 int    send_http_response(int sock, SSL* ssl, int num, Buffer* buf);
 int    send_http_error(int sock, SSL* ssl, int err, Buffer* opt);
 
+char*  get_api_username(tList* hdr);
