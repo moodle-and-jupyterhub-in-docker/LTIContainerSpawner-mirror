@@ -236,6 +236,10 @@ int  add_user_api(char* uname, Buffer buf, tList* lproxy)
         free_Buffer(&user);
     }
  
+    DEBUG_MODE {
+        print_message("[LTICTR_API] Add User (%s)\n", uname);
+        print_json(stderr, json, JSON_INDENT_FORMAT);
+    }
     //
     target = get_key_json_val(json, "target", 1);
     del_json(&json);
@@ -259,7 +263,7 @@ int  add_user_api(char* uname, Buffer buf, tList* lproxy)
 
     //
     DEBUG_MODE {
-        print_message("[LTICTR_API] Add user (%s)\n", uname);
+        print_message("[LTICTR_API] Add User (%s)\n", uname);
         print_tList(stderr, lproxy);
         print_message("\n");
     }

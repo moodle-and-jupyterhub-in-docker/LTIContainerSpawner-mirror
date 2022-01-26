@@ -161,7 +161,7 @@ int main(int argc, char** argv)
     sigaction(SIGINT,  &sa, NULL);      // ^C
     sigaction(SIGTERM, &sa, NULL);
     #
-    set_sigterm_child(sig_child);       // Setting of child process is terminated
+    set_sigterm_child(sig_child);       // Setting of proxy process is terminated
 
     //
     // Pid file
@@ -236,11 +236,12 @@ int main(int argc, char** argv)
         Sofd = accept_intr(Nofd, &cl_addr, &cdlen);
         if (Sofd>0) {
             pid_t pid = fork();
-            if (pid==0) receipt_child(Sofd, ServerCTX, ProxyList);
+            if (pid==0) receipt_proxy(Sofd, ServerCTX, ProxyList);
             close(Sofd);    // don't use socket_close() !
 
             tList* lp = find_tList_end(PidList);
             add_tList_node_int(lp, (int)pid, 0);
+            DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] Fort proxy process. (%d)\n", pid);
         }
     }
 
@@ -310,27 +311,6 @@ void  term_main(int code)
     socket_close(Nofd);
 
     //
-    // もうどうせ死んじゃうんだから，後始末はシステムにお任せ!
-    //
-    //close_all_socket(ProxyList);
-
-    //Sofd = Aofd = Nofd = Mofd = 0;
-
-    //if (ServerCTX!=NULL)  SSL_CTX_free(ServerCTX);
-    //if (APIPortCTX!=NULL) SSL_CTX_free(APIPortCTX);
-
-    //free_Buffer(&hostname);
-    ////free_Buffer(&efctvuser);
-    //free_Buffer(&pidfile);      // PidFile
-    //free_Buffer(&certfile);
-    //free_Buffer(&keyfile);
-    ////free_Buffer(&allowfile);  // AllowFile
-    ////free_Buffer(&configfile);
-
-    //del_tList(&ProxyList);
-    //del_tList(&AllowList);
-
-    //
     pid_t pid = getpid();
     if (pid==RootPid) {
         closelog(); // close syslog 
@@ -345,11 +325,9 @@ void  term_main(int code)
         //sleep(1);
         //
         DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] Shutdown root LTICTR_PROXY process with code = (%d)\n", code);
-        print_message("[LTICTR_PROXY_SERVER] Shutdown root LTICTR_PROXY process with code = (%d)\n", code);
     }
     else {
-        DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] Shutdown child LTICTR_PROXY process with code = (%d)\n", code);
-        print_message("[LTICTR_PROXY_SERVER] Shutdown child LTICTR_PROXY process with code = (%d)\n", code);
+        DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] Shutdown proxy LTICTR_PROXY process with code = (%d)\n", code);
     }
     return;
 }
@@ -380,34 +358,32 @@ void  sig_term(int signal)
     term_main(signal);
     
     pid_t pid = getpid();
-    //DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] sig_term: Exit program with signal = %d (%d)\n", signal, pid);
-    print_message("[LTICTR_PROXY_SERVER] sig_term: Exit program with signal = %d (%d)\n", signal, pid);
+    DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] SIGTERM : signal = %d (%d)\n", signal, pid);
 
     if (signal<0) signal = -signal;
     if (signal==SIGTERM) signal = 0;    // by systemctl stop ....
 
     if (pid==RootPid)  exit(signal);
-    else               exit(signal);
+    else              _exit(signal);
 }
 
 
 
 //
-// Termination of child process
+// Termination of proxy process
 //
 void  sig_child(int signal)
 {
     pid_t pid = 0;
 
     //UNUSED(signal);
-    //DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] SIG_CHILD: signal = %d\n", signal);
-    print_message("[LTICTR_PROXY_SERVER] SIG_CHILD: signal = %d\n", signal);
 
     int ret;
     pid = waitpid(-1, &ret, WNOHANG);
     while(pid>0) {
         tList* lst = search_id_tList(PidList, pid, 1);
         if (lst!=NULL) del_tList_node(&lst);
+        DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] SIGCHILD: signal = %d (%d)\n", signal, pid);
         //
         pid = waitpid(-1, &ret, WNOHANG);
     }

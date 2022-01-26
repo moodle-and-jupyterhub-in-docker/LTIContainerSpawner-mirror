@@ -4,7 +4,7 @@
 #include "https_tool.h"
 
 
-void   receipt_child(int ssock, SSL_CTX* s_ctx, tList* lp);
+void   receipt_proxy(int ssock, SSL_CTX* s_ctx, tList* lp);
 
 char*  get_sessionid_from_header(tList* hdr);
 char*  get_info_from_cookie(tList* hdr);

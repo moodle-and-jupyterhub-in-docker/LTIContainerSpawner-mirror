@@ -1,7 +1,7 @@
 # vi: set tabstop=4 noautoindent:
 
 
-VERSION = 0.1.0
+VERSION = 0.1.1
 
 #
 #
@@ -68,5 +68,5 @@ clean:
 
 tgz:
 	make clean
-	(cd .. && tar zcf Dist/ltictr_proxy-${VERSION}.tgz ltictr_proxy)
+	(cd .. && tar zcf ltictr_proxy-${VERSION}.tgz ltictr_proxy)
 

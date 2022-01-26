@@ -19,7 +19,7 @@ extern   tList* AllowList;
 
 
 //
-void  receipt_child(int ssock, SSL_CTX* server_ctx, tList* lproxy)
+void  receipt_proxy(int ssock, SSL_CTX* server_ctx, tList* lproxy)
 {
     int    cc, nd;
     fd_set mask;
@@ -60,9 +60,9 @@ void  receipt_child(int ssock, SSL_CTX* server_ctx, tList* lproxy)
 
     // Main Loop
     DEBUG_MODE print_message("Child Proxy Loop(%d)\n", getpid());
-    //while(nd>0 && (FD_ISSET(csock, &mask) || FD_ISSET(ssock, &mask))) {
     while(nd>0) {
-        // Client -> Server // ltictr_proxy はサーバ
+        //
+        // Client -> Server // ltictr_proxy_server はサーバ
         if (FD_ISSET(ssock, &mask)) {
             cc = recv_https_Buffer(ssock, sssl, &hdr, &buf, LTICTR_TIMEOUT, NULL, NULL);
             if (cc>0) {
@@ -85,11 +85,6 @@ void  receipt_child(int ssock, SSL_CTX* server_ctx, tList* lproxy)
                         lst = add_tList_node_bystr(lproxy, 0, atoi(pt), uname, pp, NULL, 0);
                         free_Buffer(&target);
                     }
-//print_message("=== child user (%s) =============================== (%d)\n", uname, getpid());
-//print_tList(stderr, lproxy);
-//print_message("---------------------------------------------- (%d)\n", getpid());
-//print_tList(stderr, lst);
-//print_message("=== user end ================================= (%d)\n", getpid());
                 }
                 free(uname);
 
@@ -101,7 +96,7 @@ void  receipt_child(int ssock, SSL_CTX* server_ctx, tList* lproxy)
             }
             else {
                 if (cc<0) {
-                    //print_message("ltictr_child: C->S: ");
+                    //print_message("ltictr_proxy: C->S: ");
                     //jbxl_fprint_state(stderr, cc);
                 }
                 break;      // cc==0
@@ -127,7 +122,7 @@ void  receipt_child(int ssock, SSL_CTX* server_ctx, tList* lproxy)
         nd = select(range+1, &mask, NULL, NULL, &timeout);
 
         //
-        // Server -> Client // ltictr_proxy はクライアント
+        // Server -> Client // ltictr_proxy_erver はクライアント
         lst = lproxy;
         if (lst->ldat.id==TLIST_ANCHOR_NODE) lst = lst->next;
         while (lst!=NULL) {
@@ -144,15 +139,23 @@ void  receipt_child(int ssock, SSL_CTX* server_ctx, tList* lproxy)
                         cc = send_client(ssock, sssl, hdr, buf);     // Client へ転送
                         if (cc<=0) {
                             //if (cc<0) syslog(Log_Type, "error occurred in fe_server().");
-                            break;
+                            close(csock);
+                            lst->ldat.id = 0;
+                            if (lst->ldat.ptr!=NULL) free(lst->ldat.ptr);
+                            lst->ldat.sz = 0;
+                            //break;
                         }
                     }
                     else {
                         if (cc<0) {
-                            //print_message("ltictr_child: S->C: ");
+                            //print_message("ltictr_proxy: S->C: ");
                             //jbxl_fprint_state(stderr, cc);
                         }
-                        break;      // cc==0
+                        close(csock);
+                        lst->ldat.id = 0;
+                        if (lst->ldat.ptr!=NULL) free(lst->ldat.ptr);
+                        lst->ldat.sz = 0;
+                        //break;      // cc==0
                     }
                 }
             }
@@ -198,8 +201,7 @@ void  receipt_child(int ssock, SSL_CTX* server_ctx, tList* lproxy)
     free_Buffer(&buf);
     //syslog(Log_Type, "[%s] session end.", ClientIPaddr);
 
-    DEBUG_MODE print_message("Termination of child process. (%d)\n", getpid());
-    print_message("Termination of child process. (%d)\n", getpid());
+    DEBUG_MODE print_message("Termination of proxy process. (%d)\n", getpid());
     _exit(0);
 }
 
@@ -295,7 +297,7 @@ int   send_client(int sock, SSL* ssl, tList* hdr, Buffer buf)
 //
 int   send_server(int sock, SSL* ssl, tList* hdr, Buffer buf, char* proto)
 {
-    if (hdr==NULL) return -1;
+    if (sock<=0 || hdr==NULL) return -1;
 
     int http_com = get_http_header_method(hdr);
     //
@@ -407,7 +409,7 @@ int  get_proxy_socket(tList* lst)
     //
     sock = (int)lst->ldat.id;
     if (sock<=0) {
-        DEBUG_MODE print_message("socket for %s is invalid. Reopen socket.\n", (char*)lst->ldat.key.buf);
+        DEBUG_MODE print_message("socket for %s is invalid. Reopen socket. (%d)\n", (char*)lst->ldat.key.buf, sock);
         //
         char* hp = (char*)lst->ldat.val.buf + lst->ldat.val.vldsz;
         while(*hp!='/') hp--;
@@ -416,11 +418,7 @@ int  get_proxy_socket(tList* lst)
         free(hname);
         //
         if (sock>0) {
-            //char* lasttime = get_local_timestamp(time(0), "%Y-%b-%dT%H:%M:%SZ");
-            lst->ldat.id  = sock;
-            //if (lst->ldat.ptr!=NULL) free(lst->ldat.ptr);
-            //lst->ldat.ptr = lasttime;
-            //lst->ldat.sz  = strlen(lasttime) + 1;
+            lst->ldat.id = sock;
         }
         else sock = -500;
     }
@@ -618,27 +616,24 @@ char*  get_proxy_username(tList* hdr)
     if (path==NULL) return NULL;
 
     //
-    char* str = NULL;
-    char* pp  = strstr(path, LTICTR_HTTPS_HUB);
-    //
-    if (pp!=NULL) {
-        str = dup_str((char*)"/");
+    char* unm = NULL;
+
+    if (ex_strcmp(LTICTR_HTTPS_USER, path)) {
+        char* pp = path + strlen(LTICTR_HTTPS_USER);
+        char* pt = pp;
+        while (*pt!='/' && *pt!='\0') pt++;
+        *pt = '\0';
+        unm = dup_str(pp);
     }
+    //else if (ex_strcmp(LTICTR_HTTPS_HUB, path)) {
+    //    unm = dup_str("/");
+    //}
     else {
-        pp  = strstr(path, LTICTR_HTTPS_USER);
-        if (pp!=NULL) {
-            pp = pp + strlen(LTICTR_HTTPS_USER);
-            char* pt = pp;
-            while (*pt!='/' && *pt!='\0') pt++;
-            char bkup = *pt;
-            *pt = '\0';
-            str = dup_str(pp);
-            *pt = bkup;
-        }
+        unm = dup_str("/");
     }
     free(path);
 
-    return str;
+    return unm;
 }
 
 
@@ -679,7 +674,7 @@ Buffer  get_proxy_target(char* api_host, int api_port, SSL_CTX* ctx, char* uname
     del_tList(&http_header);
 
     Buffer buf = make_Buffer(RECVBUFSZ);
-    recv_https_Buffer(sofd, ssl, &http_header, &buf, HTTP_TIMEOUT, NULL, NULL);
+    recv_https_Buffer(sofd, ssl, &http_header, &buf, LTICTR_TIMEOUT, NULL, NULL);
     ssl_close(ssl);
     socket_close(sofd);
 
