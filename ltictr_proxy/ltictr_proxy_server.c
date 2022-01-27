@@ -21,9 +21,7 @@
 #define  MOODLE_TLS_KEY     "Moodle_TLS"
 #define  MOODLE_HTTP_KEY    "Moodle_HTTP"
 
-#define  API_SERVER_COM     "ltictr_api_server"
 #define  API_SERVER_NAME    "ltictr_api_server"
-#define  API_SERVER_URL     "http://127.0.0.1:8001"
 
 
 pid_t    RootPID;
@@ -59,6 +57,9 @@ int main(int argc, char** argv)
 {
     int    sport = 0;
     struct passwd* pw;
+
+    ProxyList  = add_tList_node_anchor();
+    PIDList    = add_tList_node_anchor();
 
     Buffer hostname;
     Buffer apihost;
@@ -122,20 +123,21 @@ int main(int argc, char** argv)
     }
 
     //
-    if (apihost.buf==NULL) apihost = make_Buffer_bystr(API_SERVER_URL);
-    if (strstr((char*)apihost.buf, ":")==NULL) ins_s2Buffer(":", &apihost);
-    if (!ex_strcmp("http://", (char*)apihost.buf) && !ex_strcmp("https://", (char*)apihost.buf)) {
-        ins_s2Buffer("http://", &apihost);
+    if (apihost.buf!=NULL) {
+        if (strstr((char*)apihost.buf, ":")==NULL) ins_s2Buffer(":", &apihost);
+        if (!ex_strcmp("http://", (char*)apihost.buf) && !ex_strcmp("https://", (char*)apihost.buf)) {
+            ins_s2Buffer("http://", &apihost);
+        }
+        DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] API Server is %s\n", (char*)apihost.buf);
     }
-    DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] API Server is %s\n", (char*)apihost.buf);
+    else {
+        APIServerExec = OFF;
+    }
 
     //
     if (pidfile.buf  !=NULL) PIDFile     = (char*)pidfile.buf;
     if (certfile.buf !=NULL) TLS_CertPem = (char*)certfile.buf;
     if (keyfile.buf  !=NULL) TLS_KeyPem  = (char*)keyfile.buf;
-
-    ProxyList = add_tList_node_anchor();
-    PIDList   = add_tList_node_anchor();
 
     //
     // Initialization
@@ -215,8 +217,17 @@ int main(int argc, char** argv)
         DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] Start LTICTR_API_SERVER.\n");
         pid_t pid = fork();
         if (pid==0) {
+            Buffer compath = make_Buffer(LPATH);
+            char* path = get_file_path(argv[0]);
+            if (path!=NULL) {
+                copy_s2Buffer(path, &compath);
+                free(path);
+            }
+            cat_s2Buffer(API_SERVER_NAME, &compath);
+            //
             argv[0] = dup_str(API_SERVER_NAME);
-            execv(API_SERVER_COM, argv);
+            execv((char*)compath.buf, argv);
+            free_Buffer(&compath);
             _exit(0);
         }
         add_tList_node_int(PIDList, (int)pid, 0);

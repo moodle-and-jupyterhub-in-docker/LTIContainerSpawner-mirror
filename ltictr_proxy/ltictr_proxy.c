@@ -20,6 +20,8 @@ extern char*  API_Token;
 //
 void  receipt_proxy(int ssock, SSL_CTX* server_ctx, Buffer api_host, tList* lproxy)
 {
+    char root_name[] = "root";
+
     int    cc, nd;
     fd_set mask;
     struct timeval timeout;
@@ -39,11 +41,13 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, Buffer api_host, tList* lpro
     unsigned short aport = 0;
 
     //
-    decomp_url(api_host, NULL, &protocol, &aserver, &aport, NULL);
-    if (ex_strcmp("https", (char*)protocol.buf)) {
-        client_ctx = ssl_client_setup(NULL);
+    if (api_host.buf!=NULL) {
+        decomp_url(api_host, NULL, &protocol, &aserver, &aport, NULL);
+        if (ex_strcmp("https", (char*)protocol.buf)) {
+            client_ctx = ssl_client_setup(NULL);
+        }
+        free_Buffer(&protocol);
     }
-    free_Buffer(&protocol);
     //
     // Client SSL connection for data recieve
     if (server_ctx!=NULL) {
@@ -81,23 +85,30 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, Buffer api_host, tList* lpro
                     print_protocol_header(hdr);
                     print_message("\n");
                 }
-                char* uname = get_proxy_username(hdr);
-                if (uname==NULL) break;
-                lst = strncasecmp_tList(lproxy, uname, 0, 1);
-
-                if (lst==NULL) {
-                    Buffer target = get_proxy_target((char*)aserver.buf, (int)aport, client_ctx, uname, API_Token);
-                    if (target.buf!=NULL) {
-                        char* pp = (char*)target.buf;
-                        char* pt = pp + strlen((char*)target.buf);
-                        while (*pt!=':') pt--;
-                        *pt = '\0';
-                        pt++;
-                        lst = add_tList_node_bystr(lproxy, 0, atoi(pt), uname, pp, NULL, 0);
-                        free_Buffer(&target);
+                //
+                char* uname = NULL;
+                if (aport>0) {
+                    uname = get_proxy_username(hdr);
+                    if (uname!=NULL) {
+                        lst = strncasecmp_tList(lproxy, uname, 0, 1);
+                        if (lst==NULL) {
+                            Buffer target = get_proxy_target((char*)aserver.buf, (int)aport, client_ctx, uname, API_Token);
+                            if (target.buf!=NULL) {
+                                char* pp = (char*)target.buf;
+                                char* pt = pp + strlen((char*)target.buf);
+                                while (*pt!=':') pt--;
+                                *pt = '\0';
+                                pt++;
+                                lst = add_tList_node_bystr(lproxy, 0, atoi(pt), uname, pp, NULL, 0);
+                                free_Buffer(&target);
+                            }
+                        }
+                        free(uname);
                     }
                 }
-                free(uname);
+                if (uname==NULL) {
+                    lst = strncasecmp_tList(lproxy, "/", 0, 1);
+                }
 
                 csock = get_proxy_socket(lst);
                 cssl  = get_proxy_ssl(csock, client_ctx, lst);
@@ -413,7 +424,7 @@ int   send_server(int sock, SSL* ssl, tList* hdr, Buffer buf, char* proto)
 int  get_proxy_socket(tList* lst)
 {
     int sock = 0;
-    if (lst==NULL) return -400;
+    if (lst==NULL) return -1;
     //
     sock = (int)lst->ldat.id;
     if (sock<=0) {
@@ -428,7 +439,7 @@ int  get_proxy_socket(tList* lst)
         if (sock>0) {
             lst->ldat.id = sock;
         }
-        else sock = -500;
+        else sock = -1;
     }
 
     return sock;

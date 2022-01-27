@@ -232,16 +232,16 @@ int  api_add_user(char* uname, Buffer buf, tList* lproxy)
     free_Buffer(&target);
     cat_s2Buffer("://",  &protocol);
     cat_Buffer(&srvfqdn, &protocol);
+    free_Buffer(&srvfqdn);
 
     // check of user exist
     tList* exist = strncasecmp_tList(lproxy, uname, 0, 1);
-    if (exist!=NULL) {
-        if (exist->ldat.id>0) socket_close(exist->ldat.id);
-        del_tList_node(&exist);
-    }
+    if (exist!=NULL) del_tList_node(&exist);
+    //
     lproxy = find_tList_end(lproxy);
-    add_tList_node_bystr(lproxy, 0, (int)port, uname, (char*)protocol.buf, NULL, 0);
-    free_Buffer(&srvfqdn);
+    char* lasttime = get_local_timestamp(time(0), "%Y-%b-%dT%H:%M:%SZ");
+    add_tList_node_bystr(lproxy, 0, (int)port, uname, (char*)protocol.buf, lasttime, strlen(lasttime)+1);
+    free(lasttime);
     free_Buffer(&protocol);
 
     //
