@@ -4,13 +4,13 @@
 #include "https_tool.h"
 
 
-void   receipt_proxy(int ssock, SSL_CTX* s_ctx, Buffer api_host, tList* lp);
+void   receipt_proxy(int ssock, SSL_CTX* s_ctx, SSL_CTX* c_ctx, Buffer api_host, tList* lp);
 
 int    send_client(int sock, SSL* ssl, tList* hdr, Buffer buf);
 int    send_server(int sock, SSL* ssl, tList* hdr, Buffer buf, char* proto);
 //
-int    get_proxy_socket(tList* hdr);
-SSL*   get_proxy_ssl(int sock, SSL_CTX* ctx, tList* hdr);
+int    get_proxy_socket(tList* lst);
+SSL*   get_proxy_ssl(int sock, SSL_CTX* ctx, tList* lst);
 char*  get_proxy_username(tList* hdr);
 Buffer get_proxy_target(char* apiserver, int port, SSL_CTX* ctx, char* uname, char* token);
 

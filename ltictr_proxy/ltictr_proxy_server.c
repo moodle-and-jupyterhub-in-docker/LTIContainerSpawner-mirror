@@ -31,6 +31,7 @@ int      APIServerExec  = ON;
 int      Nofd = 0, Sofd = 0;
 int      ServerSSL      = OFF;     // クライアント側（自身はサーバ）とのSSL 接続
 SSL_CTX* ServerCTX      = NULL;
+SSL_CTX* ClientCTX      = NULL;
 
 tList*   ProxyList      = NULL;
 tList*   PIDList        = NULL;
@@ -61,8 +62,8 @@ int main(int argc, char** argv)
     ProxyList  = add_tList_node_anchor();
     PIDList    = add_tList_node_anchor();
 
-    Buffer hostname;
-    Buffer apihost;
+    Buffer serverurl;
+    Buffer apiurl;
     Buffer efctvuser;
     Buffer pidfile;
     Buffer certfile;
@@ -70,8 +71,8 @@ int main(int argc, char** argv)
     Buffer configfile;
 
     // for arguments
-    hostname   = init_Buffer();
-    apihost    = init_Buffer();
+    serverurl  = init_Buffer();
+    apiurl     = init_Buffer();
     efctvuser  = init_Buffer();
     pidfile    = init_Buffer();
     certfile   = init_Buffer();
@@ -80,8 +81,8 @@ int main(int argc, char** argv)
 
     for (int i=1; i<argc; i++) {
         if      (!strcmp(argv[i],"-p")) {if (i!=argc-1) sport = atoi(argv[i+1]);}
-        else if (!strcmp(argv[i],"-s")) {if (i!=argc-1) hostname  = make_Buffer_bystr(argv[i+1]);}
-        else if (!strcmp(argv[i],"-a")) {if (i!=argc-1) apihost   = make_Buffer_bystr(argv[i+1]);}
+        else if (!strcmp(argv[i],"-s")) {if (i!=argc-1) serverurl = make_Buffer_bystr(argv[i+1]);}
+        else if (!strcmp(argv[i],"-a")) {if (i!=argc-1) apiurl    = make_Buffer_bystr(argv[i+1]);}
         else if (!strcmp(argv[i],"-u")) {if (i!=argc-1) efctvuser = make_Buffer_bystr(argv[i+1]);}
         else if (!strcmp(argv[i],"-c")) ServerSSL = ON;
         else if (!strcmp(argv[i],"-d")) DebugMode = ON;
@@ -104,31 +105,31 @@ int main(int argc, char** argv)
     }
     //
     int cport = 0;
-    int i = 0;
-    if (hostname.buf!=NULL) {
-        while(hostname.buf[i]!='\0' && hostname.buf[i]!=':') i++;
-        if (hostname.buf[i]==':') {
-            cport = atoi((char*)&(hostname.buf[i+1]));
-            hostname.buf[i] = '\0';
-            hostname.vldsz = strlen((char*)hostname.buf);
+    if (serverurl.buf!=NULL) {
+        int sz = (int)strlen((char*)serverurl.buf) - 1; 
+        while(sz>=0 && serverurl.buf[sz]!='/' && serverurl.buf[sz]!=':') sz--;
+        if (sz>=0 && serverurl.buf[sz]==':') {
+            cport = atoi((char*)&(serverurl.buf[sz+1]));
+            serverurl.buf[sz] = '\0';
+            serverurl.vldsz = strlen((char*)serverurl.buf);
         }
     }
     if (cport==0) cport = sport;
-    if (hostname.buf!=NULL) {
-        if (!ex_strcmp("http://", (char*)hostname.buf) && !ex_strcmp("https://", (char*)hostname.buf)) {
-            ins_s2Buffer("http://", &hostname);
+    if (serverurl.buf!=NULL) {
+        if (!ex_strcmp("http://", (char*)serverurl.buf) && !ex_strcmp("https://", (char*)serverurl.buf)) {
+            ins_s2Buffer("http://", &serverurl);
         }
-        add_tList_node_bystr(ProxyList, 0, cport, "/", (char*)hostname.buf, NULL, 0);
-        DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] Default Target Server is %s:%d.\n", (char*)hostname.buf, cport);
+        add_tList_node_bystr(ProxyList, 0, cport, "/", (char*)serverurl.buf, NULL, 0);
+        DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] Target Server is %s:%d\n", (char*)serverurl.buf, cport);
     }
 
     //
-    if (apihost.buf!=NULL) {
-        if (strstr((char*)apihost.buf, ":")==NULL) ins_s2Buffer(":", &apihost);
-        if (!ex_strcmp("http://", (char*)apihost.buf) && !ex_strcmp("https://", (char*)apihost.buf)) {
-            ins_s2Buffer("http://", &apihost);
+    if (apiurl.buf!=NULL) {
+        if (strstr((char*)apiurl.buf, ":")==NULL) ins_s2Buffer(":", &apiurl);
+        if (!ex_strcmp("http://", (char*)apiurl.buf) && !ex_strcmp("https://", (char*)apiurl.buf)) {
+            ins_s2Buffer("http://", &apiurl);
         }
-        DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] API Server is %s\n", (char*)apihost.buf);
+        DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] API Server is %s\n", (char*)apiurl.buf);
     }
     else {
         APIServerExec = OFF;
@@ -201,11 +202,12 @@ int main(int argc, char** argv)
         ssl_init();
         ServerCTX = ssl_server_setup(TLS_CertPem, TLS_KeyPem);
     }
+    ClientCTX = ssl_client_setup(NULL);
 
     // socket open for client
     Nofd = tcp_server_socket(sport);       // block socket
     if (Nofd<0) {
-        print_message("[LTICTR_PROXY_SERVER] Failure to open the server port for client connection.\n");
+        print_message("[LTICTR_PROXY_SERVER] Failure to open the server port for client connection.(%d)\n", sport);
         sig_term(-1);
     }
     DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] Server port was opened for client connection. (%d)\n", sport);
@@ -239,16 +241,19 @@ int main(int argc, char** argv)
 
     // main loop
     Loop {
-        Sofd = accept_intr(Nofd, &cl_addr, &cdlen);
-        if (Sofd>0) {
-            pid_t pid = fork();
-            if (pid==0) receipt_proxy(Sofd, ServerCTX, apihost, ProxyList);
-            close(Sofd);    // don't use socket_close() !
-
-            tList* lp = find_tList_end(PIDList);
-            add_tList_node_int(lp, (int)pid, 0);
-            DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] For proxy process. (%d)\n", pid);
+        //Sofd = accept_intr(Nofd, &cl_addr, &cdlen);
+        Sofd = accept(Nofd, &cl_addr, &cdlen);
+        if (Sofd<0) {
+            print_message("[LTICTR_PROXY_SERVER] Failure to connect from client. [%s]\n", strerror(errno));
+            sig_term(-1);
         }
+        //
+        pid_t pid = fork();
+        if (pid==0) receipt_proxy(Sofd, ServerCTX, ClientCTX, apiurl, ProxyList);
+        close(Sofd);    // don't use socket_close() !
+
+        tList* lp = find_tList_end(PIDList);
+        add_tList_node_int(lp, (int)pid, 0);
     }
 
     // Unreachable
@@ -296,12 +301,10 @@ int  init_main(Buffer configfile)
 //
 void  term_main(int code)
 {
-    socket_close(Sofd);
-    socket_close(Nofd);
-
-    //
     pid_t pid = getpid();
     if (pid==RootPID) {
+        socket_close(Sofd);
+        socket_close(Nofd);
         if (PIDFile!=NULL) remove(PIDFile);
         //
         tList* lpid = PIDList;
@@ -346,7 +349,7 @@ void  sig_term(int signal)
     term_main(signal);
     
     pid_t pid = getpid();
-    DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] SIGTERM : signal = %d (%d)\n", signal, pid);
+    //DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] SIGTERM : signal = %d (%d)\n", signal, pid);
 
     if (signal<0) signal = -signal;
     if (signal==SIGTERM) signal = 0;    // by systemctl stop ....
@@ -364,14 +367,14 @@ void  sig_child(int signal)
 {
     pid_t pid = 0;
 
-    //UNUSED(signal);
+    UNUSED(signal);
 
     int ret;
     pid = waitpid(-1, &ret, WNOHANG);
     while(pid>0) {
         tList* lst = search_id_tList(PIDList, pid, 1);
         if (lst!=NULL) del_tList_node(&lst);
-        DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] SIGCHILD: signal = %d (%d)\n", signal, pid);
+        //DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] SIGCHILD: signal = %d (%d)\n", signal, pid);
         //
         pid = waitpid(-1, &ret, WNOHANG);
     }
