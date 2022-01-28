@@ -313,7 +313,6 @@ void  term_main(int code)
             if (lpid->ldat.id>0) kill((pid_t)lpid->ldat.id, SIGTERM);   
             lpid = lpid->next;   
         }
-        //sleep(1);
         //
         DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] Shutdown root LTICTR_PROXY process with code = (%d)\n", code);
     }

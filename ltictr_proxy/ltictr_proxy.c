@@ -73,7 +73,7 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
     // Main Loop
     DEBUG_MODE print_message("[LTICTR_PROXY] Start Main Loop. (%d)\n", getpid());
     while(nd>0) {
-        //////////////////////////////////////////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////////////
         // Client -> Server // ltictr_proxy_server はサーバ
         if (FD_ISSET(ssock, &mask)) {
             cc = recv_https_Buffer(ssock, sssl, &hdr, &buf, LTICTR_TIMEOUT, NULL, NULL);
@@ -122,7 +122,7 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
         }
 
         //
-        //////////////////////////////////////////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////////////
         range = ssock;
         timeout.tv_sec  = LTICTR_TIMEOUT;
         timeout.tv_usec = 0;
@@ -141,7 +141,7 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
         }
         nd = select(range+1, &mask, NULL, NULL, &timeout);
 
-        //////////////////////////////////////////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////////////
         // Server -> Client // ltictr_proxy_erver はクライアント
         lst = lproxy;
         if (lst->ldat.id==TLIST_ANCHOR_NODE) lst = lst->next;
@@ -182,7 +182,7 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
         }
 
         //
-        //////////////////////////////////////////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////////////
         range = ssock;
         timeout.tv_sec  = LTICTR_TIMEOUT;
         timeout.tv_usec = 0;
@@ -316,6 +316,8 @@ int   send_client(int sock, SSL* ssl, tList* hdr, Buffer buf)
 
 
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 //
 //    Client -> Server 
 //
@@ -426,6 +428,8 @@ int   send_server(int sock, SSL* ssl, tList* hdr, Buffer buf, char* proto)
 
 
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 int  get_proxy_socket(tList* lst)
 {
     int sock = 0;
@@ -433,7 +437,7 @@ int  get_proxy_socket(tList* lst)
     //
     sock = (int)lst->ldat.id;
     if (sock<=0) {
-        DEBUG_MODE print_message("[LTICTR_PROXY] Socket for %s is invalid. Reopen socket. (%d)\n", (char*)lst->ldat.key.buf, sock);
+        //DEBUG_MODE print_message("[LTICTR_PROXY] Socket for %s is invalid. Reopen socket. (%d)\n", (char*)lst->ldat.key.buf, sock);
         //
         char* hp = (char*)lst->ldat.val.buf + lst->ldat.val.vldsz;
         while(*hp!='/') hp--;
@@ -468,7 +472,7 @@ SSL*  get_proxy_ssl(int sock, SSL_CTX* ctx, tList* lst)
                 lst->ldat.sz  = sizeof(SSL*);
             }
             else {
-                DEBUG_MODE print_message("[LTICTR_PROXY] Failure to connect to server SSL port. (%d)\n", getpid());
+                DEBUG_MODE print_message("[LTICTR_PROXY] Failure to open the client SSL port. (%d)\n", getpid());
                 sig_term(-1);
             }
         }
@@ -477,8 +481,6 @@ SSL*  get_proxy_ssl(int sock, SSL_CTX* ctx, tList* lst)
 }
 
 
-
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #define  LTICTR_HTTPS_HUB   "/hub/"
 #define  LTICTR_HTTPS_USER  "/user/"

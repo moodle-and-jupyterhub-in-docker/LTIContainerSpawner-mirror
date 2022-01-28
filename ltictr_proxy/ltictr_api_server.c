@@ -204,13 +204,14 @@ int  init_main(Buffer configfile)
 //
 void  term_main(int code)
 {
+    UNUSED(code);
+
     socket_close(Aofd);
     socket_close(Nofd);
-
     //
     if (PIDFile!=NULL) remove(PIDFile);
     //
-    DEBUG_MODE print_message("[LTICTR_API_SERVER] Shutdown root LTICTR_API_SERVER process with code = (%d)\n", code);
+    //DEBUG_MODE print_message("[LTICTR_API_SERVER] Shutdown root LTICTR_API_SERVER process with code = (%d)\n", code);
     return;
 }
 
@@ -222,8 +223,8 @@ void  sig_term(int signal)
 {
     term_main(signal);
     
-    pid_t pid = getpid();
-    DEBUG_MODE print_message("[LTICTR_API_SERVER] sig_term: Exit program with signal = %d (%d)\n", signal, pid);
+    //pid_t pid = getpid();
+    //DEBUG_MODE print_message("[LTICTR_API_SERVER] sig_term: Exit program with signal = %d (%d)\n", signal, pid);
 
     if (signal<0) signal = -signal;
     if (signal==SIGTERM) signal = 0;    // by systemctl stop ....
