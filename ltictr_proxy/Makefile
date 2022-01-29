@@ -41,8 +41,8 @@ ELIB = -L$(LIB_EXT_DIR) -lextend
 
 #
 #
-ltictr_proxy_server: ltictr_proxy_server.o ltictr_proxy.o ltictr_xmlrpc.o ltictr_ws.o $(LIB_BSC) $(LIB_EXT)
-	$(CC) $(@).o ltictr_proxy.o ltictr_xmlrpc.o ltictr_ws.o $(ELIB) $(SLIB) -O2 -o $@ 
+ltictr_proxy_server: ltictr_proxy_server.o ltictr_proxy.o ltictr_relay.o ltictr_xmlrpc.o ltictr_ws.o $(LIB_BSC) $(LIB_EXT)
+	$(CC) $(@).o ltictr_proxy.o ltictr_relay.o ltictr_xmlrpc.o ltictr_ws.o $(ELIB) $(SLIB) -O2 -o $@ 
 
 ltictr_api_server: ltictr_api_server.o ltictr_api.o $(LIB_BSC) $(LIB_EXT)
 	$(CC) $(@).o ltictr_api.o $(ELIB) $(SLIB) -O2 -o $@ 
