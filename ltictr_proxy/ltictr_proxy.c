@@ -70,14 +70,16 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
     DEBUG_MODE print_message("[LTICTR_PROXY] Start Main Loop. (%d)\n", getpid());
     while(nd>0) {
         ///////////////////////////////////////////////////////////
-        // Client -> Server // ltictr_proxy_server はサーバ
+        // Client -> Server
         if (FD_ISSET(ssock, &mask)) {
             cc = recv_https_Buffer(ssock, sssl, &hdr, &buf, LTICTR_TIMEOUT, NULL, NULL);
             if (cc>0) {
                 DEBUG_MODE {
-                    print_message("[LTICTR_PROXY] === HTTP RECV CLIENT ===\n");
-                    print_protocol_header(hdr);
-                    print_message("\n");
+                    if (hdr!=NULL && hdr->ldat.id>HTTP_UNKNOWN_METHOD) {
+                        print_message("[LTICTR_PROXY] === HTTP RECV CLIENT ===\n");
+                        print_protocol_header(hdr);
+                        print_message("\n");
+                    }
                 }
                 //
                 lst = NULL;
@@ -149,9 +151,11 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
                     cc = recv_https_Buffer(csock, cssl, &hdr, &buf, LTICTR_TIMEOUT, NULL, NULL); 
                     if (cc>0) {
                         DEBUG_MODE {
-                            print_message("[LTICTR_PROXY] === HTTP RECV SERVER === (%d)\n", csock);
-                            print_protocol_header(hdr);
-                            print_message("\n");
+                            if (hdr!=NULL && hdr->ldat.id>HTTP_UNKNOWN_METHOD) {
+                                print_message("[LTICTR_PROXY] === HTTP RECV SERVER === (%d)\n", csock);
+                                print_protocol_header(hdr);
+                                print_message("\n");
+                            }
                         }
                         cc = relay_to_client(ssock, sssl, hdr, buf);     // Client へ転送
                         if (cc<=0) {
@@ -199,6 +203,7 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
     }
     DEBUG_MODE print_message("[LTICTR_PROXY] Stop  Main Loop. (%d)\n", getpid());
 
+    //
     ssl_close(sssl);
     if (sssl==NULL) close(ssock);
 

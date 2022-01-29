@@ -20,12 +20,10 @@ int   relay_to_client(int sock, SSL* ssl, tList* hdr, Buffer buf)
 {
     if (hdr==NULL) return -1;
 
-    //int http_com = get_http_header_method(hdr);
+    int cc = 0;
     int http_com = hdr->ldat.id;
-    //int http_res = OFF;
 
-    if (http_com > HTTP_UNKNOWN_METHOD) {
-
+    if (http_com > HTTP_UNKNOWN_METHOD) {   // HTTP
         char*  resp = NULL;
         tList* lp = search_key_tList(hdr, HDLIST_FIRST_LINE_KEY, 1);
         if (lp!=NULL) resp = (char*)lp->ldat.val.buf;
@@ -33,7 +31,6 @@ int   relay_to_client(int sock, SSL* ssl, tList* hdr, Buffer buf)
         // add cookie
         // Session Info を lms_sessioninfo の値として cookie に追加
         if (SessionInfo!=NULL && resp!=NULL && ex_strcmp("HTTP/", resp)) {
-            //http_res = ON;
             lp = search_key_tList(hdr, "Set-Cookie", 1);
             if (lp==NULL) lp = search_key_tList(hdr, "Host", 1);
             //
@@ -43,24 +40,28 @@ int   relay_to_client(int sock, SSL* ssl, tList* hdr, Buffer buf)
             free(SessionInfo);
             SessionInfo = NULL;
         }
+        //////////////////////////////////////////////////////////
+        Buffer snd = rebuild_http_Buffer(hdr, &buf);
+        cc = ssl_tcp_send(sock, ssl, (char*)snd.buf, snd.vldsz);
+        free_Buffer(&snd);
+        //////////////////////////////////////////////////////////
     }
+    else {
+        cc = ssl_tcp_send(sock, ssl, (char*)buf.buf, buf.vldsz);
+    }
+    //
+    if (http_com>HTTP_UNKNOWN_METHOD) return cc;
 
-
-    //////////////////////////////////////////////////////////
-    Buffer snd = rebuild_http_Buffer(hdr, &buf);
-    int ret = ssl_tcp_send(sock, ssl, (char*)snd.buf, snd.vldsz);
-    free_Buffer(&snd);
-    //////////////////////////////////////////////////////////
-
-    if (http_com>HTTP_UNKNOWN_METHOD) {
 
     //
-    // Web Socket
+    ///////////////////////////////////////////////////////////////////////
+    // WebSocket
     static char host[] = "server";
 
     tJson* temp = NULL;
     tJson* json = NULL;
-    //if (*(unsigned char*)mesg==0x81) json = ws_json(mesg, cc);
+    json = ws_json_server((char*)buf.buf, buf.vldsz);
+
     if (json!=NULL) {
         //print_json(stderr, json);
         struct ws_info info;
@@ -93,11 +94,9 @@ int   relay_to_client(int sock, SSL* ssl, tList* hdr, Buffer buf)
         }
         del_json(&json);
     }
-    }
 
-    return ret;
+    return cc;
 }
-
 
 
 
@@ -108,28 +107,25 @@ int   relay_to_server(int sock, SSL* ssl, tList* hdr, Buffer buf, char* proto)
 {
     if (sock<=0 || hdr==NULL) return -1;
 
-    //int http_com = get_http_header_method(hdr);
+    int cc = 0;
     int http_com = hdr->ldat.id;
-    //
-    tList* ph = search_key_tList(hdr, "Host", 1);
-    add_protocol_header(ph, "X-Forwarded-Proto", proto);
 
-//print_message("++++> SEND SERVER \n");
-//print_tList(stderr, hdr);
-//print_message("%s\n", (char*)buf.buf);
-    //////////////////////////////////////////////////////////
-    Buffer snd = rebuild_http_Buffer(hdr, &buf);
-    int cc = ssl_tcp_send(sock, ssl, (char*)snd.buf, snd.vldsz);
-    free_Buffer(&snd);
-    //////////////////////////////////////////////////////////
+    if (http_com>HTTP_UNKNOWN_METHOD) {
+        tList* ph = search_key_tList(hdr, "Host", 1);
+        add_protocol_header(ph, "X-Forwarded-Proto", proto);
+        //
+        Buffer snd = rebuild_http_Buffer(hdr, &buf);
+        cc = ssl_tcp_send(sock, ssl, (char*)snd.buf, snd.vldsz);
+        free_Buffer(&snd);
+    }
+    else {
+        cc = ssl_tcp_send(sock, ssl, (char*)buf.buf, buf.vldsz);
+    }
 
     static char ltictr[] = "ltictr";
     //
     // GET session_id と cookie の lms_sessionifo (course_id+%2C+lti_id) を関連付けて XMLRPC で送る．
     if (http_com == HTTP_GET_METHOD) {
-        //content_length = 0;
-        //recv_buffer = init_Buffer();
-        //
         char* sessionid = get_sessionid_from_header(hdr);   // URL パラメータから session_id を得る
         if (sessionid!=NULL) {
             char* ssninfo = get_info_from_cookie(hdr);          // ヘッダから Cookie を得る
@@ -155,7 +151,6 @@ int   relay_to_server(int sock, SSL* ssl, tList* hdr, Buffer buf, char* proto)
             }
         }
     }
-
     //
     else if (http_com == HTTP_POST_METHOD) {
         if (SessionInfo==NULL) {
@@ -168,17 +163,20 @@ int   relay_to_server(int sock, SSL* ssl, tList* hdr, Buffer buf, char* proto)
             //}
         }
     }
-
-
-    else {
     //
-    // Web Socket
+    if (http_com>HTTP_UNKNOWN_METHOD) return cc;
+
+
+    //
+    ///////////////////////////////////////////////////////////////////////
+    // WebSocket
     static char host[]  = "client";
 
     tJson* temp = NULL;
     tJson* json = NULL;
     //if (*(unsigned char*)mesg==0x81) json = ws_json(mesg, cc);
     if (http_com==0) json = ws_json_client((char*)buf.buf, buf.vldsz);
+
     if (json!=NULL) {
         struct ws_info info;
         memset(&info, 0, sizeof(struct ws_info));
@@ -203,7 +201,6 @@ int   relay_to_server(int sock, SSL* ssl, tList* hdr, Buffer buf, char* proto)
             free(info.cell_id);
         }
         del_json(&json);
-    }
     }
 
     //
