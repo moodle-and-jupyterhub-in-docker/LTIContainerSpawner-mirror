@@ -81,7 +81,6 @@ int   relay_to_client(int sock, SSL* ssl, tList* hdr, Buffer buf)
                         info.message = get_string_from_json(find_key_sister_json(temp, "msg_id"));
                         info.host    = host;
                         post_xmlrpc_server(&info);
-                        //
                         if (info.message!=NULL) free(info.message);
                         free(info.session);
                     }
@@ -122,6 +121,7 @@ int   relay_to_server(int sock, SSL* ssl, tList* hdr, Buffer buf, char* proto)
         cc = ssl_tcp_send(sock, ssl, (char*)buf.buf, buf.vldsz);
     }
 
+
     static char ltictr[] = "ltictr";
     //
     // GET session_id と cookie の lms_sessionifo (course_id+%2C+lti_id) を関連付けて XMLRPC で送る．
@@ -143,7 +143,6 @@ int   relay_to_server(int sock, SSL* ssl, tList* hdr, Buffer buf, char* proto)
                 info.inst_id = ssninfo;
                 info.lti_id  = pt;
                 info.session = sessionid;
-                //
                 post_xmlrpc_server(&info);
                 //
                 free(ssninfo);
@@ -175,7 +174,7 @@ int   relay_to_server(int sock, SSL* ssl, tList* hdr, Buffer buf, char* proto)
     tJson* temp = NULL;
     tJson* json = NULL;
     //if (*(unsigned char*)mesg==0x81) json = ws_json(mesg, cc);
-    if (http_com==0) json = ws_json_client((char*)buf.buf, buf.vldsz);
+    json = ws_json_client((char*)buf.buf, buf.vldsz);
 
     if (json!=NULL) {
         struct ws_info info;

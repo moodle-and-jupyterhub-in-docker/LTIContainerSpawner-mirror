@@ -330,8 +330,7 @@ void  close_all_socket(tList* lp)
     if (lp->ldat.id==TLIST_ANCHOR_NODE) lp = lp->next;
 
     while (lp!=NULL) {
-        //if (lp->ldat.id>0) close(lp->ldat.id);
-        if (lp->ldat.id>0) socket_close(lp->ldat.id);
+        if (lp->ldat.id>0) close(lp->ldat.id);
         lp = lp->next;
     }
     

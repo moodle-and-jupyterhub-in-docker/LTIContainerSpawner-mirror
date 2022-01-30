@@ -64,7 +64,7 @@ void  send_xmlrpc_data(char* host, int port, int tls, tList* header, int respons
         if (ssl!=NULL) ssl_close(ssl);
         SSL_CTX_free(ctx);
     }
-    socket_close(sock);
+    close(sock);
 
     return;
 }

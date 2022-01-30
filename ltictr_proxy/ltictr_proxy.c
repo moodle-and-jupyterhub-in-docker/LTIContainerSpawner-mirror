@@ -35,6 +35,8 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
     unsigned short aport = 0;
 
     //
+    init_xmlrpc_header();
+
     if (api_host.buf!=NULL) {
         decomp_url(api_host, NULL, &protocol, &aserver, &aport, NULL);
         if (ex_strcmp("https", (char*)protocol.buf)) {
@@ -50,7 +52,7 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
         if (sssl==NULL) {
             free(sproto);
             close(ssock);
-            print_message("[LTICTR_PROXY] Failure to create the server SSL socket. (%d)\n", getpid());
+            DEBUG_MODE print_message("[LTICTR_PROXY] Failure to create the server SSL socket. (%d)\n", getpid());
             sig_term(-1);
         }
         DEBUG_MODE print_message("[LTICTR_PROXY] Opened socket for SSL server. (%d)\n", getpid());
@@ -218,7 +220,7 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
             }
             lst->ldat.sz = 0;
             lst->ldat.id = 0;
-            socket_close(csock);
+            close(csock);
         }
         lst = lst->next;
     }
@@ -373,7 +375,7 @@ Buffer  get_proxy_target(char* api_host, int api_port, SSL_CTX* ctx, char* uname
     Buffer buf = make_Buffer(RECVBUFSZ);
     recv_https_Buffer(sofd, ssl, &http_header, &buf, LTICTR_TIMEOUT, NULL, NULL);
     ssl_close(ssl);
-    socket_close(sofd);
+    close(sofd);
 
     tJson* json = json_parse_prop(NULL, (char*)buf.buf, 99);
     free_Buffer(&buf);
