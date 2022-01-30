@@ -10,5 +10,5 @@ int    relay_to_server(int sock, SSL* ssl, tList* hdr, Buffer buf, char* proto);
 
 char*  get_sessionid_from_header(tList* hdr);
 char*  get_info_from_cookie(tList* hdr);
-char*  get_info_from_sessioninfo(char* mesg);
+char*  get_info_from_ltidata(char* mesg);
 

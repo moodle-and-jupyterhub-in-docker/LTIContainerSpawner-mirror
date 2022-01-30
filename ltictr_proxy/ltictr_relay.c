@@ -128,24 +128,24 @@ int   relay_to_server(int sock, SSL* ssl, tList* hdr, Buffer buf, char* proto)
     if (http_com == HTTP_GET_METHOD) {
         char* sessionid = get_sessionid_from_header(hdr);   // URL パラメータから session_id を得る
         if (sessionid!=NULL) {
-            char* ssninfo = get_info_from_cookie(hdr);          // ヘッダから Cookie を得る
-            if (ssninfo!=NULL) {
+            char* cookieinfo = get_info_from_cookie(hdr);          // ヘッダから Cookie を得る
+            if (cookieinfo!=NULL) {
                 struct ws_info info;
                 memset(&info, 0, sizeof(struct ws_info));
                 //
-                char* pt = ssninfo;
+                char* pt = cookieinfo;
                 while (*pt!='%' && *pt!='\0') pt++;
                 if (*pt=='%') {
                     *pt = '\0';
                     pt = pt + 3;
                 }
                 info.host    = ltictr;
-                info.inst_id = ssninfo;
+                info.inst_id = cookieinfo;
                 info.lti_id  = pt;
                 info.session = sessionid;
                 post_xmlrpc_server(&info);
                 //
-                free(ssninfo);
+                free(cookieinfo);
                 free(sessionid);
             }
         }
@@ -154,11 +154,11 @@ int   relay_to_server(int sock, SSL* ssl, tList* hdr, Buffer buf, char* proto)
     else if (http_com == HTTP_POST_METHOD) {
         if (SessionInfo==NULL) {
             if (ex_strcmp("oauth_version", (char*)buf.buf)) {
-                SessionInfo = get_info_from_sessioninfo((char*)buf.buf);  
+                SessionInfo = get_info_from_ltidata((char*)buf.buf);  
             }
             // 
             //if (SessionInfo==NULL && strstr(buf.buf,  SESSION_INFO_KEY) != NULL) {
-            //    SessionInfo = get_info_from_sessioninfo((char*)buf.buf);  
+            //    SessionInfo = get_info_from_ltidata((char*)buf.buf);  
             //}
         }
     }
@@ -183,7 +183,9 @@ int   relay_to_server(int sock, SSL* ssl, tList* hdr, Buffer buf, char* proto)
         temp = find_double_key_json(json, "metadata", "cellId");
         info.cell_id = get_string_from_json(temp);
         if (info.cell_id!=NULL) {
-            info.tags = get_string_from_json(find_key_sister_json(temp, "tags"));
+            //info.tags = get_string_from_json(find_key_sister_json(temp, "tags"));
+            temp = find_key_sister_json(temp, "tags");
+            info.tags = get_string_from_json(temp);
             temp = find_double_key_json(json, "header", "session");
             info.session = get_string_from_json(temp);
             if (info.session!=NULL) {
@@ -212,8 +214,8 @@ int   relay_to_server(int sock, SSL* ssl, tList* hdr, Buffer buf, char* proto)
 // get information from HTTP
 
 //
-// URL パラメータから，存在するならば セッションID を取り出す．
-// SESSION_ID_KEY はクライアント（Webブラウザ）からのリクエスト中のボディデータ中に設定されている値．
+// 存在するならば セッションID を取り出す．
+// SESSION_ID_KEY はクライアント（Webブラウザ）からのリクエストの ヘッダ中に設定されている値．
 // 要 free
 //
 char*  get_sessionid_from_header(tList* hdr)
@@ -222,12 +224,12 @@ char*  get_sessionid_from_header(tList* hdr)
     //
     tList* lp = search_key_tList(hdr, HDLIST_FIRST_LINE_KEY, 1);
     if (lp==NULL)  return NULL;
-    char* url = dup_str((char*)lp->ldat.val.buf);
-    if (url==NULL) return NULL;
+    char* data = dup_str((char*)lp->ldat.val.buf);
+    if (data==NULL) return NULL;
 
-    char* pp = strstr(url, SESSION_ID_KEY);
+    char* pp = strstr(data, SESSION_ID_KEY); 
     if (pp==NULL) {
-        free(url);
+        free(data);
         return NULL;
     }
     pp = pp + strlen(SESSION_ID_KEY);
@@ -238,7 +240,7 @@ char*  get_sessionid_from_header(tList* hdr)
     *pt = '\0';
     char* sid = dup_str(pp);
 
-    free(url);
+    free(data);
     return sid;
 }
 
@@ -267,10 +269,10 @@ char*  get_info_from_cookie(tList* hdr)
     while (*pt!=';' && *pt!='\0') pt++;
 
     *pt = '\0';
-    char* ssninfo = dup_str(pp);
+    char* cookieinfo = dup_str(pp);
 
     free(cke);
-    return ssninfo;
+    return cookieinfo;
 }
 
 
@@ -280,7 +282,7 @@ char*  get_info_from_cookie(tList* hdr)
 // mesg は LTI コンシューマ（クライアント: Moodle）からのデータ．
 // 要 free
 //
-char*  get_info_from_sessioninfo(char* mesg)
+char*  get_info_from_ltidata(char* mesg)
 {
     if (mesg==NULL) return NULL;
 

@@ -241,8 +241,7 @@ int main(int argc, char** argv)
 
     // main loop
     Loop {
-        //Sofd = accept_intr(Nofd, &cl_addr, &cdlen);
-        Sofd = accept(Nofd, &cl_addr, &cdlen);
+        Sofd = accept_intr(Nofd, &cl_addr, &cdlen);
         if (Sofd<0) {
             print_message("[LTICTR_PROXY_SERVER] Failure to connect from client. [%s]\n", strerror(errno));
             sig_term(-1);
