@@ -55,7 +55,7 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
             DEBUG_MODE print_message("[LTICTR_PROXY] Failure to create the server SSL socket. (%d)\n", getpid());
             sig_term(-1);
         }
-        DEBUG_MODE print_message("[LTICTR_PROXY] Opened socket for SSL server. (%d)\n", getpid());
+        DEBUG_MODE print_message("[LTICTR_PROXY] Opened socket for SSL server. (%d) [%d]\n", getpid(), time(0));
     }
     else sproto = dup_str("http");
     
@@ -71,7 +71,7 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
     // Main Loop
     int close_flag = OFF;
     //int webs_flag  = OFF;
-    DEBUG_MODE print_message("[LTICTR_PROXY] Start Main Loop. (%d)\n", getpid());
+    DEBUG_MODE print_message("[LTICTR_PROXY] Start Main Loop. (%d) [%d]\n", getpid(), time(0));
 
     //// Loop Start
     while(nd>0) {
@@ -90,7 +90,7 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
                             lst = lproxy;
                             if (lst->ldat.id==TLIST_ANCHOR_NODE) lst = lst->next;
                             while (lst!=NULL) {
-                                if (lst->ldat.sz == 1) break;
+                                if (lst->ctrl==1) break;
                                 lst = lst->next;
                             }
                         }
@@ -119,12 +119,12 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
 
                 DEBUG_MODE {
                     if (hdr!=NULL && hdr->ldat.id>HTTP_UNKNOWN_METHOD) {
-                        print_message("[LTICTR_PROXY] === HTTP RECV CLIENT === (%d) (%d)\n", ssock, getpid());
+                        print_message("[LTICTR_PROXY] === HTTP RECV CLIENT === (%d) (%d) [%d]\n", ssock, getpid(), time(0));
                         print_protocol_header(hdr, OFF);
                         print_message("\n");
                     }
                     else {
-                        if (lst->ldat.sz==1) {
+                        if (lst->ctrl==1) {
                             print_message("[LTICTR_PROXY] === WEBSOCKET === (%d) (%d)\n", csock, getpid());
                         }
                     }
@@ -183,10 +183,13 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
                                 }
                             }
                             else if (hdr!=NULL) {
-                                tList* inst = find_protocol_end(hdr);
-                                if (inst!=NULL) {
-                                    add_protocol_header(inst, "Connection", "close");
-                                    close_flag = ON;
+                                tList* keep = search_key_tList(hdr, "keep-alive", 1);
+                                if (keep==NULL) {
+                                    tList* inst = find_protocol_end(hdr);
+                                    if (inst!=NULL) {
+                                        add_protocol_header(inst, "Connection", "close");
+                                        close_flag = ON;
+                                    }
                                 }
                             }
                         }
@@ -194,19 +197,19 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
                         tList* wbs = search_key_tList(hdr, "Upgrade", 1);       // websocket
                         if (wbs!=NULL) {
                             if (ex_strcmp("websocket", (char*)wbs->ldat.val.buf)) {
-                                lst->ldat.sz = 1;    
+                                lst->ctrl = 1;    
                             }
                         }
                         //
 
                         DEBUG_MODE {
                             if (hdr!=NULL && hdr->ldat.id>HTTP_UNKNOWN_METHOD) {
-                                print_message("[LTICTR_PROXY] === HTTP RECV SERVER === (%d) (%d)\n", csock, getpid());
+                                print_message("[LTICTR_PROXY] === HTTP RECV SERVER === (%d) (%d) [%d]\n", csock, getpid(), time(0));
                                 print_protocol_header(hdr, OFF);
                                 print_message("\n");
                             }
                             else {
-                                if (lst->ldat.sz==1) {
+                                if (lst->ctrl==1) {
                                     print_message("[LTICTR_PROXY] === WEBSOCKET === (%d) (%d)\n", csock, getpid());
                                 }
                             }
@@ -219,6 +222,7 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
                             lst->ldat.id = 0;
                             if (lst->ldat.ptr!=NULL) lst->ldat.ptr = NULL;
                             lst->ldat.sz = 0;
+                            lst->ctrl    = 0;
                             //break;
                         }
 
@@ -229,6 +233,7 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
                         lst->ldat.id = 0;
                         if (lst->ldat.ptr!=NULL) lst->ldat.ptr = NULL;
                         lst->ldat.sz = 0;
+                        lst->ctrl    = 0;
                         //break;      // cc==0
                     }
                     del_tList(&hdr);
@@ -259,7 +264,7 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
     }
     //// Loop End
 
-    DEBUG_MODE print_message("[LTICTR_PROXY] Stop  Main Loop. (%d)\n", getpid());
+    DEBUG_MODE print_message("[LTICTR_PROXY] Stop  Main Loop. (%d) [%d]\n", getpid(), time(0));
 
     //
     ssl_close(sssl);
@@ -278,6 +283,7 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
             }
             lst->ldat.sz = 0;
             lst->ldat.id = 0;
+            lst->ctrl    = 0;
             close(csock);
         }
         lst = lst->next;
@@ -286,7 +292,7 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
 
     free(sproto);
 
-    DEBUG_MODE print_message("[LTICTR_PROXY] Termination of Process. (%d)\n", getpid());
+    DEBUG_MODE print_message("[LTICTR_PROXY] Termination of Process. (%d) [%d]\n", getpid(), time(0));
     _exit(0);
 }
 
@@ -334,7 +340,7 @@ SSL*  get_proxy_ssl(int sock, SSL_CTX* ctx, tList* lst)
             ssl = ssl_client_socket(sock, ctx, OFF);
             if (ssl!=NULL) {
                 lst->ldat.ptr = (void*)ssl;
-                //lst->ldat.sz  = sizeof(SSL*);
+                lst->ldat.sz  = sizeof(SSL*);
             }
             else {
                 DEBUG_MODE print_message("[LTICTR_PROXY] Failure to open the client SSL port. (%d)\n", getpid());
