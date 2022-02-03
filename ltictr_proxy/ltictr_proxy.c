@@ -123,6 +123,11 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
                         print_protocol_header(hdr, OFF);
                         print_message("\n");
                     }
+                    else {
+                        if (lst->ldat.sz==1) {
+                            print_message("[LTICTR_PROXY] === WEBSOCKET === (%d) (%d)\n", csock, getpid());
+                        }
+                    }
                 }
                 //
                 csock = get_proxy_socket(lst);
@@ -199,6 +204,11 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
                                 print_message("[LTICTR_PROXY] === HTTP RECV SERVER === (%d) (%d)\n", csock, getpid());
                                 print_protocol_header(hdr, OFF);
                                 print_message("\n");
+                            }
+                            else {
+                                if (lst->ldat.sz==1) {
+                                    print_message("[LTICTR_PROXY] === WEBSOCKET === (%d) (%d)\n", csock, getpid());
+                                }
                             }
                         }
 
