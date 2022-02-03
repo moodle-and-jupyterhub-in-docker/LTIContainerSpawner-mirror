@@ -69,21 +69,17 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
     nd = select(range+1, &mask, NULL, NULL, &timeout);
 
     // Main Loop
+    int close_flag = OFF;
+    int webs_flag  = OFF;
     DEBUG_MODE print_message("[LTICTR_PROXY] Start Main Loop. (%d)\n", getpid());
+
+    // Loop Start
     while(nd>0) {
         ///////////////////////////////////////////////////////////
         // Client -> Server
         if (FD_ISSET(ssock, &mask)) {
             cc = recv_https_Buffer(ssock, sssl, &hdr, &buf, LTICTR_TIMEOUT, NULL, NULL);
             if (cc>0) {
-                DEBUG_MODE {
-                    if (hdr!=NULL && hdr->ldat.id>HTTP_UNKNOWN_METHOD) {
-                        print_message("[LTICTR_PROXY] === HTTP RECV CLIENT ===\n");
-                        print_protocol_header(hdr);
-                        print_message("\n");
-                    }
-                }
-                //
                 lst = NULL;
                 char* uname = NULL;
                 if (aport>0) {
@@ -109,6 +105,14 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
                     lst = strncasecmp_tList(lproxy, "/", 0, 1);
                 }
 
+                //DEBUG_MODE {
+                    if (hdr!=NULL && hdr->ldat.id>HTTP_UNKNOWN_METHOD) {
+                        print_message("[LTICTR_PROXY] === HTTP RECV CLIENT === (%d) (%d)\n", ssock, getpid());
+                        print_protocol_header(hdr, OFF);
+                        print_message("\n");
+                    }
+                //}
+                //
                 csock = get_proxy_socket(lst);
                 cssl  = get_proxy_ssl(csock, client_ctx, lst);
                 cc    = relay_to_server(csock, cssl, hdr, buf, sproto);     // Server へ転送
@@ -152,15 +156,39 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
                     cssl = get_proxy_ssl(csock, client_ctx, lst);
                     cc = recv_https_Buffer(csock, cssl, &hdr, &buf, LTICTR_TIMEOUT, NULL, NULL); 
                     if (cc>0) {
-                        DEBUG_MODE {
-                            if (hdr!=NULL && hdr->ldat.id>HTTP_UNKNOWN_METHOD) {
-                                print_message("[LTICTR_PROXY] === HTTP RECV SERVER === (%d)\n", csock);
-                                print_protocol_header(hdr);
-                                print_message("\n");
+                        close_flag = OFF;
+                        tList* con = search_key_tList(hdr, "Connection", 1);    // close, keep-alive, upgrade
+                        if (con!=NULL) {
+                            if (ex_strcmp("close", (char*)con->ldat.val.buf)) {
+                                close_flag = ON;
+                                print_message("Closed %d %d\n", csock, getpid()); 
                             }
                         }
+                        else if (hdr!=NULL) {
+                            tList* inst = find_protocol_end(hdr);
+                            if (inst!=NULL) {
+                                add_protocol_header(inst, "Connection", "close");
+                                close_flag = ON;
+                            }
+                        }
+                        //
+                        tList* wbs = search_key_tList(hdr, "Upgrade", 1);       // websocket
+                        if (wbs!=NULL) {
+                            if (ex_strcmp("websocket", (char*)con->ldat.val.buf)) {
+                                webs_flag = ON;
+                            }
+                        }
+
+                        //DEBUG_MODE {
+                            if (hdr!=NULL && hdr->ldat.id>HTTP_UNKNOWN_METHOD) {
+                                print_message("[LTICTR_PROXY] === HTTP RECV SERVER === (%d) (%d)\n", csock, getpid());
+                                print_protocol_header(hdr, OFF);
+                                print_message("\n");
+                            }
+                        //}
+
                         cc = relay_to_client(ssock, sssl, hdr, buf);     // Client へ転送
-                        if (cc<=0) {
+                        if (cc<=0 || close_flag==ON) {
                             ssl_close(cssl);
                             close(csock);
                             lst->ldat.id = 0;
@@ -203,6 +231,7 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
         }
         nd = select(range+1, &mask, NULL, NULL, &timeout);
     }
+    // Loop End
     DEBUG_MODE print_message("[LTICTR_PROXY] Stop  Main Loop. (%d)\n", getpid());
 
     //
