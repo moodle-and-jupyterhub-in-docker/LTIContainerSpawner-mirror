@@ -21,9 +21,9 @@ int   relay_to_client(int sock, SSL* ssl, tList* hdr, Buffer buf)
     if (hdr==NULL) return -1;
 
     int cc = 0;
-    int http_com = hdr->ldat.id;
+    int http_com = http_com = hdr->ldat.id;;
 
-    if (http_com > HTTP_UNKNOWN_METHOD) {   // HTTP
+    if (http_com>HTTP_UNKNOWN_METHOD) {   // HTTP
         char*  resp = NULL;
         tList* lp = search_key_tList(hdr, HDLIST_FIRST_LINE_KEY, 1);
         if (lp!=NULL) resp = (char*)lp->ldat.val.buf;
@@ -45,12 +45,11 @@ int   relay_to_client(int sock, SSL* ssl, tList* hdr, Buffer buf)
         cc = ssl_tcp_send(sock, ssl, (char*)snd.buf, snd.vldsz);
         free_Buffer(&snd);
         //////////////////////////////////////////////////////////
+        return cc;
     }
     else {
         cc = ssl_tcp_send(sock, ssl, (char*)buf.buf, buf.vldsz);
     }
-    //
-    if (http_com>HTTP_UNKNOWN_METHOD) return cc;
 
 
     //
@@ -107,7 +106,7 @@ int   relay_to_server(int sock, SSL* ssl, tList* hdr, Buffer buf, char* proto)
     if (sock<=0 || hdr==NULL) return -1;
 
     int cc = 0;
-    int http_com = hdr->ldat.id;
+    int http_com = http_com = hdr->ldat.id;
 
     if (http_com>HTTP_UNKNOWN_METHOD) {
         tList* ph = search_key_tList(hdr, "Host", 1);

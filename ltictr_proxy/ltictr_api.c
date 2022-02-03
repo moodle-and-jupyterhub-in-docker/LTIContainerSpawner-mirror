@@ -28,7 +28,7 @@ int  api_main_process(int sock, SSL* ssl, tList* lproxy)
     //
     DEBUG_MODE {
         print_message("[LTICTR_API] === API RECV HEADER ===\n");
-        print_protocol_header(hdr);
+        print_protocol_header(hdr, OFF);
         print_message("\n");
     }
 
@@ -145,8 +145,7 @@ int  api_get_user(char* uname, Buffer* buf, tList* lproxy)
             char* user = (char*)pp->ldat.key.buf;
             if (user!=NULL) {
                 char* url  = (char*)pp->ldat.val.buf;
-                //char* date = (char*)pp->ldat.ptr;
-                char* date = get_local_timestamp(time(0), "%Y-%b-%dT%H:%M:%SZ");
+                char* date = (char*)pp->ldat.ptr;
                 int   port = pp->ldat.lv;
                 memset(json_data, 0, LDATA);
 
@@ -158,7 +157,6 @@ int  api_get_user(char* uname, Buffer* buf, tList* lproxy)
                 }
                 tJson* json = json_parse_prop(NULL, json_data, 2);
                 insert_json_nodes(res, json);
-                free(date);
             }
             pp = pp->next;
         }
@@ -169,15 +167,13 @@ int  api_get_user(char* uname, Buffer* buf, tList* lproxy)
             //
             char* user = (char*)pp->ldat.key.buf;
             char* url  = (char*)pp->ldat.val.buf;
-            //char* date = (char*)pp->ldat.ptr;
-            char* date = get_local_timestamp(time(0), "%Y-%b-%dT%H:%M:%SZ");
+            char* date = (char*)pp->ldat.ptr;
             int   port = pp->ldat.lv;
             memset(json_data, 0, LDATA);
             //
             snprintf(json_data, LDATA-1, json_user_fmt, user, user, url, port, date);
             tJson* json = json_parse_prop(NULL, json_data, 2);
             insert_json_nodes(res, json);
-            free(date);
         }
     }
 
@@ -309,7 +305,7 @@ int  send_http_response(int sock, SSL* ssl, int num, Buffer* buf)
 
     DEBUG_MODE {
         print_message("[LTICTR_API] === SEND Data ===\n");
-        print_protocol_header(hdr);
+        print_protocol_header(hdr, OFF);
         print_message("\n");
     }
 

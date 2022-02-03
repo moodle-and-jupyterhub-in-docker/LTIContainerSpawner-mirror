@@ -169,6 +169,12 @@ int main(int argc, char** argv)
             ssl_close(assl);
             close(Aofd);
             assl = NULL;
+            //
+            DEBUG_MODE {
+                print_message("[LTICTR_API_SERVER] === LIST ===\n");
+                print_tList(stderr, ProxyList);
+                print_message("================================\n");
+            }
         }
     }
 
