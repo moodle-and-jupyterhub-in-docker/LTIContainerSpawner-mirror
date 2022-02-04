@@ -25,6 +25,7 @@
 
 
 pid_t    RootPID;
+pid_t    APIChildPID    = 0;
 
 int      APIServerExec  = ON;
 
@@ -217,8 +218,8 @@ int main(int argc, char** argv)
     if (APIServerExec==ON) {
         //
         DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] Start LTICTR_API_SERVER.\n");
-        pid_t pid = fork();
-        if (pid==0) {
+        APIChildPID = fork();
+        if (APIChildPID==0) {
             Buffer compath = make_Buffer(LPATH);
             char* path = get_file_path(argv[0]);
             if (path!=NULL) {
@@ -232,7 +233,7 @@ int main(int argc, char** argv)
             free_Buffer(&compath);
             _exit(0);
         }
-        add_tList_node_int(PIDList, (int)pid, 0);
+        add_tList_node_int(PIDList, (int)APIChildPID, 0);
     }
 
     //
@@ -371,6 +372,7 @@ void  sig_child(int signal)
     while(pid>0) {
         tList* lst = search_id_tList(PIDList, pid, 1);
         if (lst!=NULL) del_tList_node(&lst);
+        if (pid==APIChildPID) sig_term(-9);
         //DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] SIGCHILD: signal = %d (%d)\n", signal, pid);
         //
         pid = waitpid(-1, &ret, WNOHANG);

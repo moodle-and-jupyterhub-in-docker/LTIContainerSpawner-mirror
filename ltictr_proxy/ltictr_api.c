@@ -12,13 +12,13 @@ extern char*  API_Token;
 
 int  api_main_process(int sock, SSL* ssl, tList* lproxy)
 {
-    tList* hdr = NULL;             // 受信ヘッダ
-    Buffer buf = init_Buffer();    // 受信ボディ
+    tList* hdr = NULL;              // 受信ヘッダ
+    Buffer buf = init_Buffer();     // 受信ボディ
 
     //
     buf = make_Buffer(RECVBUFSZ);
     int ret = recv_https_Buffer(sock, ssl, &hdr, &buf, HTTP_TIMEOUT, NULL, NULL);
-    if (ret<=0) {           // 0 は正常切断
+    if (ret<=0) {                   // 0 は正常切断
         del_tList(&hdr);
         free_Buffer(&buf);
         if (ret<0) send_http_error(sock, ssl, 400, NULL);

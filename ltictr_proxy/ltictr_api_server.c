@@ -150,7 +150,7 @@ int main(int argc, char** argv)
     // socket open for client
     Nofd = tcp_server_socket(aport);       // block socket
     if (Nofd<0) {
-        print_message("[LTICTR_API_SERVER] Failure to open the server port for client connection.\n");
+        print_message("[LTICTR_API_SERVER] Failure to open the server port for client connection. (%d)\n", aport);
         sig_term(-1);
     }
     DEBUG_MODE print_message("[LTICTR_API_SERVER] Server port was opened for client connection. (%d)\n", aport);

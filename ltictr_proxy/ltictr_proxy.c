@@ -6,8 +6,8 @@
 #include "ltictr_relay.h"
 
 
-#define  LTICTR_IDLETIME   900       // 15m
-#define  LTICTR_TIMEOUT    30        // 30s
+#define  LTICTR_IDLETIME   900      // 15m
+#define  LTICTR_TIMEOUT    3        // 3s
 
 
 extern char*  API_Token;
@@ -69,6 +69,8 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
     nd = select(range+1, &mask, NULL, NULL, &timeout);
 
     // Main Loop
+    int len, connect = FALSE;
+    //int http_com = HTTP_UNKNOWN_METHOD;
     int close_flag = OFF;
     //int webs_flag  = OFF;
     DEBUG_MODE print_message("[LTICTR_PROXY] Start Main Loop. (%d) [%d]\n", getpid(), time(0));
@@ -78,18 +80,27 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
         ///////////////////////////////////////////////////////////
         // Client -> Server
         if (FD_ISSET(ssock, &mask)) {
-            cc = recv_https_Buffer(ssock, sssl, &hdr, &buf, LTICTR_TIMEOUT, NULL, NULL);
-            if (cc>0) {
+            //cc = recv_https_Buffer(ssock, sssl, &hdr, &buf, LTICTR_TIMEOUT, NULL, NULL);
+            cc = recv_https_header(ssock, sssl, &hdr, &len, LTICTR_TIMEOUT, NULL, &connect);
+            if (cc>0 && hdr!=NULL) {
+                //
+                //http_com = hdr->ldat.id;
+                Buffer rcv = search_protocol_header(hdr, (char*)HDLIST_CONTENTS_KEY, 1);
+                copy_Buffer(&rcv, &buf);
+                free_Buffer(&rcv);
+
                 lst = NULL;
                 char* uname = NULL;
-                if (aport>0) {
+                //
+                if (aport>0) {      // API Server を使用する
+                    // ルーティング
                     uname = get_proxy_username(hdr);
                     if (uname!=NULL) {
                         // websocket
                         if (!strcmp(uname, "@")) {  // websock の相手を探す
                             lst = lproxy;
                             if (lst->ldat.id==TLIST_ANCHOR_NODE) lst = lst->next;
-                            while (lst!=NULL) {
+                                while (lst!=NULL) {
                                 if (lst->ctrl==1) break;
                                 lst = lst->next;
                             }
@@ -117,8 +128,26 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
                     lst = strncasecmp_tList(lproxy, "/", 0, 1);
                 }
 
-                DEBUG_MODE {
-                    if (hdr!=NULL && hdr->ldat.id>HTTP_UNKNOWN_METHOD) {
+                // ヘッダ変更
+                if (hdr->ldat.id>HTTP_UNKNOWN_METHOD) {
+                    tList* con = search_key_tList(hdr, "Connection", 1);    // close, keep-alive, upgrade
+                    if (con!=NULL) {
+                        if (ex_strcmp("close", (char*)con->ldat.val.buf)) {
+                        }
+                        else if (strstrcase((char*)con->ldat.val.buf, "upgrade")==NULL) {
+                            copy_s2Buffer("close", &con->ldat.val);
+                        }
+                    }
+                    else {
+                        tList* inst = find_protocol_end(hdr);
+                        if (inst!=NULL) {
+                            add_protocol_header(inst, "Connection", "close");
+                        }
+                    }
+                }
+
+                //DEBUG_MODE {
+                    if (hdr->ldat.id>HTTP_UNKNOWN_METHOD) {
                         print_message("[LTICTR_PROXY] === HTTP RECV CLIENT === (%d) (%d) [%d]\n", ssock, getpid(), time(0));
                         print_protocol_header(hdr, OFF);
                         print_message("\n");
@@ -128,16 +157,52 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
                             print_message("[LTICTR_PROXY] === WEBSOCKET === (%d) (%d)\n", csock, getpid());
                         }
                     }
-                }
+                //}
                 //
                 csock = get_proxy_socket(lst);
                 cssl  = get_proxy_ssl(csock, client_ctx, lst);
+                //
                 cc    = relay_to_server(csock, cssl, hdr, buf, sproto);     // Server へ転送
                 del_tList(&hdr);
                 if (cc<=0) break;
+
+                // Boby 転送
+                if (connect) {
+                    if (len>0) {
+                        int sz = buf.vldsz;
+                        while(sz<len) {
+                            cc = ssl_tcp_recv_Buffer_wait(ssock, sssl, &buf, LTICTR_TIMEOUT);
+                            if (cc>0) {
+                                cc = relay_to_server(csock, cssl, NULL, buf, NULL);
+                                sz += cc;
+                            }
+                            else break;
+                        }
+                    }
+                    else if (len==HTTP_HEADER_CHUNKED) {
+                        int sz = get_chunked_size((char*)buf.buf, &len);
+                        while (sz>0) {
+                            cc = ssl_tcp_recv_Buffer_wait(ssock, sssl, &buf, LTICTR_TIMEOUT);
+                            if (cc>0) {
+                                relay_to_server(csock, cssl, NULL, buf, NULL);
+                                sz = get_chunked_size((char*)buf.buf, &len);
+                            }
+                            else break;
+                        }
+                    }
+                    else if (len<0) {  //if (len==HTTP_HEADER_CLOSED_SESSION) {
+                        //cc = ssl_tcp_recv_Buffer_wait(ssock, sssl, &buf, LTICTR_TIMEOUT);
+                        //while(cc>0) {
+                        //    relay_to_server(csock, cssl, NULL, buf, NULL);
+                        //    cc = ssl_tcp_recv_Buffer_wait(ssock, sssl, &buf, LTICTR_TIMEOUT);
+                        //}
+                        //close_flag = ON;
+                    }
+                }
+                if (cc<=0) break;
             }
             else {
-                del_tList(&hdr);
+                if (hdr!=NULL) del_tList(&hdr);
                 break;      // cc==0
             }
         }
@@ -171,25 +236,31 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
             if (csock>0) {
                 if (FD_ISSET(csock, &mask)) {
                     cssl = get_proxy_ssl(csock, client_ctx, lst);
-                    cc = recv_https_Buffer(csock, cssl, &hdr, &buf, LTICTR_TIMEOUT, NULL, NULL); 
-                    if (cc>0) {
+                    //cc = recv_https_Buffer(csock, cssl, &hdr, &buf, LTICTR_TIMEOUT, NULL, NULL); 
+                    cc = recv_https_header(csock, cssl, &hdr, &len, LTICTR_TIMEOUT, NULL, &connect);
+                    if (cc>0 && hdr!=NULL) {
+                        Buffer rcv = search_protocol_header(hdr, (char*)HDLIST_CONTENTS_KEY, 1);
+                        copy_Buffer(&rcv, &buf);
+                        free_Buffer(&rcv);
                         //
+                        // ヘッダ変更
                         close_flag = OFF;
-                        if (hdr!=NULL && hdr->ldat.id>HTTP_UNKNOWN_METHOD) {
+                        if (hdr->ldat.id>HTTP_UNKNOWN_METHOD) {
                             tList* con = search_key_tList(hdr, "Connection", 1);    // close, keep-alive, upgrade
                             if (con!=NULL) {
                                 if (ex_strcmp("close", (char*)con->ldat.val.buf)) {
                                     close_flag = ON;
                                 }
+                                else if (strstrcase((char*)con->ldat.val.buf, "upgrade")==NULL) {
+                                    copy_s2Buffer("close", &con->ldat.val);
+                                    close_flag = ON;
+                                }
                             }
-                            else if (hdr!=NULL) {
-                                tList* keep = search_key_tList(hdr, "keep-alive", 1);
-                                if (keep==NULL) {
-                                    tList* inst = find_protocol_end(hdr);
-                                    if (inst!=NULL) {
-                                        add_protocol_header(inst, "Connection", "close");
-                                        close_flag = ON;
-                                    }
+                            else {
+                                tList* inst = find_protocol_end(hdr);
+                                if (inst!=NULL) {
+                                    add_protocol_header(inst, "Connection", "close");
+                                    close_flag = ON;
                                 }
                             }
                         }
@@ -202,8 +273,8 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
                         }
                         //
 
-                        DEBUG_MODE {
-                            if (hdr!=NULL && hdr->ldat.id>HTTP_UNKNOWN_METHOD) {
+                        //DEBUG_MODE {
+                            if (hdr->ldat.id>HTTP_UNKNOWN_METHOD) {
                                 print_message("[LTICTR_PROXY] === HTTP RECV SERVER === (%d) (%d) [%d]\n", csock, getpid(), time(0));
                                 print_protocol_header(hdr, OFF);
                                 print_message("\n");
@@ -213,9 +284,44 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
                                     print_message("[LTICTR_PROXY] === WEBSOCKET === (%d) (%d)\n", csock, getpid());
                                 }
                             }
-                        }
+                        //}
 
                         cc = relay_to_client(ssock, sssl, hdr, buf);     // Client へ転送
+
+                        // Boby 転送
+                        if (connect) {
+                            if (len>0) {
+                                int sz = buf.vldsz;
+                                while(sz<len) {
+                                    cc = ssl_tcp_recv_Buffer_wait(csock, cssl, &buf, LTICTR_TIMEOUT);
+                                    if (cc>0) {
+                                        relay_to_client(ssock, sssl, NULL, buf);
+                                        sz += cc;
+                                    }
+                                    else break;
+                                }
+                            }
+                            else if (len==HTTP_HEADER_CHUNKED) {
+                                int sz = get_chunked_size((char*)buf.buf, &len);
+                                while (sz>0) {
+                                    cc = ssl_tcp_recv_Buffer_wait(csock, cssl, &buf, LTICTR_TIMEOUT);
+                                    if (cc>0) {
+                                        relay_to_client(ssock, sssl, NULL, buf);
+                                        sz = get_chunked_size((char*)buf.buf, &len);
+                                    }
+                                    else break;
+                                }
+                            }
+                            else if (len<0) {  //if (len==HTTP_HEADER_CLOSED_SESSION) {
+                                //cc = ssl_tcp_recv_Buffer_wait(csock, cssl, &buf, 1);
+                                //while(cc>0) {
+                                //    relay_to_client(ssock, sssl, NULL, buf);
+                                //    cc = ssl_tcp_recv_Buffer_wait(csock, cssl, &buf, 1);
+                                //}
+                                //close_flag = ON;
+                            }
+                        }
+
                         if (cc<=0 || close_flag==ON) {
                             ssl_close(cssl);
                             close(csock);
@@ -225,7 +331,6 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
                             lst->ctrl    = 0;
                             //break;
                         }
-
                     }
                     else {
                         ssl_close(cssl);
@@ -236,7 +341,7 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
                         lst->ctrl    = 0;
                         //break;      // cc==0
                     }
-                    del_tList(&hdr);
+                    if (hdr!=NULL) del_tList(&hdr);
                 }
             }
             lst = lst->next;
