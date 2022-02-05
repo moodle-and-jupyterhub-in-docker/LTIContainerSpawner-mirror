@@ -23,14 +23,11 @@
 
 
 
-
 ///////////////////////////////////////////////////////////////////////////////////
 
 int   main(int argc, char** argv);
 int   init_main(Buffer file);
 void  term_main(int code);
-//void  close_all_socket(tList* lp);
-
 
 
 #endif

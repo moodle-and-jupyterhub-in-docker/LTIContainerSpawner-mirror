@@ -1,7 +1,7 @@
 /*  
-    API Server for JupyterHub and LTIConrainerSpawner
+    API Server for JupyterHub and LTIContainerSpawner
         
-                by Fumi.Iseki '22 01/26   BSD License.
+                by Fumi.Iseki '22 02/05 v0.9.0   BSD License.
 */
 
 #include "ltictr_api_server.h"
@@ -20,7 +20,10 @@ SSL_CTX* APIPortCTX     = NULL;
 
 tList*   ProxyList      = NULL;
 
-// config file
+//int      Logtype        = LOG_ERR;
+
+
+// default config value
 char*    PIDFile        = "/var/run/ltictr_api.pid";
 char*    TLS_CertPem    = "/etc/pki/tls/certs/server.pem";
 char*    TLS_KeyPem     = "/etc/pki/tls/private/key.pem";
@@ -67,6 +70,9 @@ int main(int argc, char** argv)
         exit(1);
     }
 
+    // SYSLOG
+    //openlog("ltictr_api_server", LOG_PERROR|LOG_PID, LOG_AUTH);
+
     if (strstr((char*)apihost.buf, ":")!=NULL) {
         Buffer protocol = init_Buffer();
         unsigned short port;
@@ -79,6 +85,7 @@ int main(int argc, char** argv)
         aport = atoi((char*)apihost.buf);
     }
     if (aport<=0) {
+        //syslog(Logtype, "API Server Port num = (%d). Can not open port.", aport);
         print_message("[LTICTR_API_SERVER] API Server Port num = (%d). Can not open port.\n", aport);
         sig_term(-1);
     }
@@ -94,6 +101,7 @@ int main(int argc, char** argv)
     DEBUG_MODE print_message("[LTICTR_API_SERVER] Start initialization.\n");
     if (configfile.buf!=NULL) {
         if (!file_exist((char*)configfile.buf)) {
+            //syslog(Logtype, "Failure to check configuration file (%s). Can not read the configuration file.", (char*)configfile.buf);
             print_message("[LTICTR_API_SERVER] Failure to check configuration file (%s). Can not read the configuration file.\n", (char*)configfile.buf);
             sig_term(-1);
         }
@@ -150,6 +158,7 @@ int main(int argc, char** argv)
     // socket open for client
     Nofd = tcp_server_socket(aport);       // block socket
     if (Nofd<0) {
+        //syslog(Logtype, "Failure to open the server port for client connection. (%d)", aport);
         print_message("[LTICTR_API_SERVER] Failure to open the server port for client connection. (%d)\n", aport);
         sig_term(-1);
     }
@@ -169,6 +178,7 @@ int main(int argc, char** argv)
             ssl_close(assl);
             close(Aofd);
             assl = NULL;
+            Aofd = 0;
             //
             DEBUG_MODE {
                 print_message("[LTICTR_API_SERVER] === LIST ===\n");
@@ -212,12 +222,14 @@ void  term_main(int code)
 {
     UNUSED(code);
 
-    socket_close(Aofd);
-    socket_close(Nofd);
-    //
+    if (Aofd>0) socket_close(Aofd);
+    if (Nofd>0) socket_close(Nofd);
     if (PIDFile!=NULL) remove(PIDFile);
     //
     //DEBUG_MODE print_message("[LTICTR_API_SERVER] Shutdown root LTICTR_API_SERVER process with code = (%d)\n", code);
+
+    //closelog();
+
     return;
 }
 

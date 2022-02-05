@@ -13,7 +13,7 @@ install:
 	install -m 0755 bin/fesvr /usr/local/bin
 	install -m 0644 bin/feplg_nop.so  /usr/local/bin
 	install -m 0644 bin/feplg_nbws.so /usr/local/bin
-	install -m 0644 etc/nbws.conf  /usr/local/etc
+	install -m 0640 etc/nbws.conf  /usr/local/etc
 	install -m 0644 etc/feserver.service /usr/lib/systemd/system
 
 

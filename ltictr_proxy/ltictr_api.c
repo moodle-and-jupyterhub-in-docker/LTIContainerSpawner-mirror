@@ -17,7 +17,7 @@ int  api_main_process(int sock, SSL* ssl, tList* lproxy)
 
     //
     buf = make_Buffer(RECVBUFSZ);
-    int ret = recv_https_Buffer(sock, ssl, &hdr, &buf, HTTP_TIMEOUT, NULL, NULL);
+    int ret = recv_https_Buffer(sock, ssl, &hdr, &buf, HTTP_TIMEOUT, NULL, NULL, FALSE);
     if (ret<=0) {                   // 0 は正常切断
         del_tList(&hdr);
         free_Buffer(&buf);
@@ -25,12 +25,12 @@ int  api_main_process(int sock, SSL* ssl, tList* lproxy)
         return -1;
     }
 
-    //
+    /*
     DEBUG_MODE {
         print_message("[LTICTR_API] === API RECV HEADER ===\n");
         print_protocol_header(hdr, OFF);
         print_message("\n");
-    }
+    }*/
 
     int com = get_http_header_method(hdr);
     if (com <= HTTP_UNKNOWN_METHOD) {
@@ -243,8 +243,8 @@ int  api_add_user(char* uname, Buffer buf, tList* lproxy)
     //
     DEBUG_MODE {
         print_message("[LTICTR_API] === ADD User === (%s)\n", uname);
-        print_tList(stderr, lproxy);
-        print_message("\n");
+    //    print_tList(stderr, lproxy);
+    //    print_message("\n");
     }
     return 0;
 }
@@ -263,8 +263,8 @@ int  api_del_user(char* uname, tList* lproxy)
     //
     DEBUG_MODE {
         print_message("[LTICTR_API] === DEL User === (%s)\n", uname);
-        print_tList(stderr, lproxy);
-        print_message("\n");
+    //    print_tList(stderr, lproxy);
+    //    print_message("\n");
     }
     return 0;
 }
@@ -303,11 +303,12 @@ int  send_http_response(int sock, SSL* ssl, int num, Buffer* buf)
 
     int cc = send_https_Buffer(sock, ssl, hdr, buf);
 
+    /*
     DEBUG_MODE {
         print_message("[LTICTR_API] === SEND Data ===\n");
         print_protocol_header(hdr, OFF);
         print_message("\n");
-    }
+    }*/
 
     del_tList(&hdr);
     return cc;
@@ -389,6 +390,4 @@ char*  get_api_username(tList* hdr)
 
     return uname;
 }
-
-
 

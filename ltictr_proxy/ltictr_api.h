@@ -9,7 +9,7 @@ tList_data 構造体
     int                 lv;      ポート番号．負数の場合は SSL接続
     Buffer              key;     ユーザ名．
     Buffer              val;     接続先 FQDN または IPアドレス．
-    void*               ptr;     SSL*
+    void*               ptr;     日付
     int                 sz;      *ptr のサイズ．strlen(*ptr)
     struct _tList*      lst; 
 @endcode

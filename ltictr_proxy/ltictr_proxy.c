@@ -71,7 +71,7 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
     // Main Loop
     int len, state;
     int close_flag = OFF;
-    //int webs_flag  = OFF;
+
     DEBUG_MODE print_message("[LTICTR_PROXY] Start Main Loop. (%d) [%d]\n", getpid(), time(0));
 
     //// Loop Start
@@ -81,13 +81,8 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
         if (FD_ISSET(ssock, &mask)) {
             state = FALSE;
             cc = recv_https_Buffer(ssock, sssl, &hdr, &buf, LTICTR_TIMEOUT, NULL, &state, TRUE);
-            //cc = recv_https_header(ssock, sssl, &hdr, &len, LTICTR_TIMEOUT, NULL, &connect);
             if (cc>0 && hdr!=NULL) {
                 //
-                //Buffer rcv = search_protocol_header(hdr, (char*)HDLIST_CONTENTS_KEY, 1);
-                //copy_Buffer(&rcv, &buf);
-                //free_Buffer(&rcv);
-
                 lst = NULL;
                 char* uname = NULL;
                 //
@@ -133,9 +128,9 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
                     if (con!=NULL) {
                         if (ex_strcmp("close", (char*)con->ldat.val.buf)) {
                         }
-                        //else if (strstrcase((char*)con->ldat.val.buf, "upgrade")==NULL) {
-                        //    copy_s2Buffer("close", &con->ldat.val);
-                        //}
+                        else if (strstrcase((char*)con->ldat.val.buf, "upgrade")==NULL) {
+                            copy_s2Buffer("close", &con->ldat.val);
+                        }
                     }
                     else {
                         tList* inst = find_protocol_end(hdr);
@@ -161,41 +156,6 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
                 csock = get_proxy_socket(lst);
                 cssl  = get_proxy_ssl(csock, client_ctx, lst);
                 //
-
-/*
-                if (len==HTTP_HEADER_CHUNKED) {
-                    cc = relay_to_server(csock, cssl, hdr, buf, sproto);
-                    //
-                    if (connect) {
-                        int sz = get_chunked_size((char*)buf.buf, &len);
-                        while (sz>0) {
-                            cc = ssl_tcp_recv_Buffer_wait(ssock, sssl, &buf, LTICTR_TIMEOUT);
-                            if (cc>0) {
-                                cc = relay_to_server(csock, cssl, NULL, buf, NULL);
-                                sz = get_chunked_size((char*)buf.buf, &len);
-                            }
-                            else break;
-                        }
-                    }
-                }
-                else {
-                    if (connect && len>0) {
-                        int sz = buf.vldsz;
-                        Buffer rcv = make_Buffer(RECVBUFSZ);
-                        while(sz<len) {
-                            cc = ssl_tcp_recv_Buffer_wait(ssock, sssl, &rcv, LTICTR_TIMEOUT);
-                            if (cc>0) {
-                                cat_Buffer(&rcv, &buf);
-                                sz += cc;
-                            }
-                            else break;
-                        }
-                        free_Buffer(&rcv);
-                    }
-                    cc = relay_to_server(csock, cssl, hdr, buf, sproto);
-                }
-*/
-
                 cc = relay_to_server(csock, cssl, hdr, buf, sproto);
                 del_tList(&hdr);
                 if (cc<=0) break;
@@ -211,42 +171,8 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
                         else break;
                     }
                 }
-/*
-                // Boby 転送
-                if (connect) {
-                    if (len>0) {
-                        int sz = buf.vldsz;
-                        while(sz<len) {
-                            cc = ssl_tcp_recv_Buffer_wait(ssock, sssl, &buf, LTICTR_TIMEOUT);
-                            if (cc>0) {
-                                cc = relay_to_server(csock, cssl, NULL, buf, NULL);
-                                sz += cc;
-                            }
-                            else break;
-                        }
-                    }
-                    else if (len==HTTP_HEADER_CHUNKED) {
-                        int sz = get_chunked_size((char*)buf.buf, &len);
-                        while (sz>0) {
-                            cc = ssl_tcp_recv_Buffer_wait(ssock, sssl, &buf, LTICTR_TIMEOUT);
-                            if (cc>0) {
-                                relay_to_server(csock, cssl, NULL, buf, NULL);
-                                sz = get_chunked_size((char*)buf.buf, &len);
-                            }
-                            else break;
-                        }
-                    }
-                    else if (len<0) {  //if (len==HTTP_HEADER_CLOSED_SESSION) {
-                        //cc = ssl_tcp_recv_Buffer_wait(ssock, sssl, &buf, LTICTR_TIMEOUT);
-                        //while(cc>0) {
-                        //    relay_to_server(csock, cssl, NULL, buf, NULL);
-                        //    cc = ssl_tcp_recv_Buffer_wait(ssock, sssl, &buf, LTICTR_TIMEOUT);
-                        //}
-                        //close_flag = ON;
-                    }
-                }
+                //
                 if (cc<=0) break;
-*/
             }
             else {
                 if (hdr!=NULL) del_tList(&hdr);
@@ -286,30 +212,25 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
                     cssl = get_proxy_ssl(csock, client_ctx, lst);
                     //
                     cc = recv_https_Buffer(csock, cssl, &hdr, &buf, LTICTR_TIMEOUT, NULL, &state, TRUE); 
-                    //cc = recv_https_header(csock, cssl, &hdr, &len, LTICTR_TIMEOUT, NULL, &connect);
                     if (cc>0 && hdr!=NULL) {
-                        //Buffer rcv = search_protocol_header(hdr, (char*)HDLIST_CONTENTS_KEY, 1);
-                        //copy_Buffer(&rcv, &buf);
-                        //free_Buffer(&rcv);
-                        //
                         // ヘッダ変更
                         close_flag = OFF;
                         if (hdr->ldat.id>HTTP_UNKNOWN_METHOD) {
                             tList* con = search_key_tList(hdr, "Connection", 1);    // close, keep-alive, upgrade
                             if (con!=NULL) {
                                 if (ex_strcmp("close", (char*)con->ldat.val.buf)) {
-                                    //close_flag = ON;
+                                    close_flag = ON;
                                 }
-                                //else if (strstrcase((char*)con->ldat.val.buf, "upgrade")==NULL) {
-                                //    copy_s2Buffer("close", &con->ldat.val);
-                                //    close_flag = ON;
-                                //}
+                                else if (strstrcase((char*)con->ldat.val.buf, "upgrade")==NULL) {
+                                    copy_s2Buffer("close", &con->ldat.val);
+                                    close_flag = ON;
+                                }
                             }
                             else {
                                 tList* inst = find_protocol_end(hdr);
                                 if (inst!=NULL) {
                                     add_protocol_header(inst, "Connection", "close");
-                                    //close_flag = ON;
+                                    close_flag = ON;
                                 }
                             }
                         }
@@ -335,40 +256,6 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
                             }
                         }
 
-/*
-                        if (len==HTTP_HEADER_CHUNKED) {
-                            cc = relay_to_client(ssock, sssl, hdr, buf);     // Client へ転送
-                            //
-                            if (connect) {
-                                int sz = get_chunked_size((char*)buf.buf, &len);
-                                while (sz>0) {
-                                    cc = ssl_tcp_recv_Buffer_wait(csock, cssl, &buf, LTICTR_TIMEOUT);
-                                    if (cc>0) {
-                                        relay_to_client(ssock, sssl, NULL, buf);
-                                        sz = get_chunked_size((char*)buf.buf, &len);
-                                    }
-                                    else break;
-                                }
-                            }
-                        }
-                        else {
-                            if (connect && len>0) {
-                                Buffer rcv = make_Buffer(RECVBUFSZ);
-                                int sz = buf.vldsz;
-                                while(sz<len) {
-                                    cc = ssl_tcp_recv_Buffer_wait(ssock, sssl, &rcv, LTICTR_TIMEOUT);
-                                    if (cc>0) {
-                                        cat_Buffer(&rcv, &buf);
-                                        sz += cc;
-                                    }
-                                    else break;
-                                }
-                                free_Buffer(&rcv);
-                            }
-                            cc = relay_to_client(ssock, sssl, hdr, buf);     // Client へ転送
-                        }
-                        del_tList(&hdr);
-*/
                         cc = relay_to_client(ssock, sssl, hdr, buf);     // Client へ転送
                         del_tList(&hdr);
 
@@ -383,42 +270,6 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
                                 else break;
                             }
                         }
-/*
-
-                        // Boby 転送
-                        if (connect) {
-                            if (len>0) {
-                                int sz = buf.vldsz;
-                                while(sz<len) {
-                                    cc = ssl_tcp_recv_Buffer_wait(csock, cssl, &buf, LTICTR_TIMEOUT);
-                                    if (cc>0) {
-                                        relay_to_client(ssock, sssl, NULL, buf);
-                                        sz += cc;
-                                    }
-                                    else break;
-                                }
-                            }
-                            else if (len==HTTP_HEADER_CHUNKED) {
-                                int sz = get_chunked_size((char*)buf.buf, &len);
-                                while (sz>0) {
-                                    cc = ssl_tcp_recv_Buffer_wait(csock, cssl, &buf, LTICTR_TIMEOUT);
-                                    if (cc>0) {
-                                        relay_to_client(ssock, sssl, NULL, buf);
-                                        sz = get_chunked_size((char*)buf.buf, &len);
-                                    }
-                                    else break;
-                                }
-                            }
-                            else if (len<0) {  //if (len==HTTP_HEADER_CLOSED_SESSION) {
-                                //cc = ssl_tcp_recv_Buffer_wait(csock, cssl, &buf, 1);
-                                //while(cc>0) {
-                                //    relay_to_client(ssock, sssl, NULL, buf);
-                                //    cc = ssl_tcp_recv_Buffer_wait(csock, cssl, &buf, 1);
-                                //}
-                                //close_flag = ON;
-                            }
-                        }
-*/
 
                         if (cc<=0 || close_flag==ON) {
                             ssl_close(cssl);

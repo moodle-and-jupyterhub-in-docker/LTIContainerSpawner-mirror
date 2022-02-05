@@ -43,9 +43,11 @@ ELIB = -L$(LIB_EXT_DIR) -lextend
 #
 ltictr_proxy_server: ltictr_proxy_server.o ltictr_proxy.o ltictr_relay.o ltictr_xmlrpc.o ltictr_ws.o $(LIB_BSC) $(LIB_EXT)
 	$(CC) $(@).o ltictr_proxy.o ltictr_relay.o ltictr_xmlrpc.o ltictr_ws.o $(ELIB) $(SLIB) -O2 -o $@ 
+	strip ltictr_proxy_server
 
 ltictr_api_server: ltictr_api_server.o ltictr_api.o $(LIB_BSC) $(LIB_EXT)
 	$(CC) $(@).o ltictr_api.o $(ELIB) $(SLIB) -O2 -o $@ 
+	strip ltictr_api_server
 
 
 $(LIB_BSC):
@@ -57,10 +59,10 @@ $(LIB_EXT):
 
 
 install: ltictr_proxy_server  ltictr_api_server
-	install -m 0755 ltictr_proxy_server /usr/local/bin
-	install -m 0755 ltictr_api_server   /usr/local/bin
-	chmod 0755 /var/ltictr
-
+	install -m 0755 ltictr_proxy_server 	/usr/local/bin
+	install -m 0755 ltictr_api_server   	/usr/local/bin
+	install -m 0640 ltictr_proxy.conf   	/usr/local/etc
+	install -m 0644 ltictr_proxy.service 	/usr/lib/systemd/system
 
 clean:
 	rm -f *.o $(SUBJ) 

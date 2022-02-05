@@ -1,7 +1,7 @@
 /*  
-    Proxy Server for JupyterHub and LTIConrainerSpawner
+    Proxy Server for JupyterHub and LTIContainerSpawner 
         
-                by Fumi.Iseki '22 01/22   BSD License.
+                by Fumi.Iseki '22 02/04 v0.8.0   BSD License.
 */
 
 #include "ltictr_proxy.h"
@@ -37,7 +37,9 @@ SSL_CTX* ClientCTX      = NULL;
 tList*   ProxyList      = NULL;
 tList*   PIDList        = NULL;
 
-// config file
+//int      Logtype        = LOG_ERR;
+
+//default config value
 char*    PIDFile        = "/var/run/ltictr_proxy.pid";
 char*    TLS_CertPem    = "/etc/pki/tls/certs/server.pem";
 char*    TLS_KeyPem     = "/etc/pki/tls/private/key.pem";
@@ -105,6 +107,8 @@ int main(int argc, char** argv)
         exit(1);
     }
     //
+    //openlog("ltictr_proxy_server", LOG_PERROR|LOG_PID, LOG_AUTH);
+
     int cport = 0;
     if (serverurl.buf!=NULL) {
         int sz = (int)strlen((char*)serverurl.buf) - 1; 
@@ -146,6 +150,7 @@ int main(int argc, char** argv)
     DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] Start initialization.\n");
     if (configfile.buf!=NULL) {
         if (!file_exist((char*)configfile.buf)) {
+            //syslog(Logtype, "Failure to check configuration file (%s). Can not read the configuration file.", (char*)configfile.buf);
             print_message("[LTICTR_PROXY_SERVER] Failure to check configuration file (%s). Can not read the configuration file.\n", (char*)configfile.buf);
             sig_term(-1);
         }
@@ -208,6 +213,7 @@ int main(int argc, char** argv)
     // socket open for client
     Nofd = tcp_server_socket(sport);       // block socket
     if (Nofd<0) {
+        //syslog(Logtype, "Failure to open the server port for client connection.(%d)", sport);
         print_message("[LTICTR_PROXY_SERVER] Failure to open the server port for client connection.(%d)\n", sport);
         sig_term(-1);
     }
@@ -244,6 +250,7 @@ int main(int argc, char** argv)
     Loop {
         Sofd = accept_intr(Nofd, &cl_addr, &cdlen);
         if (Sofd<0) {
+            //syslog(Logtype, "Failure to connect from client. [%s]", strerror(errno));
             print_message("[LTICTR_PROXY_SERVER] Failure to connect from client. [%s]\n", strerror(errno));
             sig_term(-1);
         }
@@ -251,6 +258,7 @@ int main(int argc, char** argv)
         pid_t pid = fork();
         if (pid==0) receipt_proxy(Sofd, ServerCTX, ClientCTX, apiurl, ProxyList);
         close(Sofd);    // don't use socket_close() !
+        Sofd = 0;
 
         tList* lp = find_tList_end(PIDList);
         add_tList_node_int(lp, (int)pid, 0);
@@ -303,8 +311,8 @@ void  term_main(int code)
 {
     pid_t pid = getpid();
     if (pid==RootPID) {
-        socket_close(Sofd);
-        socket_close(Nofd);
+        if (Sofd>0) socket_close(Sofd);
+        if (Nofd>0) socket_close(Nofd);
         if (PIDFile!=NULL) remove(PIDFile);
         //
         tList* lpid = PIDList;
@@ -315,28 +323,14 @@ void  term_main(int code)
         }
         //
         DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] Shutdown root LTICTR_PROXY process with code = (%d)\n", code);
+        //
+        //closelog();
     }
     else {
         DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] Shutdown proxy LTICTR_PROXY process with code = (%d)\n", code);
     }
     return;
 }
-
-
-/*
-void  close_all_socket(tList* lp)
-{
-    if (lp==NULL) return;
-    if (lp->ldat.id==TLIST_ANCHOR_NODE) lp = lp->next;
-
-    while (lp!=NULL) {
-        if (lp->ldat.id>0) close(lp->ldat.id);
-        lp = lp->next;
-    }
-    
-    return;
-}
-*/
 
 
 //
@@ -365,14 +359,12 @@ void  sig_child(int signal)
 {
     pid_t pid = 0;
 
-    UNUSED(signal);
-
     int ret;
     pid = waitpid(-1, &ret, WNOHANG);
     while(pid>0) {
         tList* lst = search_id_tList(PIDList, pid, 1);
         if (lst!=NULL) del_tList_node(&lst);
-        if (pid==APIChildPID) sig_term(-9);
+        if (pid==APIChildPID) sig_term(signal);
         //DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] SIGCHILD: signal = %d (%d)\n", signal, pid);
         //
         pid = waitpid(-1, &ret, WNOHANG);
@@ -380,5 +372,4 @@ void  sig_child(int signal)
 
     return;
 }
-
 
