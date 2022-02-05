@@ -1,4 +1,6 @@
 JunkBox_Lib
+src/ipynb_conv
+src/ipynb_conv.o
 ltictr_proxy/ltictr_proxy_server
 ltictr_proxy/ltictr_proxy_server.o
 ltictr_proxy/ltictr_proxy.o

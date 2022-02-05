@@ -8,7 +8,7 @@ install:
 	[ -d /var/lib/jupyterhub ] || mkdir /var/lib/jupyterhub
 	install -m 0644 etc/jupyterhub_docker_config.py /usr/local/etc
 	install -m 0644 etc/jupyterhub_podman_config.py /usr/local/etc
-	install -m 0644 etc/jupyterhub_ltids_config.py  /usr/local/etc
+	install -m 0644 etc/jupyterhub_ltictr_config.py /usr/local/etc
 	install -m 0644 etc/jupyterhub.service /usr/lib/systemd/system
 	install -m 0755 bin/fesvr /usr/local/bin
 	install -m 0644 bin/feplg_nop.so  /usr/local/bin
@@ -29,7 +29,7 @@ uninstall:
 	rm -f /var/lib/jupyterhub/*
 	rm -f /usr/local/etc/jupyterhub_docker_config.py
 	rm -f /usr/local/etc/jupyterhub_podman_config.py
-	rm -f /usr/local/etc/jupyterhub_ltids_config.py
+	rm -f /usr/local/etc/jupyterhub_ltictr_config.py
 	rm -f /usr/lib/systemd/system/jupyterhub.service
 	rm -f /usr/local/bin/fesvr
 	rm -f /usr/local/bin/feplg_nop.so
