@@ -69,7 +69,7 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
     nd = select(range+1, &mask, NULL, NULL, &timeout);
 
     // Main Loop
-    int len, state;
+    int state;
     int close_flag = OFF;
 
     DEBUG_MODE print_message("[LTICTR_PROXY] Start Main Loop. (%d) [%d]\n", getpid(), time(0));
@@ -80,7 +80,8 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
         // Client -> Server
         if (FD_ISSET(ssock, &mask)) {
             state = FALSE;
-            cc = recv_https_Buffer(ssock, sssl, &hdr, &buf, LTICTR_TIMEOUT, NULL, &state, TRUE);
+            //cc = recv_https_Buffer(ssock, sssl, &hdr, &buf, LTICTR_TIMEOUT, NULL, &state, TRUE);
+            cc = recv_https_Buffer(ssock, sssl, &hdr, &buf, LTICTR_TIMEOUT, NULL, &state, FALSE);
             if (cc>0 && hdr!=NULL) {
                 //
                 lst = NULL;
@@ -160,17 +161,19 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
                 del_tList(&hdr);
                 if (cc<=0) break;
 
+                /*
                 if (state==HTTP_HEADER_CHUNKED) {
-                    int sz = get_chunked_size((char*)buf.buf, &len);
-                    while (sz>0) {
+                    int hdsz, tlsz;
+                    int cksz = get_chunked_size((char*)buf.buf, &hdsz, &tlsz);
+                    while (cksz>0) {
                         cc = ssl_tcp_recv_Buffer_wait(ssock, sssl, &buf, LTICTR_TIMEOUT);
                         if (cc>0) {
                             relay_to_server(csock, cssl, NULL, buf, NULL);
-                            sz = get_chunked_size((char*)buf.buf, &len);
+                            cksz = get_chunked_size((char*)buf.buf, &hdsz, &tlsz);
                         }
                         else break;
                     }
-                }
+                }*/
                 //
                 if (cc<=0) break;
             }
@@ -211,7 +214,8 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
                     state = FALSE;
                     cssl = get_proxy_ssl(csock, client_ctx, lst);
                     //
-                    cc = recv_https_Buffer(csock, cssl, &hdr, &buf, LTICTR_TIMEOUT, NULL, &state, TRUE); 
+                    //cc = recv_https_Buffer(csock, cssl, &hdr, &buf, LTICTR_TIMEOUT, NULL, &state, TRUE); 
+                    cc = recv_https_Buffer(csock, cssl, &hdr, &buf, LTICTR_TIMEOUT, NULL, &state, FALSE); 
                     if (cc>0 && hdr!=NULL) {
                         // ヘッダ変更
                         close_flag = OFF;
@@ -259,17 +263,19 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
                         cc = relay_to_client(ssock, sssl, hdr, buf);     // Client へ転送
                         del_tList(&hdr);
 
+                        /*
                         if (state==HTTP_HEADER_CHUNKED) {
-                            int sz = get_chunked_size((char*)buf.buf, &len);
-                            while (sz>0) {
+                            int hdsz, tlsz;
+                            int cksz = get_chunked_size((char*)buf.buf, &hdsz, &tlsz);
+                            while (cksz>0) {
                                 cc = ssl_tcp_recv_Buffer_wait(csock, cssl, &buf, LTICTR_TIMEOUT);
                                 if (cc>0) {
                                     relay_to_client(ssock, sssl, NULL, buf);
-                                    sz = get_chunked_size((char*)buf.buf, &len);
+                                    cksz = get_chunked_size((char*)buf.buf, &hdsz, &tlsz);
                                 }
                                 else break;
                             }
-                        }
+                        }*/
 
                         if (cc<=0 || close_flag==ON) {
                             ssl_close(cssl);
