@@ -10,7 +10,7 @@ Environment = SERVER=202.26.150.52:8000
 #
 User=root
 PIDFile = /var/run/fesvr.pid
-ExecStart = /usr/local/bin/fesvr -h ${SERVER} -p ${CPORT} -m /usr/local/bin/feplg_nbws.so -c -s --conf /usr/local/etc/nbsw.conf -f /var/run/fesvr.pid
+ExecStart = /usr/local/bin/fesvr -h ${SERVER} -p ${CPORT} -m /usr/local/bin/feplg_nbws.so -c -s --conf /usr/local/etc/nbws.conf -f /var/run/fesvr.pid
 WorkingDirectory = /tmp
 
 [Install]

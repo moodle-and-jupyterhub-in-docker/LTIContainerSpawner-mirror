@@ -6,15 +6,16 @@ all: install
 
 install: 
 	[ -d /var/lib/jupyterhub ] || mkdir /var/lib/jupyterhub
-	install -m 0644 etc/jupyterhub_docker_config.py /usr/local/etc
-	install -m 0644 etc/jupyterhub_podman_config.py /usr/local/etc
-	install -m 0644 etc/jupyterhub_ltictr_config.py /usr/local/etc
-	install -m 0644 etc/jupyterhub.service /usr/lib/systemd/system
+	[ -f /usr/local/etc/jupyterhub_docker_config.py ] || install -m 0644 etc/jupyterhub_docker_config.py /usr/local/etc
+	[ -f /usr/local/etc/jupyterhub_podman_config.py ] || install -m 0644 etc/jupyterhub_podman_config.py /usr/local/etc
+	[ -f /usr/local/etc/jupyterhub_ltictr_config.py ] || install -m 0644 etc/jupyterhub_ltictr_config.py /usr/local/etc
+	[ -f /usr/local/etc/nbws.conf ]                   || install -m 0640 etc/nbws.conf  /usr/local/etc
+	[ -f /usr/lib/systemd/system/jupyterhub.service ] || install -m 0644 etc/jupyterhub.service /usr/lib/systemd/system
+	[ -f /usr/lib/systemd/system/feserver.service ]   || install -m 0644 etc/feserver.service /usr/lib/systemd/system
 	install -m 0755 bin/fesvr /usr/local/bin
 	install -m 0644 bin/feplg_nop.so  /usr/local/bin
 	install -m 0644 bin/feplg_nbws.so /usr/local/bin
-	install -m 0640 etc/nbws.conf  /usr/local/etc
-	install -m 0644 etc/feserver.service /usr/lib/systemd/system
+	systemctl daemon-reload
 
 
 clean:
