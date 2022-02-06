@@ -1,8 +1,11 @@
 /*  
     API Server for JupyterHub and LTIContainerSpawner
         
-                by Fumi.Iseki '22 02/05 v0.9.0   BSD License.
+                by Fumi.Iseki '22 02/05   BSD License.
 */
+
+#define  LTICTR_API_VERSION "1.0.0"
+
 
 #include "ltictr_api_server.h"
 #include "ltictr_api.h"
@@ -34,6 +37,7 @@ char*    API_Token      = "default_token";
 //
 int main(int argc, char** argv)
 {
+    int    version = OFF;
     int    aport = 0;
     struct passwd* pw;
 
@@ -55,7 +59,8 @@ int main(int argc, char** argv)
     for (int i=1; i<argc; i++) {
         if      (!strcmp(argv[i],"-a")) {if (i!=argc-1) apihost   = make_Buffer_bystr(argv[i+1]);}
         else if (!strcmp(argv[i],"-u")) {if (i!=argc-1) efctvuser = make_Buffer_bystr(argv[i+1]);}
-        else if (!strcmp(argv[i],"-d")) DebugMode  = ON;
+        else if (!strcmp(argv[i],"-d")) DebugMode = ON;
+        else if (!strcmp(argv[i],"--version")) version = ON;
         //
         else if (!strcmp(argv[i],"--apid"))   {if (i!=argc-1) pidfile    = make_Buffer_bystr(argv[i+1]);}
         else if (!strcmp(argv[i],"--cert"))   {if (i!=argc-1) certfile   = make_Buffer_bystr(argv[i+1]);}
@@ -64,6 +69,10 @@ int main(int argc, char** argv)
         else if (!strcmp(argv[i],"--config")) {if (i!=argc-1) configfile = make_Buffer_bystr(argv[i+1]);}
         //
         //else if (*argv[i]=='-') print_message("[LTICTR_API_SERVER] Unknown argument: %s\n", argv[i]);
+    }
+    if (version==ON) {
+        printf("%s\n", LTICTR_API_VERSION);
+        exit(0);
     }
     if (apihost.buf==NULL) {
         print_message("Usage... %s -a [api_url:]port [-u user] [-d] [--apid pid_file] [--conf config_file] [--cert cert_file] [--key key_file]\n", argv[0]);

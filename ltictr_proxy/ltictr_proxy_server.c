@@ -1,27 +1,31 @@
 /*  
     Proxy Server for JupyterHub and LTIContainerSpawner 
         
-                by Fumi.Iseki '22 02/04 v0.8.0   BSD License.
+                by Fumi.Iseki '22 02/04   BSD License.
 */
+
+#define  LTICTR_PROXY_VERSION   "1.0.0"
+
 
 #include "ltictr_proxy.h"
 #include "ltictr_proxy_server.h"
 
-#define  LTICTR_PID_FILE    "LTICTR_PID_File"
-#define  LTICTR_SERVER_CERT "LTICTR_Server_Cert"
-#define  LTICTR_PRIVATE_KEY "LTICTR_Private_Key"
-#define  LTICTR_API_TOKEN   "LTICTR_API_Token"
 
-#define  MOODLE_HOST_KEY    "Moodle_Host"
-#define  MOODLE_PORT_KEY    "Moodle_Port"
-#define  MOODLE_URL_KEY     "Moodle_URL"
-#define  MOODLE_TOKEN_KEY   "Moodle_Token"
-#define  MOODLE_SERVICE_KEY "Moodle_Servide"
-#define  MOODLE_DBANS_KEY   "Moodle_DBAns"
-#define  MOODLE_TLS_KEY     "Moodle_TLS"
-#define  MOODLE_HTTP_KEY    "Moodle_HTTP"
+#define  LTICTR_PID_FILE        "LTICTR_PID_File"
+#define  LTICTR_SERVER_CERT     "LTICTR_Server_Cert"
+#define  LTICTR_PRIVATE_KEY     "LTICTR_Private_Key"
+#define  LTICTR_API_TOKEN       "LTICTR_API_Token"
 
-#define  API_SERVER_NAME    "ltictr_api_server"
+#define  MOODLE_HOST_KEY        "Moodle_Host"
+#define  MOODLE_PORT_KEY        "Moodle_Port"
+#define  MOODLE_URL_KEY         "Moodle_URL"
+#define  MOODLE_TOKEN_KEY       "Moodle_Token"
+#define  MOODLE_SERVICE_KEY     "Moodle_Servide"
+#define  MOODLE_DBANS_KEY       "Moodle_DBAns"
+#define  MOODLE_TLS_KEY         "Moodle_TLS"
+#define  MOODLE_HTTP_KEY        "Moodle_HTTP"
+
+#define  API_SERVER_NAME        "ltictr_api_server"
 
 
 pid_t    RootPID;
@@ -59,13 +63,14 @@ int      Moodle_TLS     = FALSE;
 //
 int main(int argc, char** argv)
 {
+    int    version = OFF;
     int    sport = 0;
     struct passwd* pw;
 
     ProxyList  = add_tList_node_anchor();
     PIDList    = add_tList_node_anchor();
 
-    Buffer serverurl;
+    Buffer hosturl;
     Buffer apiurl;
     Buffer efctvuser;
     Buffer pidfile;
@@ -74,7 +79,7 @@ int main(int argc, char** argv)
     Buffer configfile;
 
     // for arguments
-    serverurl  = init_Buffer();
+    hosturl  = init_Buffer();
     apiurl     = init_Buffer();
     efctvuser  = init_Buffer();
     pidfile    = init_Buffer();
@@ -84,11 +89,12 @@ int main(int argc, char** argv)
 
     for (int i=1; i<argc; i++) {
         if      (!strcmp(argv[i],"-p")) {if (i!=argc-1) sport = atoi(argv[i+1]);}
-        else if (!strcmp(argv[i],"-s")) {if (i!=argc-1) serverurl = make_Buffer_bystr(argv[i+1]);}
+        else if (!strcmp(argv[i],"-h")) {if (i!=argc-1) hosturl   = make_Buffer_bystr(argv[i+1]);}
         else if (!strcmp(argv[i],"-a")) {if (i!=argc-1) apiurl    = make_Buffer_bystr(argv[i+1]);}
         else if (!strcmp(argv[i],"-u")) {if (i!=argc-1) efctvuser = make_Buffer_bystr(argv[i+1]);}
         else if (!strcmp(argv[i],"-c")) ServerSSL = ON;
         else if (!strcmp(argv[i],"-d")) DebugMode = ON;
+        else if (!strcmp(argv[i],"--version")) version = ON;
 
         else if (!strcmp(argv[i],"-n"))          APIServerExec = OFF;
         else if (!strcmp(argv[i],"--noexecapi")) APIServerExec = OFF; 
@@ -99,10 +105,14 @@ int main(int argc, char** argv)
         else if (!strcmp(argv[i],"--conf"))   {if (i!=argc-1) configfile = make_Buffer_bystr(argv[i+1]);}
         else if (!strcmp(argv[i],"--config")) {if (i!=argc-1) configfile = make_Buffer_bystr(argv[i+1]);}
         //
-        else if (*argv[i]=='-') print_message("[LTICTR_PROXY_SERVER] Unknown argument: %s\n", argv[i]);
+        //else if (*argv[i]=='-') print_message("[LTICTR_PROXY_SERVER] Unknown argument: %s\n", argv[i]);
+    }
+    if (version==ON) {
+        printf("%s\n", LTICTR_PROXY_VERSION);
+        exit(0);
     }
     if (sport==0) {
-        print_message("Usage... %s -p client_side_port [-c] [-s server_url[:port]] [-a [api_url:]port] [-u user] [-d] \n", argv[0]);
+        print_message("Usage... %s -p client_side_port [-c] [-h host_url[:port]] [-a [api_url:]port] [-u user] [-d] \n", argv[0]);
         print_message("                          [--noexecapi] [--conf config_file]  [--cert cert_file] [--key key_file] [--pid pid_file]\n");
         exit(1);
     }
@@ -110,22 +120,22 @@ int main(int argc, char** argv)
     //openlog("ltictr_proxy_server", LOG_PERROR|LOG_PID, LOG_AUTH);
 
     int cport = 0;
-    if (serverurl.buf!=NULL) {
-        int sz = (int)strlen((char*)serverurl.buf) - 1; 
-        while(sz>=0 && serverurl.buf[sz]!='/' && serverurl.buf[sz]!=':') sz--;
-        if (sz>=0 && serverurl.buf[sz]==':') {
-            cport = atoi((char*)&(serverurl.buf[sz+1]));
-            serverurl.buf[sz] = '\0';
-            serverurl.vldsz = strlen((char*)serverurl.buf);
+    if (hosturl.buf!=NULL) {
+        int sz = (int)strlen((char*)hosturl.buf) - 1; 
+        while(sz>=0 && hosturl.buf[sz]!='/' && hosturl.buf[sz]!=':') sz--;
+        if (sz>=0 && hosturl.buf[sz]==':') {
+            cport = atoi((char*)&(hosturl.buf[sz+1]));
+            hosturl.buf[sz] = '\0';
+            hosturl.vldsz = strlen((char*)hosturl.buf);
         }
     }
     if (cport==0) cport = sport;
-    if (serverurl.buf!=NULL) {
-        if (!ex_strcmp("http://", (char*)serverurl.buf) && !ex_strcmp("https://", (char*)serverurl.buf)) {
-            ins_s2Buffer("http://", &serverurl);
+    if (hosturl.buf!=NULL) {
+        if (!ex_strcmp("http://", (char*)hosturl.buf) && !ex_strcmp("https://", (char*)hosturl.buf)) {
+            ins_s2Buffer("http://", &hosturl);
         }
-        add_tList_node_bystr(ProxyList, 0, cport, "/", (char*)serverurl.buf, NULL, 0);
-        DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] Target Server is %s:%d\n", (char*)serverurl.buf, cport);
+        add_tList_node_bystr(ProxyList, 0, cport, "/", (char*)hosturl.buf, NULL, 0);
+        DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] Target Server is %s:%d\n", (char*)hosturl.buf, cport);
     }
 
     //
