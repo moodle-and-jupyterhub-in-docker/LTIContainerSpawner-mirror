@@ -15,6 +15,7 @@
 # systemctl enable jupyterhub.service
 # systemctl start  jupyterhub.service
 ```
+##### Attension: Feserver and Ltictr_Proxy cannot be used at the same time.
 ##### for Feserver
 ```
 # vi /usr/local/etc/nbws.conf
@@ -29,7 +30,7 @@
 # systemctl enable ltictr_proxy.service
 # systemctl start  ltictr_proxy.service
 ```
-##### Attension: Feserver and Ltictr_Proxy cannot be used at the same time
+
 
 
 ### Wiki
