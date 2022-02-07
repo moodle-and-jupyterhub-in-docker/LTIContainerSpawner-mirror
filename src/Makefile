@@ -10,7 +10,7 @@ CPU = Intel
 
 #
 #
-SUBJ = ipynb_conv
+SUBJ = ipynb_conv json_file json2
 #
 all: $(SUBJ)
 
@@ -58,6 +58,8 @@ ipynb_conv: ipynb_conv.o  $(LIB_BSC)
 json_file: json_file.o  $(LIB_BSC)
 	$(CC) $(@).o $(ELIB) $(SLIB) -O2 -o $@ 
 
+json2: json2.o  $(LIB_BSC)
+	$(CC) $(@).o $(ELIB) $(SLIB) -O2 -o $@ 
 
 
 $(LIB_BSC):

@@ -17,18 +17,18 @@ void  check_json(tJson* json)
     tJson* tags = NULL;
     tJson* mgid = NULL;
 
-    stts = find_2key_json(json, "metadata", "status");
+    stts = find_double_key_json(json, "metadata", "status");
     if (stts==NULL) {
-        cell = find_2key_json(json, "metadata", "cellId");
+        cell = find_double_key_json(json, "metadata", "cellId");
     }
 
     // S->C
     if (stts!=NULL) {
-        user = find_2key_json(json, "header", "username");
+        user = find_double_key_json(json, "header", "username");
         if (user!=NULL) {
             date = find_key_sister_json(user, "date");
             mssn = find_key_sister_json(user, "session");
-            pssn = find_2key_json(json, "parent_header", "session");
+            pssn = find_double_key_json(json, "parent_header", "session");
             mgid = find_key_sister_json(pssn, "msg_id");
         }
     }
@@ -37,7 +37,7 @@ void  check_json(tJson* json)
     if (cell!=NULL) {
         if (cell!=NULL) {
             tags = find_key_sister_json(cell, "tags");
-            date = find_2key_json(json, "header", "date");
+            date = find_double_key_json(json, "header", "date");
             pssn = find_key_sister_json(date, "session");
             mgid = find_key_sister_json(date, "msg_id");
         }
@@ -66,7 +66,7 @@ int main(int argc, char** argv)
         exit(1);
     }
 
-    tJson* json = json_parse_file(argv[1]);
+    tJson* json = json_parse_file(argv[1], 99);
     if (json==NULL) exit(1);
 
     //print_tTree(stdout, json, "    ");
