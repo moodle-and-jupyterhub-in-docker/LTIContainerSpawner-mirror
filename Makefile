@@ -15,6 +15,10 @@ install:
 	install -m 0755 bin/fesvr /usr/local/bin
 	install -m 0644 bin/feplg_nop.so  /usr/local/bin
 	install -m 0644 bin/feplg_nbws.so /usr/local/bin
+	[ -f /usr/local/etc/ltictr_proxy.conf ]             || install -m 0640 etc/ltictr_proxy.conf  /usr/local/etc
+	[ -f /usr/lib/systemd/system/ltictr_proxy.service ] || install -m 0644 etc/ltictr_proxy.service  /usr/lib/systemd/system
+	install -m 0755 bin/ltictr_proxy_server /usr/local/bin
+	install -m 0755 bin/ltictr_api_server   /usr/local/bin
 	systemctl daemon-reload
 
 
@@ -37,5 +41,9 @@ uninstall:
 	rm -f /usr/local/bin/feplg_nbws.so
 	rm -f /usr/local/etc/nbws.conf
 	rm -f /usr/lib/systemd/system/feserver.service
+	rm -f /usr/local/bin/ltictr_proxy_server
+	rm -f /usr/local/bin/ltictr_api_server
+	rm -f /usr/local/etc/ltictr_proxy.conf
+	rm -f /usr/lib/systemd/system/ltictr_proxy.service
 	systemctl daemon-reload
 

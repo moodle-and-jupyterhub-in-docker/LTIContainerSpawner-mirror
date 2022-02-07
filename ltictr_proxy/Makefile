@@ -61,8 +61,8 @@ $(LIB_EXT):
 install: ltictr_proxy_server  ltictr_api_server
 	install -m 0755 ltictr_proxy_server  /usr/local/bin
 	install -m 0755 ltictr_api_server    /usr/local/bin
-	[ -f /usr/local/etc/ltictr_proxy.conf ] || install -m 0640 ltictr_proxy.conf  /usr/local/etc
-	[ -f /usr/lib/systemd/system/ltictr_proxy.service ] | install -m 0644 ltictr_proxy.service  /usr/lib/systemd/system
+	[ -f /usr/local/etc/ltictr_proxy.conf ]             || install -m 0640 ltictr_proxy.conf     /usr/local/etc
+	[ -f /usr/lib/systemd/system/ltictr_proxy.service ] || install -m 0644 ltictr_proxy.service  /usr/lib/systemd/system
 	systemctl daemon-reload
 
 clean:
