@@ -6,15 +6,18 @@
 #include "ltictr_relay.h"
 
 
-#define  LTICTR_IDLETIME   900      // 15m
-#define  LTICTR_TIMEOUT    3        // 3s
+#define  TO_CLIENT          0
+#define  TO_SERVER          1
+
+#define  LTICTR_IDLETIME    900      // 15m
+#define  LTICTR_TIMEOUT     3        // 3s
 
 
 extern char*  API_Token;
 
 
 //
-void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer api_host, tList* lproxy)
+void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer api_host, tList* lproxy, int chunked)
 {
     int    cc, nd;
     fd_set mask;
@@ -80,8 +83,7 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
         // Client -> Server
         if (FD_ISSET(ssock, &mask)) {
             state = FALSE;
-            //cc = recv_https_Buffer(ssock, sssl, &hdr, &buf, LTICTR_TIMEOUT, NULL, &state, TRUE);
-            cc = recv_https_Buffer(ssock, sssl, &hdr, &buf, LTICTR_TIMEOUT, NULL, &state, FALSE);
+            cc = recv_https_Buffer(ssock, sssl, &hdr, &buf, LTICTR_TIMEOUT, NULL, &state, chunked);
             if (cc>0 && hdr!=NULL) {
                 //
                 lst = NULL;
@@ -158,23 +160,11 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
                 cssl  = get_proxy_ssl(csock, client_ctx, lst);
                 //
                 cc = relay_to_server(csock, cssl, hdr, buf, sproto);
-                del_tList(&hdr);
-                if (cc<=0) break;
-
-                /*
-                if (state==HTTP_HEADER_CHUNKED) {
-                    int hdsz, tlsz;
-                    int cksz = get_chunked_size((char*)buf.buf, &hdsz, &tlsz);
-                    while (cksz>0) {
-                        cc = ssl_tcp_recv_Buffer_wait(ssock, sssl, &buf, LTICTR_TIMEOUT);
-                        if (cc>0) {
-                            relay_to_server(csock, cssl, NULL, buf, NULL);
-                            cksz = get_chunked_size((char*)buf.buf, &hdsz, &tlsz);
-                        }
-                        else break;
-                    }
-                }*/
+                if (state==HTTP_HEADER_CHUNKED && chunked && cc>0) {
+                    cc = proc_chunked(ssock, sssl, csock, cssl, buf, sproto, LTICTR_TIMEOUT, TO_SERVER);
+                }
                 //
+                del_tList(&hdr);
                 if (cc<=0) break;
             }
             else {
@@ -214,8 +204,7 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
                     state = FALSE;
                     cssl = get_proxy_ssl(csock, client_ctx, lst);
                     //
-                    //cc = recv_https_Buffer(csock, cssl, &hdr, &buf, LTICTR_TIMEOUT, NULL, &state, TRUE); 
-                    cc = recv_https_Buffer(csock, cssl, &hdr, &buf, LTICTR_TIMEOUT, NULL, &state, FALSE); 
+                    cc = recv_https_Buffer(csock, cssl, &hdr, &buf, LTICTR_TIMEOUT, NULL, &state, chunked); 
                     if (cc>0 && hdr!=NULL) {
                         // ヘッダ変更
                         close_flag = OFF;
@@ -259,23 +248,12 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
                                 }
                             }
                         }
-
+                        //
                         cc = relay_to_client(ssock, sssl, hdr, buf);     // Client へ転送
+                        if (state==HTTP_HEADER_CHUNKED && chunked && cc>0) {
+                            proc_chunked(csock, cssl, ssock, sssl, buf, NULL, LTICTR_TIMEOUT, TO_CLIENT);
+                        }
                         del_tList(&hdr);
-
-                        /*
-                        if (state==HTTP_HEADER_CHUNKED) {
-                            int hdsz, tlsz;
-                            int cksz = get_chunked_size((char*)buf.buf, &hdsz, &tlsz);
-                            while (cksz>0) {
-                                cc = ssl_tcp_recv_Buffer_wait(csock, cssl, &buf, LTICTR_TIMEOUT);
-                                if (cc>0) {
-                                    relay_to_client(ssock, sssl, NULL, buf);
-                                    cksz = get_chunked_size((char*)buf.buf, &hdsz, &tlsz);
-                                }
-                                else break;
-                            }
-                        }*/
 
                         if (cc<=0 || close_flag==ON) {
                             ssl_close(cssl);
@@ -356,6 +334,73 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
     _exit(0);
 }
 
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//
+int  proc_chunked(int fromfd, SSL* fromssl, int tofd, SSL* tossl, Buffer buf, char* proto, int tm, int relay)
+{
+    int cc, sz, i;
+    int chnksz, hdsz, tlsz;
+
+    Buffer tmp = make_Buffer(RECVBUFSZ);
+
+    sz = buf.vldsz;
+    if (sz<=0) {    // chunk のサイズを含んだデータを読み込む
+        cc = ssl_tcp_recv_Buffer_wait(fromfd, fromssl, &tmp, tm);
+        if (cc<=0) {
+            free_Buffer(&tmp);
+            return cc;
+        }
+        chnksz = sz = get_chunked_size((char*)tmp.buf, &hdsz, &tlsz);
+    }
+    else {          // 既にコンテンツがある場合は tmpへ移動
+        chnksz = sz = get_chunked_size((char*)buf.buf, &hdsz, &tlsz);
+        if (chnksz==0) {
+            if (relay==TO_SERVER) cc = relay_to_server(tofd, tossl, NULL, buf, proto);
+            else                  cc = relay_to_client(tofd, tossl, NULL, buf);
+            return sz;
+        }    
+        cat_Buffer(&buf, &tmp);
+    }
+    //
+
+    while (chnksz>0) {
+        //
+        if (chnksz+hdsz+tlsz > tmp.vldsz) {
+            cc = recv_https_chunked_remain(fromfd, fromssl, &tmp, chnksz+hdsz+tlsz, tm);
+            if (cc<=0) {
+                sz = cc;
+                break;
+            }
+        }
+
+        Buffer cat = tmp;
+        cat.vldsz  = chnksz + hdsz + tlsz;
+        if (relay==TO_SERVER) cc = relay_to_server(tofd, tossl, NULL, cat, proto);
+        else                  cc = relay_to_client(tofd, tossl, NULL, cat);
+
+        // 次の chunk用にデータをつめる
+        for (i=0; i<tmp.vldsz-chnksz-hdsz-tlsz; i++) {
+            tmp.buf[i] = tmp.buf[chnksz + hdsz + tlsz + i];
+        }
+        tmp.vldsz = tmp.vldsz - chnksz - hdsz - tlsz;
+
+        if (tmp.vldsz==0) {
+            cc = ssl_tcp_recv_Buffer_wait(fromfd, fromssl, &tmp, tm);
+            if (cc<=0) {
+                sz = cc;
+                break;
+            }
+        }
+        chnksz = get_chunked_size((char*)tmp.buf, &hdsz, &tlsz);
+        sz += chnksz;
+    }
+
+    free_Buffer(&tmp);
+    return sz;
+}
 
 
 
@@ -517,5 +562,6 @@ Buffer  get_proxy_target(char* api_host, int api_port, SSL_CTX* ctx, char* uname
 
     return target;
 }
+
 
 

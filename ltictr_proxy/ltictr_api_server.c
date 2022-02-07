@@ -68,7 +68,11 @@ int main(int argc, char** argv)
         else if (!strcmp(argv[i],"--conf"))   {if (i!=argc-1) configfile = make_Buffer_bystr(argv[i+1]);}
         else if (!strcmp(argv[i],"--config")) {if (i!=argc-1) configfile = make_Buffer_bystr(argv[i+1]);}
         //
-        //else if (*argv[i]=='-') print_message("[LTICTR_API_SERVER] Unknown argument: %s\n", argv[i]);
+        //else if (*argv[i]=='-') {
+        //    print_message("[LTICTR_API_SERVER] Unknown argument: %s\n", argv[i]);
+        //    free_Buffer(&apihost);
+        //    break;
+        //}
     }
     if (version==ON) {
         printf("%s\n", LTICTR_API_VERSION);

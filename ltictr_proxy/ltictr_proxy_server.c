@@ -4,7 +4,7 @@
                 by Fumi.Iseki '22 02/04   BSD License.
 */
 
-#define  LTICTR_PROXY_VERSION   "1.0.0"
+#define  LTICTR_PROXY_VERSION   "1.0.1"
 
 
 #include "ltictr_proxy.h"
@@ -32,6 +32,7 @@ pid_t    RootPID;
 pid_t    APIChildPID    = 0;
 
 int      APIServerExec  = ON;
+int      ChunkedMode    = TRUE;
 
 int      Nofd = 0, Sofd = 0;
 int      ServerSSL      = OFF;     // クライアント側（自身はサーバ）とのSSL 接続
@@ -98,6 +99,7 @@ int main(int argc, char** argv)
 
         else if (!strcmp(argv[i],"-n"))          APIServerExec = OFF;
         else if (!strcmp(argv[i],"--noexecapi")) APIServerExec = OFF; 
+        else if (!strcmp(argv[i],"--chunked"))   ChunkedMode   = TRUE;
 
         else if (!strcmp(argv[i],"--pid"))    {if (i!=argc-1) pidfile    = make_Buffer_bystr(argv[i+1]);}
         else if (!strcmp(argv[i],"--cert"))   {if (i!=argc-1) certfile   = make_Buffer_bystr(argv[i+1]);}
@@ -105,7 +107,11 @@ int main(int argc, char** argv)
         else if (!strcmp(argv[i],"--conf"))   {if (i!=argc-1) configfile = make_Buffer_bystr(argv[i+1]);}
         else if (!strcmp(argv[i],"--config")) {if (i!=argc-1) configfile = make_Buffer_bystr(argv[i+1]);}
         //
-        //else if (*argv[i]=='-') print_message("[LTICTR_PROXY_SERVER] Unknown argument: %s\n", argv[i]);
+        else if (*argv[i]=='-') {
+            print_message("[LTICTR_PROXY_SERVER] Unknown argument: %s\n", argv[i]);
+            sport = 0;
+            break;
+        }
     }
     if (version==ON) {
         printf("%s\n", LTICTR_PROXY_VERSION);
@@ -113,7 +119,7 @@ int main(int argc, char** argv)
     }
     if (sport==0) {
         print_message("Usage... %s -p client_side_port [-c] [-h host_url[:port]] [-a [api_url:]port] [-u user] [-d] \n", argv[0]);
-        print_message("                          [--noexecapi] [--conf config_file]  [--cert cert_file] [--key key_file] [--pid pid_file]\n");
+        print_message("                  [--noexecapi] [--chunked] [--conf config_file] [--cert cert_file] [--key key_file] [--pid pid_file]\n");
         exit(1);
     }
     //
@@ -266,7 +272,7 @@ int main(int argc, char** argv)
         }
         //
         pid_t pid = fork();
-        if (pid==0) receipt_proxy(Sofd, ServerCTX, ClientCTX, apiurl, ProxyList);
+        if (pid==0) receipt_proxy(Sofd, ServerCTX, ClientCTX, apiurl, ProxyList, ChunkedMode);
         close(Sofd);    // don't use socket_close() !
         Sofd = 0;
 
