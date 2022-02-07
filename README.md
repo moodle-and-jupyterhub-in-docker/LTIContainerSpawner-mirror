@@ -22,6 +22,15 @@
 # systemctl enable feserver.service
 # systemctl start  feserver.service
 ```
+##### for Ltictr_Proxy
+```
+# vi /usr/local/etc/ltictr_proxy.conf
+# vi /usr/lib/systemd/system/ltictr_proxy.service
+# systemctl enable ltictr_proxy.service
+# systemctl start  ltictr_proxy.service
+```
+##### Attension: Feserver and Ltictr_Proxy cannot be used at the same time
+
 
 ### Wiki
 - English:  https://gitlab.nsl.tuis.ac.jp/iseki/lticontainerspawner/-/wikis/Moodle---JupyterHub
