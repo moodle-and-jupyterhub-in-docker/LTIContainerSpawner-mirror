@@ -19,7 +19,7 @@ CC   = gcc
 AR   = ar
 TH	 = touch
 
-LIB_DIR=../../JunkBox_Lib
+LIB_DIR=../JunkBox_Lib
 LIB_BSC_DIR = $(LIB_DIR)/Lib
 LIB_EXT_DIR = $(LIB_DIR)/xLib
 
