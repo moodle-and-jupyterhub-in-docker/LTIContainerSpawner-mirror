@@ -235,7 +235,6 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
                             }
                         }
                         //
-
                         DEBUG_MODE {
                             if (hdr->ldat.id>HTTP_UNKNOWN_METHOD) {
                                 print_message("[LTICTR_PROXY] === HTTP RECV SERVER === (%d) (%d) [%d]\n", csock, getpid(), time(0));
@@ -303,7 +302,6 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
     //// Loop End
 
     DEBUG_MODE print_message("[LTICTR_PROXY] Stop  Main Loop. (%d) [%d]\n", getpid(), time(0));
-
     //
     ssl_close(sssl);
     close(ssock);
