@@ -374,10 +374,11 @@ int  proc_chunked(int fromfd, SSL* fromssl, int tofd, SSL* tossl, Buffer buf, ch
             }
         }
 
-        Buffer cat = tmp;
+        Buffer cat = dup_Buffer(tmp);
         cat.vldsz  = chnksz + hdsz + tlsz;
         if (relay==TO_SERVER) cc = relay_to_server(tofd, tossl, NULL, cat, proto);
         else                  cc = relay_to_client(tofd, tossl, NULL, cat);
+        free_Buffer(&cat);
 
         // 次の chunk用にデータをつめる
         for (i=0; i<tmp.vldsz-chnksz-hdsz-tlsz; i++) {
