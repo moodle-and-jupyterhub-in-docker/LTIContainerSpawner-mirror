@@ -26,6 +26,7 @@
 ///////////////////////////////////////////////////////////////////////////////////
 
 int   main(int argc, char** argv);
+void  fork_api_server(void);
 int   init_main(Buffer file);
 void  term_main(int code);
 

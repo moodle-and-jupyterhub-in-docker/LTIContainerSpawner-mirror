@@ -124,6 +124,7 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
                 if (lst==NULL) {
                     lst = strncasecmp_tList(lproxy, "/", 0, 1);
                 }
+                if (lst==NULL) break;
 
                 // ヘッダ変更
                 if (hdr->ldat.id>HTTP_UNKNOWN_METHOD) {

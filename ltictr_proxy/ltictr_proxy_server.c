@@ -1,10 +1,10 @@
 /*  
     Proxy Server for JupyterHub and LTIContainerSpawner 
         
-                by Fumi.Iseki '22 02/04   BSD License.
+                by Fumi.Iseki '22 02/12   BSD License.
 */
 
-#define  LTICTR_PROXY_VERSION   "1.0.1"
+#define  LTICTR_PROXY_VERSION   "1.0.2"
 
 
 #include "ltictr_proxy.h"
@@ -42,6 +42,8 @@ SSL_CTX* ClientCTX      = NULL;
 tList*   ProxyList      = NULL;
 tList*   PIDList        = NULL;
 
+char**   PTR_argv       = NULL;
+
 //int      Logtype        = LOG_ERR;
 
 //default config value
@@ -68,8 +70,10 @@ int main(int argc, char** argv)
     int    sport = 0;
     struct passwd* pw;
 
-    ProxyList  = add_tList_node_anchor();
-    PIDList    = add_tList_node_anchor();
+    ProxyList = add_tList_node_anchor();
+    PIDList   = add_tList_node_anchor();
+
+    PTR_argv  = argv;
 
     Buffer hosturl;
     Buffer apiurl;
@@ -187,6 +191,7 @@ int main(int argc, char** argv)
     sigaction(SIGTERM, &sa, NULL);
     #
     set_sigterm_child(sig_child);       // Setting of proxy process is terminated
+    set_sigsegv_handler(sig_segmen);
 
     //
     // PID file
@@ -238,24 +243,7 @@ int main(int argc, char** argv)
     //////////////////////////////////////////////////
     // API Server Process の起動
     if (APIServerExec==ON) {
-        //
-        DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] Start LTICTR_API_SERVER.\n");
-        APIChildPID = fork();
-        if (APIChildPID==0) {
-            Buffer compath = make_Buffer(LPATH);
-            char* path = get_file_path(argv[0]);
-            if (path!=NULL) {
-                copy_s2Buffer(path, &compath);
-                free(path);
-            }
-            cat_s2Buffer(API_SERVER_NAME, &compath);
-            //
-            argv[0] = dup_str(API_SERVER_NAME);
-            execv((char*)compath.buf, argv);
-            free_Buffer(&compath);
-            _exit(0);
-        }
-        add_tList_node_int(PIDList, (int)APIChildPID, 0);
+        fork_api_server();
     }
 
     //
@@ -285,6 +273,31 @@ int main(int argc, char** argv)
     term_main(99999);
     //
     exit(0);
+}
+
+
+
+void fork_api_server()
+{
+    DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] Start LTICTR_API_SERVER.\n");
+    APIChildPID = fork();
+    if (APIChildPID==0) {
+        Buffer compath = make_Buffer(LPATH);
+        char* path = get_file_path(PTR_argv[0]);
+        if (path!=NULL) {
+            copy_s2Buffer(path, &compath);
+            free(path);
+        }
+        cat_s2Buffer(API_SERVER_NAME, &compath);
+        //
+        PTR_argv[0] = dup_str(API_SERVER_NAME);
+        execv((char*)compath.buf, PTR_argv);
+        free_Buffer(&compath);
+        _exit(0);
+    }
+    add_tList_node_int(PIDList, (int)APIChildPID, 0);
+
+    return;
 }
 
 
@@ -369,7 +382,7 @@ void  sig_term(int signal)
 
 
 //
-// Termination of proxy process
+// Termination of child proxy process
 //
 void  sig_child(int signal)
 {
@@ -380,7 +393,11 @@ void  sig_child(int signal)
     while(pid>0) {
         tList* lst = search_id_tList(PIDList, pid, 1);
         if (lst!=NULL) del_tList_node(&lst);
-        if (pid==APIChildPID) sig_term(signal);
+        if (pid==APIChildPID) {
+            print_message("[LTICTR_PROXY_SERVER] SIGCHILD: API Server is down!!\n");
+            sig_term(signal);
+            //fork_api_server();
+        }
         //DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] SIGCHILD: signal = %d (%d)\n", signal, pid);
         //
         pid = waitpid(-1, &ret, WNOHANG);
@@ -388,4 +405,22 @@ void  sig_child(int signal)
 
     return;
 }
+
+
+
+//
+// Termination of proxy process
+//
+void  sig_segmen(int signal)
+{
+    pid_t pid = getpid();
+
+    print_message("[LTICTR_PROXT_SERVER] **********************************************************\n");
+    if (pid==RootPID) print_message("[LTICTR_PROXY_SERVER] Segmentation Falt in Main Process [%d] !!!!!\n", pid);
+    else              print_message("[LTICTR_PROXY_SERVER] Segmentation Falt in Child Process [%d] !!!!!\n", pid);
+    print_message("[LTICTR_PROXT_SERVER] **********************************************************\n");
+
+    sig_term(signal);
+}
+
 

@@ -1,10 +1,10 @@
 /*  
     API Server for JupyterHub and LTIContainerSpawner
         
-                by Fumi.Iseki '22 02/05   BSD License.
+                by Fumi.Iseki '22 02/12   BSD License.
 */
 
-#define  LTICTR_API_VERSION "1.0.0"
+#define  LTICTR_API_VERSION "1.0.1"
 
 
 #include "ltictr_api_server.h"
@@ -135,6 +135,8 @@ int main(int argc, char** argv)
     sigaction(SIGINT,  &sa, NULL);      // ^C
     sigaction(SIGTERM, &sa, NULL);
 
+    set_sigsegv_handler(sig_segmen);
+
     //
     // PID file
     FILE* fp = fopen((char*)PIDFile, "w");
@@ -261,5 +263,20 @@ void  sig_term(int signal)
     if (signal==SIGTERM) signal = 0;    // by systemctl stop ....
 
     exit(signal);
+}
+
+
+//
+// Termination of proxy process
+//
+void  sig_segmen(int signal)
+{
+    pid_t pid = getpid();
+
+    print_message("[LTICTR_API_SERVER] **********************************************************\n");
+    print_message("[LTICTR_API_SERVER] Segmentation Falt in Main Process [%d] !!!!!\n", pid);
+    print_message("[LTICTR_API_SERVER] **********************************************************\n");
+
+    sig_term(signal);
 }
 
