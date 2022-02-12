@@ -8,13 +8,6 @@
 # cd lticontainerspawner
 # make install
 ```
-##### for JupyterHub 
-``` 
-# vi /usr/local/etc/jupyter_XXX_config.py
-# vi /usr/lib/systemd/system/jupyterhub.service
-# systemctl enable jupyterhub.service
-# systemctl start  jupyterhub.service
-```
 
 ##### for Ltictr_Proxy
 ```
@@ -23,6 +16,15 @@
 # systemctl enable ltictr_proxy.service
 # systemctl start  ltictr_proxy.service
 ```
+
+##### for JupyterHub 
+``` 
+# vi /usr/local/etc/jupyter_XXX_config.py
+# vi /usr/lib/systemd/system/jupyterhub.service
+# systemctl enable jupyterhub.service
+# systemctl start  jupyterhub.service
+```
+
 
 
 
