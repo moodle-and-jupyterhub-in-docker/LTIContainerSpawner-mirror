@@ -161,9 +161,9 @@ int main(int argc, char** argv)
     }
 
     //
-    if (pidfile.buf  !=NULL) PIDFile     = (char*)pidfile.buf;
-    if (certfile.buf !=NULL) TLS_CertPem = (char*)certfile.buf;
-    if (keyfile.buf  !=NULL) TLS_KeyPem  = (char*)keyfile.buf;
+    if (pidfile.buf !=NULL) PIDFile     = (char*)pidfile.buf;
+    if (certfile.buf!=NULL) TLS_CertPem = (char*)certfile.buf;
+    if (keyfile.buf !=NULL) TLS_KeyPem  = (char*)keyfile.buf;
 
     //
     // Initialization

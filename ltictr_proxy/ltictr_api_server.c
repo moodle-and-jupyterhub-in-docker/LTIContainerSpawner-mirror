@@ -41,7 +41,7 @@ int main(int argc, char** argv)
     int    aport = 0;
     struct passwd* pw;
 
-    Buffer apihost;
+    Buffer api_url;
     Buffer efctvuser;
     Buffer pidfile;
     Buffer certfile;
@@ -49,7 +49,7 @@ int main(int argc, char** argv)
     Buffer configfile;
 
     // for arguments
-    apihost    = init_Buffer();
+    api_url    = init_Buffer();
     efctvuser  = init_Buffer();
     pidfile    = init_Buffer();
     certfile   = init_Buffer();
@@ -57,7 +57,7 @@ int main(int argc, char** argv)
     configfile = init_Buffer();
 
     for (int i=1; i<argc; i++) {
-        if      (!strcmp(argv[i],"-a")) {if (i!=argc-1) apihost   = make_Buffer_bystr(argv[i+1]);}
+        if      (!strcmp(argv[i],"-a")) {if (i!=argc-1) api_url   = make_Buffer_bystr(argv[i+1]);}
         else if (!strcmp(argv[i],"-u")) {if (i!=argc-1) efctvuser = make_Buffer_bystr(argv[i+1]);}
         else if (!strcmp(argv[i],"-d")) DebugMode = ON;
         else if (!strcmp(argv[i],"--version")) version = ON;
@@ -70,7 +70,7 @@ int main(int argc, char** argv)
         //
         //else if (*argv[i]=='-') {
         //    print_message("[LTICTR_API_SERVER] Unknown argument: %s\n", argv[i]);
-        //    free_Buffer(&apihost);
+        //    free_Buffer(&api_url);
         //    break;
         //}
     }
@@ -78,7 +78,7 @@ int main(int argc, char** argv)
         printf("%s\n", LTICTR_API_VERSION);
         exit(0);
     }
-    if (apihost.buf==NULL) {
+    if (api_url.buf==NULL) {
         print_message("Usage... %s -a [api_url:]port [-u user] [-d] [--apid pid_file] [--conf config_file] [--cert cert_file] [--key key_file]\n", argv[0]);
         exit(1);
     }
@@ -86,16 +86,16 @@ int main(int argc, char** argv)
     // SYSLOG
     //openlog("ltictr_api_server", LOG_PERROR|LOG_PID, LOG_AUTH);
 
-    if (strstr((char*)apihost.buf, ":")!=NULL) {
+    if (strstr((char*)api_url.buf, ":")!=NULL) {
         Buffer protocol = init_Buffer();
         unsigned short port;
-        decomp_url(apihost, NULL, &protocol, NULL, &port, NULL);
+        decomp_url(api_url, NULL, &protocol, NULL, &port, NULL);
         if (ex_strcmp("https", (char*)protocol.buf)) APIPortSSL = ON;
         free_Buffer(&protocol);
         aport = (int)port;
     }
     else {
-        aport = atoi((char*)apihost.buf);
+        aport = atoi((char*)api_url.buf);
     }
     if (aport<=0) {
         //syslog(Logtype, "API Server Port num = (%d). Can not open port.", aport);
@@ -103,9 +103,9 @@ int main(int argc, char** argv)
         sig_term(-1);
     }
 
-    if (pidfile.buf  !=NULL) PIDFile     = (char*)pidfile.buf;
-    if (certfile.buf !=NULL) TLS_CertPem = (char*)certfile.buf;
-    if (keyfile.buf  !=NULL) TLS_KeyPem  = (char*)keyfile.buf;
+    if (pidfile.buf !=NULL) PIDFile     = (char*)pidfile.buf;
+    if (certfile.buf!=NULL) TLS_CertPem = (char*)certfile.buf;
+    if (keyfile.buf !=NULL) TLS_KeyPem  = (char*)keyfile.buf;
     //
     ProxyList = add_tList_node_anchor();
 
