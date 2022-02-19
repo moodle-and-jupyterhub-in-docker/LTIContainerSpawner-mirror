@@ -10,7 +10,7 @@
 #define  TO_SERVER          1
 
 #define  LTICTR_IDLETIME    900      // 15m
-#define  LTICTR_TIMEOUT     3        // 3s
+#define  LTICTR_TIMEOUT     30       // 30s
 
 
 extern char*  API_Token;
