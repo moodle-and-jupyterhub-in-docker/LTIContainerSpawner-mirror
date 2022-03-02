@@ -517,6 +517,7 @@ class LTIPodmanSpawner(Spawner):
     #
     #
     use_group      = Bool(True, config = True)
+    default_group  = Unicode('users', config = True)
     group_home_dir = Unicode('/home/{groupname}', config = True)
     user_home_dir  = Unicode('/home/{groupname}/{username}', config = True)
     projects_dir   = Unicode('jupyter', config = True)
@@ -608,7 +609,7 @@ class LTIPodmanSpawner(Spawner):
 
 
     def get_lms_userinfo(self):
-        group_name = 'users'
+        group_name = self.default_group
         userinfo = {}
         #
         userinfo['uid']   = self.base_id + int(self.lms_user_id)
@@ -1145,14 +1146,15 @@ class LTIPodmanSpawner(Spawner):
 c.LTIPodmanSpawner.use_group = True
 
 # Volumes are mounted at /user_home_dir/projects_dir/works_dir/volumes_dir
+default_group  = 'users'                        # podman ホストに存在しないユーザ（ID不明）のグループ（予め作って置く）
 group_home_dir = '/home/{groupname}'
 user_home_dir  = group_home_dir + '/{username}'
 projects_dir   = 'jupyter'
 works_dir      = 'works'
 volumes_dir    = '.volumes'
 #
-teacher_gid    = 7000                        # 1000以上で，システムで使用していないGID
-base_id        = 30000                       # ID 不明の場合に，基底となる ID番号．システムで使用されていない部分．
+teacher_gid    = 7000                           # 1000以上で，システムで使用していないGID
+base_id        = 30000                          # ID 不明の場合に，基底となる ID番号．システムで使用されていない部分．
 
 time_zone      = 'JST-9'
 
@@ -1167,7 +1169,7 @@ c.LTIPodmanSpawner.base_id       = base_id
 
 #
 c.Spawner.environment = {
-    'GRANT_SUDO'      : 'no',                  # 通常使用では 'no'
+    'GRANT_SUDO'      : 'no',                   # 通常使用では 'no'
     'PRJCT_DIR'       : projects_dir,
     'WORK_DIR'        : works_dir,
     'VOLUME_DIR'      : volumes_dir,
@@ -1325,7 +1327,7 @@ c.LTIPodmanSpawner.notebook_dir = notebook_dir
 #c.JupyterHub.ssl_cert = '/etc/letsencrypt/live/gitlab.nsl.tuis.ac.jp/cert.pem'
 #c.JupyterHub.ssl_cert = '/etc/pki/tls/certs/server.pem'
 #c.JupyterHub.ssl_cert = '/etc/pki/ssl/cert.pem'
-c.JupyterHub.ssl_cert = '/etc/letsencrypt/live/jupyterhub.nsl.tuis.ac.jp/cert.pem'
+c.JupyterHub.ssl_cert = '/etc/letsencrypt/live/jupyterhub.nsl.tuis.ac.jp/fullchain.pem'
 
 ## Path to SSL key file for the public facing interface of the proxy
 #  
