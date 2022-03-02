@@ -557,7 +557,7 @@ c.ConfigurableHTTPProxy.pid_file = '/var/run/jupyterhub-proxy.pid'
 #c.JupyterHub.cleanup_proxy = False
 #c.ConfigurableHTTPProxy.should_start = False
 #c.ConfigurableHTTPProxy.api_url = 'http://localhost:8001'
-#c.ConfigurableHTTPProxy.auth_token = "ABCDEFG
+#c.ConfigurableHTTPProxy.auth_token = "ABCDEFG"
 
 
 ## Expiry (in seconds) of OAuth access tokens.
