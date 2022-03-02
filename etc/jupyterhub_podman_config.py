@@ -399,6 +399,13 @@ c.JupyterHub.init_spawners_timeout = 30
 c.JupyterHub.pid_file = '/var/run/jupyterhub.pid'
 c.ConfigurableHTTPProxy.pid_file = '/var/run/jupyterhub-proxy.pid'
 
+## for Ltictr_Proxy
+#c.JupyterHub.cleanup_proxy = False
+#c.ConfigurableHTTPProxy.should_start = False
+#c.ConfigurableHTTPProxy.api_url = 'http://localhost:8001'
+#c.ConfigurableHTTPProxy.auth_token = "ABCDEFG"
+
+
 ## The public facing port of the proxy.
 #  
 #  This is the port on which the proxy will listen. This is the only port through
