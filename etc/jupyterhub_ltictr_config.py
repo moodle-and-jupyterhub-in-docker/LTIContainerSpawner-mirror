@@ -1832,6 +1832,7 @@ time_zone      = 'JST-9'
 
 #
 # for LTIDockerSpawner
+c.LTIDockerSpawner.default_group = default_group
 c.LTIDockerSpawner.user_home_dir = user_home_dir
 c.LTIDockerSpawner.projects_dir  = projects_dir
 c.LTIDockerSpawner.works_dir     = works_dir
@@ -1847,6 +1848,7 @@ c.DockerSpawner.notebook_dir = notebook_dir
 
 #
 # for LTIPodmanSpawner
+c.LTIPodmanSpawner.default_group = default_group
 c.LTIPodmanSpawner.user_home_dir = user_home_dir
 c.LTIPodmanSpawner.projects_dir  = projects_dir
 c.LTIPodmanSpawner.works_dir     = works_dir

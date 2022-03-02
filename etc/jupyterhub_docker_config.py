@@ -984,6 +984,7 @@ time_zone      = 'JST-9'
 
 #
 notebook_dir = user_home_dir
+c.LTIDockerSpawner.default_group = default_group
 c.LTIDockerSpawner.user_home_dir = user_home_dir
 c.LTIDockerSpawner.projects_dir  = projects_dir
 c.LTIDockerSpawner.works_dir     = works_dir

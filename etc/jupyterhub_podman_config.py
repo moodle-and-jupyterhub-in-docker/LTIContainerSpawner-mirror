@@ -1160,6 +1160,7 @@ time_zone      = 'JST-9'
 
 #
 notebook_dir = user_home_dir
+c.LTIPodmanSpawner.default_group = default_group
 c.LTIPodmanSpawner.user_home_dir = user_home_dir
 c.LTIPodmanSpawner.projects_dir  = projects_dir
 c.LTIPodmanSpawner.works_dir     = works_dir
