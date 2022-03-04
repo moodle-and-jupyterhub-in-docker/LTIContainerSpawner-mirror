@@ -467,7 +467,7 @@ c.ConfigurableHTTPProxy.pid_file = '/var/run/jupyterhub-proxy.pid'
 #   thanks very much for him and his works!!
 #                      https://github.com/gatoniel/podmanspawner
 #
-# LTIPodmanSpawner v1.0.0 (popen version) for LTI by Fumi.Iseki
+# LTIPodmanSpawner v1.0.1 (popen version) for LTI by Fumi.Iseki
 #
 #                                      BSD License.
 #
