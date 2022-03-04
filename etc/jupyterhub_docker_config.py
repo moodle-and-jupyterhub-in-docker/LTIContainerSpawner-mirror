@@ -554,8 +554,8 @@ class LTIDockerSpawner(DockerSpawner):
     user_id     = -1
     group_id    = -1
     group_name  = ''
-    lms_user_id = ''
-    course_id   = ''
+    lms_user_id = '0'
+    course_id   = '0'
     host_name   = ''
     host_url    = ''
     userdata    = {}
@@ -584,7 +584,7 @@ class LTIDockerSpawner(DockerSpawner):
         self.user_id     = -1
         self.group_id    = -1
         self.group_name  = ''
-        self.lms_user_id = ''
+        self.lms_user_id = '0'
         self.course_id   = '0'
         self.host_name   = 'localhost'
         self.host_url    = 'http://localhost'
