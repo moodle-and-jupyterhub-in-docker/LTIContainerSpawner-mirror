@@ -13,6 +13,7 @@ PIDFile = /var/run/jupyterhub.pid
 ExecStart = /usr/local/bin/jupyterhub -f /usr/local/etc/jupyterhub_docker_config.py
 #ExecStart = /usr/local/bin/jupyterhub -f /usr/local/etc/jupyterhub_podman_config.py
 WorkingDirectory = /var/lib/jupyterhub
+Restart = always
 
 [Install]
 WantedBy = multi-user.target
