@@ -12,6 +12,7 @@ N_FAC="$2"
 
 FLS=`ls -l . 2>/dev/null |grep ^- | awk -F" " '{print $9}'`
 
+IFS=$'\n'
 if [ "$FLS" != "" ]; then
     if [ -e $D_DIR ]; then
         for FL in $FLS ; do

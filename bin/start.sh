@@ -2,11 +2,14 @@
 # Copyright (c) Jupyter Development Team.
 # Distributed under the terms of the Modified BSD License.
 #
-# /usr/local/bin/start.sh   2022 01/13 v1.0.0
-#       This is modified by Fumi.Iseki for LTIDockerSpawner/LTIPodmanSpawner
+# /usr/local/bin/start.sh   
+#    This is modified by Fumi.Iseki for LTIDockerSpawner/LTIPodmanSpawner
+#       v1.0.0  2022 01/13
+#       v1.0.1  2022 04/18
 #
 
 PRG_NAME="start.sh"
+IFS=$'\n'
 
 set -e
 

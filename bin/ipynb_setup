@@ -12,6 +12,7 @@ N_FAC="$2"
 
 FLS=`find $T_DIR -type f -name "*.ipynb" 2>/dev/null | grep -v "\/\."`
 
+IFS=$'\n'
 if [ "$FLS" != "" ]; then
     for FL in $FLS ; do
         echo "setup ... "$FL
