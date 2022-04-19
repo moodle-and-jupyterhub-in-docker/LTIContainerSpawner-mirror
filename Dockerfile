@@ -34,7 +34,7 @@ RUN  chmod a+rx /usr/local/bin/* \
   && chmod a+r  /etc/skel/.vimrc /etc/skel/.bash* \
   && true
 
-RUN  /opt/conda/bin/conda install --prefix /opt/conda conda==4.11.0 -y \
+RUN  /opt/conda/bin/conda install --prefix /opt/conda conda=4.12.0 -y \
   && /opt/conda/bin/conda update  --prefix /opt/conda -c conda-forge jupyterhub -y \
   && /opt/conda/bin/conda update  --prefix /opt/conda -c conda-forge jupyterlab -y \
   && /opt/conda/bin/conda install --prefix /opt/conda jupyterhub-singleuser -y \

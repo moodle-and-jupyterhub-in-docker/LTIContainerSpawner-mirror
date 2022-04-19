@@ -13,7 +13,7 @@ FROM jupyterhub-ltids/jupyter-base:20211207
 
 USER root
 
-RUN  /opt/conda/bin/conda install --prefix /opt/conda conda==4.11.0 -y \
+RUN  /opt/conda/bin/conda install --prefix /opt/conda conda==4.12.0 -y \
   && /opt/conda/bin/conda update  --prefix /opt/conda -c conda-forge jupyterhub -y \
   && /opt/conda/bin/conda update  --prefix /opt/conda -c conda-forge jupyterlab -y \
   && /opt/conda/bin/conda install --prefix /opt/conda -c conda-forge nbgrader -y \

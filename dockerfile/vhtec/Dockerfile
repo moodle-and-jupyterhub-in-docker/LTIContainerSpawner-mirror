@@ -23,7 +23,8 @@ RUN wget https://github.com/zeromq/zeromq4-1/releases/download/v4.1.5/zeromq-4.1
  && rm -r zeromq-4.1.5 zeromq-4.1.5.tar.gz \
  && true
 
-RUN git clone git://github.com/mkoppanen/php-zmq.git \
+#RUN git clone git://github.com/mkoppanen/php-zmq.git 
+RUN git clone https://github.com/zeromq/php-zmq.git \
  && cd php-zmq \
  && phpize && ./configure \
  && make \

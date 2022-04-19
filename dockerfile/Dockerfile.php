@@ -30,7 +30,7 @@ RUN  chmod a+rx /usr/local/bin/* \
   && chmod a+r  /etc/skel/.vimrc /etc/skel/.bash* \
   && true
 
-RUN  /opt/conda/bin/conda install --prefix /opt/conda conda==4.11.0 -y \
+RUN  /opt/conda/bin/conda install --prefix /opt/conda conda==4.12.0 -y \
   && /opt/conda/bin/conda update  --prefix /opt/conda -c conda-forge jupyterhub -y \
   && /opt/conda/bin/conda update  --prefix /opt/conda -c conda-forge jupyterlab -y \
   && /opt/conda/bin/conda install --prefix /opt/conda jupyterlab-language-pack-ja-JP -y \
@@ -64,7 +64,8 @@ RUN wget https://github.com/zeromq/zeromq4-1/releases/download/v4.1.5/zeromq-4.1
   && rm -r zeromq-4.1.5 zeromq-4.1.5.tar.gz \
   && true
 
-RUN git clone git://github.com/mkoppanen/php-zmq.git \
+#RUN git clone git://github.com/mkoppanen/php-zmq.git 
+RUN git clone https://github.com/zeromq/php-zmq.git \
   && cd php-zmq \
   && phpize && ./configure \
   && make \
