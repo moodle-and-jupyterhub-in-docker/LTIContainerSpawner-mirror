@@ -54,6 +54,8 @@ clean:
 #
 ipynb_conv: ipynb_conv.o  $(LIB_BSC)
 	$(CC) $(@).o $(ELIB) $(SLIB) -O2 -o $@   
+	strip ipynb_conv
+	cp ipynb_conv ../bin
 
 json_file: json_file.o  $(LIB_BSC)
 	$(CC) $(@).o $(ELIB) $(SLIB) -O2 -o $@ 

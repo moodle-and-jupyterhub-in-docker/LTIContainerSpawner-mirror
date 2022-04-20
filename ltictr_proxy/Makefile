@@ -62,10 +62,12 @@ $(LIB_EXT): $(LIB_DIR)/Makefile
 ltictr_proxy_server: $(LIB_BSC) $(LIB_EXT) ltictr_proxy_server.o ltictr_proxy.o ltictr_relay.o ltictr_xmlrpc.o ltictr_ws.o
 	$(CC) $(@).o ltictr_proxy.o ltictr_relay.o ltictr_xmlrpc.o ltictr_ws.o $(ELIB) $(SLIB) -O2 -o $@ 
 	strip ltictr_proxy_server
+	cp ltictr_proxy_server ../bin
 
 ltictr_api_server: $(LIB_BSC) $(LIB_EXT) ltictr_api_server.o ltictr_api.o 
 	$(CC) $(@).o ltictr_api.o $(ELIB) $(SLIB) -O2 -o $@ 
 	strip ltictr_api_server
+	cp ltictr_api_server ../bin
 
 
 
