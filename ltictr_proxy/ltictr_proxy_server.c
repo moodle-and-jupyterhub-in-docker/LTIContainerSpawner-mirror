@@ -44,6 +44,9 @@ tList*   PIDList        = NULL;
 
 char**   PTR_argv       = NULL;
 
+int      NoSigchld      = OFF;
+int      PendingSigchld = 0;
+
 //int      Logtype        = LOG_ERR;
 
 //default config value
@@ -264,8 +267,14 @@ int main(int argc, char** argv)
         close(Sofd);    // don't use socket_close() !
         Sofd = 0;
 
+        NoSigchld = ON;
         tList* lp = find_tList_end(PIDList);
         add_tList_node_int(lp, (int)pid, 0);
+        NoSigchld = OFF;
+        if (PendingSigchld>0) {
+            sig_child(PendingSigchld);
+            PendingSigchld = 0;
+        }
     }
 
     // Unreachable
@@ -386,6 +395,11 @@ void  sig_term(int signal)
 //
 void  sig_child(int signal)
 {
+    if (NoSigchld==ON) {
+        PendingSigchld = signal;
+        return;
+    }
+
     pid_t pid = 0;
 
     int ret;
