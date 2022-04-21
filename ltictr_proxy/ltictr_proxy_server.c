@@ -261,6 +261,7 @@ int main(int argc, char** argv)
 
     // main loop
     Loop {
+        print_message("[LTICTR_PROXY_SERVER] Start process loop\n");
         Sofd = accept_intr(Nofd, &cl_addr, &cdlen);
         if (Sofd<0) {
             //syslog(Logtype, "Failure to connect from client. [%s]", strerror(errno));
@@ -273,19 +274,16 @@ int main(int argc, char** argv)
         close(Sofd);    // don't use socket_close() !
         Sofd = 0;
 
-print_message("[LTICTR_PROXY_SERVER] 00000000000000.\n");
-        //NoSigchld = ON;
+        NoSigchld = ON;
         tList* lp = find_tList_end(PIDList);
-print_message("[LTICTR_PROXY_SERVER] 11111111111111.\n");
         add_tList_node_int(lp, (int)pid, 0);
-print_message("[LTICTR_PROXY_SERVER] 22222222222222.\n");
-        /*
         NoSigchld = OFF;
         if (PendingSigchld>0) {
             sig_child(PendingSigchld);
             PendingSigchld = 0;
         }
-        */
+
+        print_message("[LTICTR_PROXY_SERVER] Stop process loop\n");
     }
 
     // Unreachable
@@ -407,7 +405,7 @@ void  sig_term(int signal)
 //
 void  sig_child(int signal)
 {
-print_message("[LTICTR_PROXY_SERVER] SIGCHILD: AAAAAAAAAAAAAA\n");
+    print_message("[LTICTR_PROXY_SERVER] SIGCHILD: Start sig_child\n");
     if (NoSigchld==ON) {
         PendingSigchld = signal;
         return;
@@ -415,15 +413,12 @@ print_message("[LTICTR_PROXY_SERVER] SIGCHILD: AAAAAAAAAAAAAA\n");
 
     pid_t pid = 0;
 
-print_message("[LTICTR_PROXY_SERVER] SIGCHILD: BBBBBBBBBBBBBB\n");
     int ret;
     pid = waitpid(-1, &ret, WNOHANG);
     while(pid>0) {
-print_message("[LTICTR_PROXY_SERVER] SIGCHILD: CCCCCCCCCCCCCC\n");
+        print_message("[LTICTR_PROXY_SERVER] SIGCHILD: Exited child is %d\n", pid);
         tList* lst = search_id_tList(PIDList, pid, 1);
-print_message("[LTICTR_PROXY_SERVER] SIGCHILD: DDDDDDDDDDDDDD %16lx\n", lst);
         if (lst!=NULL) del_tList_node(&lst);
-print_message("[LTICTR_PROXY_SERVER] SIGCHILD: EEEEEEEEEEEEEE\n");
         if (pid==APIChildPID) {
             print_message("[LTICTR_PROXY_SERVER] SIGCHILD: API Server is down!!\n");
             sig_term(signal);
@@ -434,6 +429,7 @@ print_message("[LTICTR_PROXY_SERVER] SIGCHILD: EEEEEEEEEEEEEE\n");
         pid = waitpid(-1, &ret, WNOHANG);
     }
 
+    print_message("[LTICTR_PROXY_SERVER] SIGCHILD: Stop sig_child\n");
     return;
 }
 
