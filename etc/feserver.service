@@ -12,6 +12,7 @@ User=root
 PIDFile = /var/run/fesvr.pid
 ExecStart = /usr/local/bin/fesvr -h ${SERVER} -p ${CPORT} -m /usr/local/bin/feplg_nbws.so -c -s --conf /usr/local/etc/nbws.conf -f /var/run/fesvr.pid
 WorkingDirectory = /tmp
+Restart = always
 
 [Install]
 WantedBy = multi-user.target
