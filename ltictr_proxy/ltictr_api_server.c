@@ -11,10 +11,11 @@
 #include "ltictr_api.h"
 
 
-#define  LTICTR_PID_FILE    "LTICTR_API_PID_File"
-#define  LTICTR_SERVER_CERT "LTICTR_Server_Cert"
-#define  LTICTR_PRIVATE_KEY "LTICTR_Private_Key"
-#define  LTICTR_API_TOKEN   "LTICTR_API_Token"
+#define  LTICTR_PID_FILE     "LTICTR_API_PID_File"
+#define  LTICTR_SERVER_CERT  "LTICTR_Server_Cert"
+#define  LTICTR_SERVER_CHAIN "LTICTR_Server_Chain"
+#define  LTICTR_PRIVATE_KEY  "LTICTR_Private_Key"
+#define  LTICTR_API_TOKEN    "LTICTR_API_Token"
 
 
 int      Nofd = 0, Aofd = 0;
@@ -29,6 +30,7 @@ tList*   ProxyList      = NULL;
 // default config value
 char*    PIDFile        = "/var/run/ltictr_api.pid";
 char*    TLS_CertPem    = "/etc/pki/tls/certs/server.pem";
+char*    TLS_ChainPem   = NULL;
 char*    TLS_KeyPem     = "/etc/pki/tls/private/key.pem";
 char*    API_Token      = "default_token";
 
@@ -45,6 +47,7 @@ int main(int argc, char** argv)
     Buffer efctvuser;
     Buffer pidfile;
     Buffer certfile;
+    Buffer chainfile;
     Buffer keyfile;
     Buffer configfile;
 
@@ -53,6 +56,7 @@ int main(int argc, char** argv)
     efctvuser  = init_Buffer();
     pidfile    = init_Buffer();
     certfile   = init_Buffer();
+    chainfile  = init_Buffer();
     keyfile    = init_Buffer();
     configfile = init_Buffer();
 
@@ -64,6 +68,7 @@ int main(int argc, char** argv)
         //
         else if (!strcmp(argv[i],"--apid"))   {if (i!=argc-1) pidfile    = make_Buffer_bystr(argv[i+1]);}
         else if (!strcmp(argv[i],"--cert"))   {if (i!=argc-1) certfile   = make_Buffer_bystr(argv[i+1]);}
+        else if (!strcmp(argv[i],"--chain"))  {if (i!=argc-1) chainfile  = make_Buffer_bystr(argv[i+1]);}
         else if (!strcmp(argv[i],"--key"))    {if (i!=argc-1) keyfile    = make_Buffer_bystr(argv[i+1]);}
         else if (!strcmp(argv[i],"--conf"))   {if (i!=argc-1) configfile = make_Buffer_bystr(argv[i+1]);}
         else if (!strcmp(argv[i],"--config")) {if (i!=argc-1) configfile = make_Buffer_bystr(argv[i+1]);}
@@ -79,7 +84,7 @@ int main(int argc, char** argv)
         exit(0);
     }
     if (api_url.buf==NULL) {
-        print_message("Usage... %s -a [api_url:]port [-u user] [-d] [--apid pid_file] [--conf config_file] [--cert cert_file] [--key key_file]\n", argv[0]);
+        print_message("Usage... %s -a [api_url:]port [-u user] [-d] [--apid pid_file] [--conf config_file] [--cert cert_file] [--key key_file] [--chain chain_file]\n", argv[0]);
         exit(1);
     }
 
@@ -103,9 +108,10 @@ int main(int argc, char** argv)
         sig_term(-1);
     }
 
-    if (pidfile.buf !=NULL) PIDFile     = (char*)pidfile.buf;
-    if (certfile.buf!=NULL) TLS_CertPem = (char*)certfile.buf;
-    if (keyfile.buf !=NULL) TLS_KeyPem  = (char*)keyfile.buf;
+    if (pidfile.buf  !=NULL) PIDFile      = (char*)pidfile.buf;
+    if (certfile.buf !=NULL) TLS_CertPem  = (char*)certfile.buf;
+    if (chainfile.buf!=NULL) TLS_ChainPem = (char*)chainfile.buf;
+    if (keyfile.buf  !=NULL) TLS_KeyPem   = (char*)keyfile.buf;
     //
     ProxyList = add_tList_node_anchor();
 
@@ -167,7 +173,7 @@ int main(int argc, char** argv)
     // for SSL/TLS
     if (APIPortSSL==ON) {
         ssl_init();
-        APIPortCTX = ssl_server_setup(TLS_CertPem, TLS_KeyPem);
+        APIPortCTX = ssl_server_setup(TLS_CertPem, TLS_KeyPem, TLS_ChainPem);
     }
 
     // socket open for client
@@ -220,10 +226,11 @@ int  init_main(Buffer configfile)
         filelist = read_index_tList_file((char*)configfile.buf, '=');
         //
         if (filelist!=NULL) {
-            PIDFile     = get_str_param_tList (filelist, LTICTR_PID_FILE,    PIDFile);
-            TLS_CertPem = get_str_param_tList (filelist, LTICTR_SERVER_CERT, TLS_CertPem);
-            TLS_KeyPem  = get_str_param_tList (filelist, LTICTR_PRIVATE_KEY, TLS_KeyPem);
-            API_Token   = get_str_param_tList (filelist, LTICTR_API_TOKEN,   API_Token);
+            PIDFile      = get_str_param_tList (filelist, LTICTR_PID_FILE,     PIDFile);
+            TLS_CertPem  = get_str_param_tList (filelist, LTICTR_SERVER_CERT,  TLS_CertPem);
+            TLS_ChainPem = get_str_param_tList (filelist, LTICTR_SERVER_CHAIN, TLS_ChainPem);
+            TLS_KeyPem   = get_str_param_tList (filelist, LTICTR_PRIVATE_KEY,  TLS_KeyPem);
+            API_Token    = get_str_param_tList (filelist, LTICTR_API_TOKEN,    API_Token);
             //
             del_tList(&filelist);
         }

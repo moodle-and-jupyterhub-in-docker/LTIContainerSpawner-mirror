@@ -13,6 +13,7 @@
 
 #define  LTICTR_PID_FILE        "LTICTR_PID_File"
 #define  LTICTR_SERVER_CERT     "LTICTR_Server_Cert"
+#define  LTICTR_SERVER_CHAIN    "LTICTR_Server_Chain"
 #define  LTICTR_PRIVATE_KEY     "LTICTR_Private_Key"
 #define  LTICTR_API_TOKEN       "LTICTR_API_Token"
 
@@ -52,6 +53,7 @@ int      PendingSigchld = 0;
 //default config value
 char*    PIDFile        = "/var/run/ltictr_proxy.pid";
 char*    TLS_CertPem    = "/etc/pki/tls/certs/server.pem";
+char*    TLS_ChainPem   = NULL;
 char*    TLS_KeyPem     = "/etc/pki/tls/private/key.pem";
 char*    API_Token      = "default_token";
 
@@ -83,6 +85,7 @@ int main(int argc, char** argv)
     Buffer efctvuser;
     Buffer pidfile;
     Buffer certfile;
+    Buffer chainfile;
     Buffer keyfile;
     Buffer configfile;
 
@@ -92,6 +95,7 @@ int main(int argc, char** argv)
     efctvuser  = init_Buffer();
     pidfile    = init_Buffer();
     certfile   = init_Buffer();
+    chainfile  = init_Buffer();
     keyfile    = init_Buffer();
     configfile = init_Buffer();
 
@@ -110,6 +114,7 @@ int main(int argc, char** argv)
 
         else if (!strcmp(argv[i],"--pid"))    {if (i!=argc-1) pidfile    = make_Buffer_bystr(argv[i+1]);}
         else if (!strcmp(argv[i],"--cert"))   {if (i!=argc-1) certfile   = make_Buffer_bystr(argv[i+1]);}
+        else if (!strcmp(argv[i],"--chain"))  {if (i!=argc-1) chainfile  = make_Buffer_bystr(argv[i+1]);}
         else if (!strcmp(argv[i],"--key"))    {if (i!=argc-1) keyfile    = make_Buffer_bystr(argv[i+1]);}
         else if (!strcmp(argv[i],"--conf"))   {if (i!=argc-1) configfile = make_Buffer_bystr(argv[i+1]);}
         else if (!strcmp(argv[i],"--config")) {if (i!=argc-1) configfile = make_Buffer_bystr(argv[i+1]);}
@@ -126,7 +131,7 @@ int main(int argc, char** argv)
     }
     if (sport==0) {
         print_message("Usage... %s -p client_side_port [-c] [-h host_url[:port]] [-a [api_url:]port] [-u user] [-d] \n", argv[0]);
-        print_message("                  [--noexecapi] [--chunked] [--conf config_file] [--cert cert_file] [--key key_file] [--pid pid_file]\n");
+        print_message("               [--noexecapi] [--chunked] [--conf config_file] [--cert cert_file] [--key key_file] [--chain chain_file] [--pid pid_file]\n");
         exit(1);
     }
     //
@@ -164,9 +169,10 @@ int main(int argc, char** argv)
     }
 
     //
-    if (pidfile.buf !=NULL) PIDFile     = (char*)pidfile.buf;
-    if (certfile.buf!=NULL) TLS_CertPem = (char*)certfile.buf;
-    if (keyfile.buf !=NULL) TLS_KeyPem  = (char*)keyfile.buf;
+    if (pidfile.buf !=NULL)  PIDFile      = (char*)pidfile.buf;
+    if (certfile.buf!=NULL)  TLS_CertPem  = (char*)certfile.buf;
+    if (chainfile.buf!=NULL) TLS_ChainPem = (char*)chainfile.buf;
+    if (keyfile.buf !=NULL)  TLS_KeyPem   = (char*)keyfile.buf;
 
     //
     // Initialization
@@ -230,7 +236,7 @@ int main(int argc, char** argv)
     // for SSL/TLS
     if (ServerSSL==ON) {
         ssl_init();
-        ServerCTX = ssl_server_setup(TLS_CertPem, TLS_KeyPem);
+        ServerCTX = ssl_server_setup(TLS_CertPem, TLS_KeyPem, TLS_ChainPem);
     }
     ClientCTX = ssl_client_setup(NULL);
 
@@ -267,14 +273,19 @@ int main(int argc, char** argv)
         close(Sofd);    // don't use socket_close() !
         Sofd = 0;
 
-        NoSigchld = ON;
+print_message("[LTICTR_PROXY_SERVER] 00000000000000.\n");
+        //NoSigchld = ON;
         tList* lp = find_tList_end(PIDList);
+print_message("[LTICTR_PROXY_SERVER] 11111111111111.\n");
         add_tList_node_int(lp, (int)pid, 0);
+print_message("[LTICTR_PROXY_SERVER] 22222222222222.\n");
+        /*
         NoSigchld = OFF;
         if (PendingSigchld>0) {
             sig_child(PendingSigchld);
             PendingSigchld = 0;
         }
+        */
     }
 
     // Unreachable
@@ -319,19 +330,20 @@ int  init_main(Buffer configfile)
         filelist = read_index_tList_file((char*)configfile.buf, '=');
         //
         if (filelist!=NULL) {
-            PIDFile        = get_str_param_tList (filelist, LTICTR_PID_FILE,    PIDFile);
-            TLS_CertPem    = get_str_param_tList (filelist, LTICTR_SERVER_CERT, TLS_CertPem);
-            TLS_KeyPem     = get_str_param_tList (filelist, LTICTR_PRIVATE_KEY, TLS_KeyPem);
-            API_Token      = get_str_param_tList (filelist, LTICTR_API_TOKEN,   API_Token);
+            PIDFile        = get_str_param_tList (filelist, LTICTR_PID_FILE,     PIDFile);
+            TLS_CertPem    = get_str_param_tList (filelist, LTICTR_SERVER_CERT,  TLS_CertPem);
+            TLS_ChainPem   = get_str_param_tList (filelist, LTICTR_SERVER_CHAIN, TLS_ChainPem);
+            TLS_KeyPem     = get_str_param_tList (filelist, LTICTR_PRIVATE_KEY,  TLS_KeyPem);
+            API_Token      = get_str_param_tList (filelist, LTICTR_API_TOKEN,    API_Token);
             //
-            Moodle_Host    = get_str_param_tList (filelist, MOODLE_HOST_KEY,    Moodle_Host);
-            Moodle_URL     = get_str_param_tList (filelist, MOODLE_URL_KEY ,    Moodle_URL);
-            Moodle_Token   = get_str_param_tList (filelist, MOODLE_TOKEN_KEY,   Moodle_Token);
-            Moodle_Service = get_str_param_tList (filelist, MOODLE_SERVICE_KEY, Moodle_Service);
-            Moodle_HTTP    = get_str_param_tList (filelist, MOODLE_HTTP_KEY,    Moodle_HTTP);
-            Moodle_Port    = get_int_param_tList (filelist, MOODLE_PORT_KEY,    Moodle_Port);
-            Moodle_DBAns   = get_bool_param_tList(filelist, MOODLE_DBANS_KEY,   Moodle_DBAns);
-            Moodle_TLS     = get_bool_param_tList(filelist, MOODLE_TLS_KEY,     Moodle_TLS);
+            Moodle_Host    = get_str_param_tList (filelist, MOODLE_HOST_KEY,     Moodle_Host);
+            Moodle_URL     = get_str_param_tList (filelist, MOODLE_URL_KEY ,     Moodle_URL);
+            Moodle_Token   = get_str_param_tList (filelist, MOODLE_TOKEN_KEY,    Moodle_Token);
+            Moodle_Service = get_str_param_tList (filelist, MOODLE_SERVICE_KEY,  Moodle_Service);
+            Moodle_HTTP    = get_str_param_tList (filelist, MOODLE_HTTP_KEY,     Moodle_HTTP);
+            Moodle_Port    = get_int_param_tList (filelist, MOODLE_PORT_KEY,     Moodle_Port);
+            Moodle_DBAns   = get_bool_param_tList(filelist, MOODLE_DBANS_KEY,    Moodle_DBAns);
+            Moodle_TLS     = get_bool_param_tList(filelist, MOODLE_TLS_KEY,      Moodle_TLS);
 
             if (Moodle_Token[0]=='\0') {
                 DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] The token used to connect to the Moodle Web Service has not been specified.\n");
@@ -395,6 +407,7 @@ void  sig_term(int signal)
 //
 void  sig_child(int signal)
 {
+print_message("[LTICTR_PROXY_SERVER] SIGCHILD: AAAAAAAAAAAAAA\n");
     if (NoSigchld==ON) {
         PendingSigchld = signal;
         return;
@@ -402,11 +415,15 @@ void  sig_child(int signal)
 
     pid_t pid = 0;
 
+print_message("[LTICTR_PROXY_SERVER] SIGCHILD: BBBBBBBBBBBBBB\n");
     int ret;
     pid = waitpid(-1, &ret, WNOHANG);
     while(pid>0) {
+print_message("[LTICTR_PROXY_SERVER] SIGCHILD: CCCCCCCCCCCCCC\n");
         tList* lst = search_id_tList(PIDList, pid, 1);
+print_message("[LTICTR_PROXY_SERVER] SIGCHILD: DDDDDDDDDDDDDD %16lx\n", lst);
         if (lst!=NULL) del_tList_node(&lst);
+print_message("[LTICTR_PROXY_SERVER] SIGCHILD: EEEEEEEEEEEEEE\n");
         if (pid==APIChildPID) {
             print_message("[LTICTR_PROXY_SERVER] SIGCHILD: API Server is down!!\n");
             sig_term(signal);
