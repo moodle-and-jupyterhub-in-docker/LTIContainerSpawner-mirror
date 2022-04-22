@@ -18,8 +18,11 @@ all: $(SUBJ)
 CC   = gcc
 AR   = ar
 TH	 = touch
+SV   = svn
 
-LIB_DIR=../JunkBox_Lib
+LIB_PATH = ..
+
+LIB_DIR = $(LIB_PATH)/JunkBox_Lib
 LIB_BSC_DIR = $(LIB_DIR)/Lib
 LIB_EXT_DIR = $(LIB_DIR)/xLib
 
@@ -34,7 +37,21 @@ SLIB = -L$(LIB_BSC_DIR) -lbasic -lm
 ELIB = -L$(LIB_EXT_DIR) -lextend
 #
 #
-#
+$(LIB_DIR)/config.sh :
+	(cd $(LIB_PATH) && $(SV) co http://www.nsl.tuis.ac.jp/svn/linux/JunkBox_Lib/trunk JunkBox_Lib)
+
+$(LIB_DIR)/configure: $(LIB_DIR)/config.sh
+	(cd $(LIB_DIR) && ./config.sh)
+
+$(LIB_DIR)/Makefile: $(LIB_DIR)/configure
+	(cd $(LIB_DIR) && ./configure --enable-ssl)
+
+$(LIB_BSC): $(LIB_DIR)/Makefile
+	(cd $(LIB_DIR) && make)
+
+$(LIB_EXT): $(LIB_DIR)/Makefile
+	(cd $(LIB_DIR) && make)
+
 
 .h.c:
 	$(TH) $@
@@ -52,23 +69,15 @@ clean:
 #
 #
 #
-ipynb_conv: ipynb_conv.o  $(LIB_BSC)
+ipynb_conv: $(LIB_BSC) ipynb_conv.o
 	$(CC) $(@).o $(ELIB) $(SLIB) -O2 -o $@   
 	strip ipynb_conv
 	cp ipynb_conv ../bin
 
-json_file: json_file.o  $(LIB_BSC)
+json_file: $(LIB_BSC) json_file.o
 	$(CC) $(@).o $(ELIB) $(SLIB) -O2 -o $@ 
 
-json2: json2.o  $(LIB_BSC)
+json2: $(LIB_BSC) json2.o
 	$(CC) $(@).o $(ELIB) $(SLIB) -O2 -o $@ 
-
-
-$(LIB_BSC):
-	(cd $(LIB_BSC_DIR) && make)
-
-$(LIB_EXT):
-	(cd $(LIB_EXT_DIR) && make)
-
 
 
