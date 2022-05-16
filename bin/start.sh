@@ -9,7 +9,6 @@
 #
 
 PRG_NAME="start.sh"
-IFS=$'\n'
 
 set -e
 
@@ -340,8 +339,9 @@ if [ $(id -u) == 0 ] ; then
     # Exec the command as NB_USER with the PATH and the rest of
     # the environment preserved
     run-hooks /usr/local/bin/before-notebook.d
-    echo "$PRG_NAME: executing the command: ${cmd[@]}"
-    exec sudo -E -H -u $NB_USER PATH=$PATH XDG_CACHE_HOME=$HOME_DIR/$NB_USER/.cache PYTHONPATH=$PYTHONPATH "${cmd[@]}"
+    ARGS=`echo "${cmd[@]}" | sed -e 's/ /\n/g' | uniq`
+    echo "$PRG_NAME: executing the command: $ARGS"
+    exec sudo -E -H -u $NB_USER PATH=$PATH XDG_CACHE_HOME=$HOME_DIR/$NB_USER/.cache PYTHONPATH=$PYTHONPATH $ARGS
     #
 else
     #
