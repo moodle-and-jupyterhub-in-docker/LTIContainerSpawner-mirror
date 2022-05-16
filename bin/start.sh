@@ -4,8 +4,9 @@
 #
 # /usr/local/bin/start.sh   
 #    This is modified by Fumi.Iseki for LTIDockerSpawner/LTIPodmanSpawner
-#       v1.0.0  2022 01/13
+#       v1.0.2  2022 05/16
 #       v1.0.1  2022 04/18
+#       v1.0.0  2022 01/13
 #
 
 PRG_NAME="start.sh"
