@@ -4,6 +4,7 @@
 #
 # /usr/local/bin/start.sh   
 #    This is modified by Fumi.Iseki for LTIDockerSpawner/LTIPodmanSpawner
+#       v1.0.3  2022 05/16
 #       v1.0.2  2022 05/16
 #       v1.0.1  2022 04/18
 #       v1.0.0  2022 01/13
@@ -340,9 +341,10 @@ if [ $(id -u) == 0 ] ; then
     # Exec the command as NB_USER with the PATH and the rest of
     # the environment preserved
     run-hooks /usr/local/bin/before-notebook.d
-    ARGS=`echo "${cmd[@]}" | sed -e 's/ /\n/g' | uniq` || ARGS="${cmd[@]}"
-    echo "$PRG_NAME: executing the command: $ARGS"
-    exec sudo -E -H -u $NB_USER PATH=$PATH XDG_CACHE_HOME=$HOME_DIR/$NB_USER/.cache PYTHONPATH=$PYTHONPATH $ARGS
+    CMD=`echo "${cmd[@]}" | sed -e 's/ /\n/g' |grep -v ^-`
+    OPT=`echo "${cmd[@]}" | sed -e 's/ /\n/g' |grep ^- | sort | uniq`
+    echo "$PRG_NAME: executing the command: $CMD $OPT"
+    exec sudo -E -H -u $NB_USER PATH=$PATH XDG_CACHE_HOME=$HOME_DIR/$NB_USER/.cache PYTHONPATH=$PYTHONPATH $CMD $OPT
     #
 else
     #
