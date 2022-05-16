@@ -1,6 +1,8 @@
 #
 # modifiyed by Fumi.Iseki  2021/9/6
 #
+#   docker build -t vhtec/jupyter-notebook .
+# 
 
 FROM jupyter/tensorflow-notebook
 #TO  vhtec/jupyter-notebook
