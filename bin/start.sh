@@ -339,7 +339,7 @@ if [ $(id -u) == 0 ] ; then
     # Exec the command as NB_USER with the PATH and the rest of
     # the environment preserved
     run-hooks /usr/local/bin/before-notebook.d
-    ARGS=`echo "${cmd[@]}" | sed -e 's/ /\n/g' | uniq`
+    ARGS=`echo "${cmd[@]}" | sed -e 's/ /\n/g' | uniq` || ARGS="${cmd[@]}"
     echo "$PRG_NAME: executing the command: $ARGS"
     exec sudo -E -H -u $NB_USER PATH=$PATH XDG_CACHE_HOME=$HOME_DIR/$NB_USER/.cache PYTHONPATH=$PYTHONPATH $ARGS
     #
