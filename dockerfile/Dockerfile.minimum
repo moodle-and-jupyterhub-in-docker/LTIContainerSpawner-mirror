@@ -1,10 +1,10 @@
-#FROM jupyter/base-notebook
+FROM jupyter/base-notebook
 #FROM jupyterhub/singleuser
 #FROM jupyter/dev-ltids
 #FROM jupyter/datascience-notebook
 #FROM jupyter/tensorflow-notebook
 #FROM jupyter/scipy-notebook
-FROM jupyterhub-ltictr/jupyter-dev
+#FROM jupyterhub-ltictr/jupyter-dev
 
 USER root
 ADD  bin/start.sh \
