@@ -261,7 +261,6 @@ int main(int argc, char** argv)
 
     // main loop
     Loop {
-print_message("[LTICTR_PROXY_SERVER] 11111111111111111\n");
         print_message("[LTICTR_PROXY_SERVER] Start process loop\n");
         Sofd = accept_intr(Nofd, &cl_addr, &cdlen);
         if (Sofd<0) {
@@ -269,26 +268,18 @@ print_message("[LTICTR_PROXY_SERVER] 11111111111111111\n");
             print_message("[LTICTR_PROXY_SERVER] Failure to connect from client. [%s]\n", strerror(errno));
             sig_term(-1);
         }
-print_message("[LTICTR_PROXY_SERVER] 22222222222222222\n");
         //
         pid_t pid = fork();
-print_message("[LTICTR_PROXY_SERVER] 33333333333333333\n");
         if (pid==0) receipt_proxy(Sofd, ServerCTX, ClientCTX, apiurl, ProxyList, ChunkedMode);
-print_message("[LTICTR_PROXY_SERVER] 44444444444444444\n");
         close(Sofd);    // don't use socket_close() !
         Sofd = 0;
 
-print_message("[LTICTR_PROXY_SERVER] 55555555555555555\n");
         NoSigchld = ON;
         tList* lp = find_tList_end(PIDList);
-print_message("[LTICTR_PROXY_SERVER] 66666666666666666\n");
         add_tList_node_int(lp, (int)pid, 0);
-print_message("[LTICTR_PROXY_SERVER] 77777777777777777\n");
         NoSigchld = OFF;
         if (PendingSigchld>0) {
-print_message("[LTICTR_PROXY_SERVER] 99999999999999999\n");
             sig_child(PendingSigchld);
-print_message("[LTICTR_PROXY_SERVER] 00000000000000000\n");
             PendingSigchld = 0;
         }
 
@@ -416,7 +407,6 @@ void  sig_child(int signal)
 {
     print_message("[LTICTR_PROXY_SERVER] SIGCHILD: Start sig_child\n");
     if (NoSigchld==ON) {
-print_message("[LTICTR_PROXY_SERVER] SIGCHILD:AAAAAAAAAAAAAAAAAAAAAAAA\n");
         PendingSigchld = signal;
         return;
     }
@@ -426,20 +416,14 @@ print_message("[LTICTR_PROXY_SERVER] SIGCHILD:AAAAAAAAAAAAAAAAAAAAAAAA\n");
     int ret;
     pid = waitpid(-1, &ret, WNOHANG);
     while(pid>0) {
-print_message("[LTICTR_PROXY_SERVER] SIGCHILD:BBBBBBBBBBBBBBBBBBBBBBBB\n");
         print_message("[LTICTR_PROXY_SERVER] SIGCHILD: Exited child is %d\n", pid);
         tList* lst = search_id_tList(PIDList, pid, 1);
-print_message("[LTICTR_PROXY_SERVER] SIGCHILD:CCCCCCCCCCCCCCCCCCCCCCCC\n");
         if (lst!=NULL) del_tList_node(&lst);
-print_message("[LTICTR_PROXY_SERVER] SIGCHILD:DDDDDDDDDDDDDDDDDDDDDDDD\n");
         if (pid==APIChildPID) {
-print_message("[LTICTR_PROXY_SERVER] SIGCHILD:EEEEEEEEEEEEEEEEEEEEEEEE\n");
             print_message("[LTICTR_PROXY_SERVER] SIGCHILD: API Server is down!!\n");
             sig_term(signal);
-print_message("[LTICTR_PROXY_SERVER] SIGCHILD:FFFFFFFFFFFFFFFFFFFFFFFF\n");
             //fork_api_server();
         }
-print_message("[LTICTR_PROXY_SERVER] SIGCHILD:GGGGGGGGGGGGGGGGGGGGGGGG\n");
         //DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] SIGCHILD: signal = %d (%d)\n", signal, pid);
         //
         pid = waitpid(-1, &ret, WNOHANG);
@@ -459,7 +443,7 @@ void  sig_segmen(int signal)
     pid_t pid = getpid();
 
     print_message("[LTICTR_PROXT_SERVER] **********************************************************\n");
-    if (pid==RootPID) print_message("[LTICTR_PROXY_SERVER] Segmentation Falt in Main Process [%d] !!!!!\n", pid);
+    if (pid==RootPID) print_message("[LTICTR_PROXY_SERVER] Segmentation Falt in Main Process  [%d] !!!!!\n", pid);
     else              print_message("[LTICTR_PROXY_SERVER] Segmentation Falt in Child Process [%d] !!!!!\n", pid);
     print_message("[LTICTR_PROXT_SERVER] **********************************************************\n");
 
