@@ -34,20 +34,22 @@ RUN  chmod a+rx /usr/local/bin/* \
   && chmod a+r  /etc/skel/.vimrc /etc/skel/.bash* \
   && true
 
-RUN  /opt/conda/bin/conda install --prefix /opt/conda conda=4.12.0 -y \
-  && /opt/conda/bin/conda update  --prefix /opt/conda -c conda-forge jupyterhub -y \
+RUN  /opt/conda/bin/conda update  --prefix /opt/conda -c conda-forge jupyterhub -y \
   && /opt/conda/bin/conda update  --prefix /opt/conda -c conda-forge jupyterlab -y \
   && /opt/conda/bin/conda install --prefix /opt/conda jupyterhub-singleuser -y \
   && /opt/conda/bin/conda install --prefix /opt/conda jupyterlab-language-pack-ja-JP -y \
-  && /opt/conda/bin/conda update  --prefix /opt/conda --all -y \
+#  && /opt/conda/bin/conda install --prefix /opt/conda matplotlib -y \
+#  && /opt/conda/bin/conda install --prefix /opt/conda numpy -y \
+#  && /opt/conda/bin/conda install --prefix /opt/conda pandas -y \
+#  && /opt/conda/bin/conda update  --prefix /opt/conda --all -y \
   && /opt/conda/bin/conda clean   --all -y \
   && true
 
 RUN  apt-get update \
-  && apt-get upgrade -y \
+#  && apt-get upgrade -y \
   && apt-get install -y --no-install-recommends \
-     binutils \
-     apt-utils \
+#     binutils \
+#     apt-utils \
 #     sudo \
 #     tini \
 #     g++ \
