@@ -25,4 +25,4 @@ export SSH_ASKPASS=$0
 export DISPLAY=:0.0
 
 #setsid ssh $SSH_USER@$SSH_HOST $CMD 
-exec setsid ssh $SSH_USER@$SSH_HOST $CMD | get_valid_user.sh
+exec setsid ssh $SSH_USER@$SSH_HOST $CMD | ./get_valid_user.sh
