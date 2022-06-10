@@ -1,4 +1,8 @@
 #!/bin/bash
+#
+#  docker login -u ${USRNAME} -p ${PASSWD} ${REPOSITORY_HOST}
+#  ./dockerpush ${UPDATE_IMAGE_TAG}
+#
 
 IDSTR="ltictr"
 DKRREP="www.nsl.tuis.ac.jp:5000"
@@ -19,6 +23,7 @@ for IMG in $LST ; do
     REP=$DKRREP"/"$REP
     echo 
     echo "Push $IMG to $REP"
+    docker rmi  $REP
     docker tag  $IMG  $REP
     docker push $REP
     docker rmi  $REP
