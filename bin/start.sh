@@ -340,7 +340,6 @@ if [ $(id -u) == 0 ] ; then
 
     # Exec the command as NB_USER with the PATH and the rest of
     # the environment preserved
-echo "4444444" > /home/teacher/iseki/X
     run-hooks /usr/local/bin/before-notebook.d
     CMD=`echo "${cmd[@]}" | sed -e 's/ /\n/g' |grep -v ^-`
     OPT=`echo "${cmd[@]}" | sed -e 's/ /\n/g' |grep ^- | sort | uniq`
