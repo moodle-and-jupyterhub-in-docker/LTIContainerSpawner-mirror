@@ -261,7 +261,7 @@ int main(int argc, char** argv)
 
     // main loop
     Loop {
-        print_message("[LTICTR_PROXY_SERVER] Start process loop\n");
+        //print_message("[LTICTR_PROXY_SERVER] Start process loop\n");
         Sofd = accept_intr(Nofd, &cl_addr, &cdlen);
         if (Sofd<0) {
             //syslog(Logtype, "Failure to connect from client. [%s]", strerror(errno));
@@ -283,7 +283,7 @@ int main(int argc, char** argv)
             PendingSigchld = 0;
         }
 
-        print_message("[LTICTR_PROXY_SERVER] Stop process loop\n");
+        //print_message("[LTICTR_PROXY_SERVER] Stop process loop\n");
     }
 
     // Unreachable
@@ -405,7 +405,7 @@ void  sig_term(int signal)
 //
 void  sig_child(int signal)
 {
-    print_message("[LTICTR_PROXY_SERVER] SIGCHILD: Start sig_child\n");
+    //print_message("[LTICTR_PROXY_SERVER] SIGCHILD: Start sig_child\n");
     if (NoSigchld==ON) {
         PendingSigchld = signal;
         return;
@@ -416,11 +416,11 @@ void  sig_child(int signal)
     int ret;
     pid = waitpid(-1, &ret, WNOHANG);
     while(pid>0) {
-        print_message("[LTICTR_PROXY_SERVER] SIGCHILD: Exited child is %d\n", pid);
+        //print_message("[LTICTR_PROXY_SERVER] SIGCHILD: Exited child is %d\n", pid);
         tList* lst = search_id_tList(PIDList, pid, 1);
         if (lst!=NULL) del_tList_node(&lst);
         if (pid==APIChildPID) {
-            print_message("[LTICTR_PROXY_SERVER] SIGCHILD: API Server is down!!\n");
+            //print_message("[LTICTR_PROXY_SERVER] SIGCHILD: API Server is down!!\n");
             sig_term(signal);
             //fork_api_server();
         }
@@ -429,7 +429,7 @@ void  sig_child(int signal)
         pid = waitpid(-1, &ret, WNOHANG);
     }
 
-    print_message("[LTICTR_PROXY_SERVER] SIGCHILD: Stop sig_child\n");
+    //print_message("[LTICTR_PROXY_SERVER] SIGCHILD: Stop sig_child\n");
     return;
 }
 
