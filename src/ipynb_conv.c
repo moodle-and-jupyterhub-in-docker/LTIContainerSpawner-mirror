@@ -67,14 +67,14 @@ int main(int argc, char** argv)
                     memset(buf, 0, LBUF);
                     snprintf(buf, LBUF-1, "[ \"filename: %s\", \"codenum: %d\" ]", filename, num);
                     tJson* js = json_array_parse(NULL, buf, 2);
-                    join_json(tags, js);    
+                    join_json(tags, &js);    
                 }
                 else {
                     // tags ノードが存在しない．
                     memset(buf, 0, LBUF);
                     snprintf(buf, LBUF-1, "{ \"tags\": [ \"filename: %s\", \"codenum: %d\" ] }", filename, num);
                     tJson* js = json_parse_prop(NULL, buf, 2);
-                    join_json(meta, js);
+                    join_json(meta, &js);
                 }
             }
             else {
@@ -82,7 +82,7 @@ int main(int argc, char** argv)
                 memset(buf, 0, LBUF);
                 snprintf(buf, LBUF-1, "{ \"metadata\": { \"tags\": [ \"filename: %s\", \"codenum: %d\" ] } }", filename, num);
                 tJson* js = json_parse_prop(NULL, buf, 2);
-                join_json(ls->altp->prev, js);    
+                join_json(ls->altp->prev, &js);    
             }
         }
         ls = ls->next;
