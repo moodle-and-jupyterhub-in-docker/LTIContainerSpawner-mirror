@@ -59,37 +59,44 @@ int   relay_to_client(int sock, SSL* ssl, tList* hdr, Buffer buf)
 
     tJson* temp = NULL;
     tJson* json = NULL;
-    json = ws_json_server((char*)buf.buf, buf.vldsz);
+    json = ws_json_server(buf.buf, buf.vldsz);
 
-    if (json!=NULL) {
-        //print_json(stderr, json);
-        struct ws_info info;
-        memset(&info, 0, sizeof(struct ws_info));
+    if (json!=NULL && json->next!=NULL) {
         //
-        char* type = get_string_from_json(search_key_json(json, "msg_type", TRUE, 1));
-        if (type!=NULL && ex_strcmp("execute_reply", type)) { 
-            info.status = get_string_from_json(find_double_key_json(json, "content", "status"));
-            if (info.status!=NULL) {
-                temp = find_double_key_json(json, "header", "username");
-                info.username = get_string_from_json(temp);
-                if (info.username!=NULL) {
-                    info.date = get_string_from_json(find_key_sister_json(temp, "date"));
-                    temp = find_double_key_json(json, "parent_header", "session");
-                    info.session = get_string_from_json(temp);
-                    if (info.session!=NULL) {
-                        info.message = get_string_from_json(find_key_sister_json(temp, "msg_id"));
-                        info.host    = host;
-                        post_xmlrpc_server(&info);
-                        if (info.message!=NULL) free(info.message);
-                        free(info.session);
+        tJson* sister = json->next;
+        while (sister->esis!=NULL) sister = sister->esis;
+        while (sister!=NULL) {
+            //print_json(stderr, json);
+            struct ws_info info;
+            memset(&info, 0, sizeof(struct ws_info));
+            //
+            char* type = get_string_from_json(search_key_json(sister, "msg_type", TRUE, 1));
+            if (type!=NULL && ex_strcmp("execute_reply", type)) { 
+                info.status = get_string_from_json(find_double_key_json(sister, "content", "status"));
+                if (info.status!=NULL) {
+                    temp = find_double_key_json(sister, "header", "username");
+                    info.username = get_string_from_json(temp);
+                    if (info.username!=NULL) {
+                        info.date = get_string_from_json(find_key_sister_json(temp, "date"));
+                        temp = find_double_key_json(sister, "parent_header", "session");
+                        info.session = get_string_from_json(temp);
+                        if (info.session!=NULL) {
+                            info.message = get_string_from_json(find_key_sister_json(temp, "msg_id"));
+                            info.host    = host;
+                            post_xmlrpc_server(&info);
+                            if (info.message!=NULL) free(info.message);
+                            free(info.session);
+                        }
+                        if (info.date!=NULL) free(info.date);
+                        free(info.username);
                     }
-                    if (info.date!=NULL) free(info.date);
-                    free(info.username);
+                    free(info.status);
                 }
-                free(info.status);
+                free(type);
             }
-            free(type);
+            sister = sister->ysis;
         }
+
         del_json(&json);
     }
 
@@ -175,33 +182,40 @@ int   relay_to_server(int sock, SSL* ssl, tList* hdr, Buffer buf, char* proto)
     tJson* temp = NULL;
     tJson* json = NULL;
     //if (*(unsigned char*)mesg==0x81) json = ws_json(mesg, cc);
-    json = ws_json_client((char*)buf.buf, buf.vldsz);
+    json = ws_json_client(buf.buf, buf.vldsz);
 
-    if (json!=NULL) {
-        struct ws_info info;
-        memset(&info, 0, sizeof(struct ws_info));
+    if (json!=NULL && json->next!=NULL) {
         //
-        temp = find_double_key_json(json, "metadata", "cellId");
-        info.cell_id = get_string_from_json(temp);
-        if (info.cell_id!=NULL) {
-            //info.tags = get_string_from_json(find_key_sister_json(temp, "tags"));
-            temp = find_key_sister_json(temp, "tags");
-            info.tags = get_string_from_json(temp);
-            temp = find_double_key_json(json, "header", "session");
-            info.session = get_string_from_json(temp);
-            if (info.session!=NULL) {
-                info.date     = get_string_from_json(find_key_sister_json(temp, "date"));
-                info.message  = get_string_from_json(find_key_sister_json(temp, "msg_id"));
-                info.host     = host;
-                post_xmlrpc_server(&info);
-                //
-                if (info.message!=NULL) free(info.message);
-                if (info.date   !=NULL) free(info.date);
-                free(info.session);
+        tJson* sister = json->next;
+        while (sister->esis!=NULL) sister = sister->esis;
+        while (sister!=NULL) {
+            struct ws_info info;
+            memset(&info, 0, sizeof(struct ws_info));
+            //
+            temp = find_double_key_json(sister, "metadata", "cellId");
+            info.cell_id = get_string_from_json(temp);
+            if (info.cell_id!=NULL) {
+                //info.tags = get_string_from_json(find_key_sister_json(temp, "tags"));
+                temp = find_key_sister_json(temp, "tags");
+                info.tags = get_string_from_json(temp);
+                temp = find_double_key_json(sister, "header", "session");
+                info.session = get_string_from_json(temp);
+                if (info.session!=NULL) {
+                    info.date     = get_string_from_json(find_key_sister_json(temp, "date"));
+                    info.message  = get_string_from_json(find_key_sister_json(temp, "msg_id"));
+                    info.host     = host;
+                    post_xmlrpc_server(&info);
+                    //
+                    if (info.message!=NULL) free(info.message);
+                    if (info.date   !=NULL) free(info.date);
+                    free(info.session);
+                }
+                if (info.tags!=NULL) free(info.tags);
+                free(info.cell_id);
             }
-            if (info.tags!=NULL) free(info.tags);
-            free(info.cell_id);
+            sister = sister->ysis;
         }
+
         del_json(&json);
     }
 

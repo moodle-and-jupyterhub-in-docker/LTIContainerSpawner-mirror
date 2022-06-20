@@ -19,8 +19,9 @@ struct  ws_info {
 };
 
 
-tJson* ws_json(Buffer* buf, char* mesg, int cc);
-tJson* ws_json_client(char* mesg, int cc);
-tJson* ws_json_server(char* mesg, int cc);
+//tJson* ws_json(Buffer* buf, char* mesg, int cc);
+tJson* ws_json_parse(ringBuffer* ring);
+tJson* ws_json_client(unsigned char* mesg, int cc);
+tJson* ws_json_server(unsigned char* mesg, int cc);
 
 void  print_buf(FILE* fp, unsigned char* buf, int size);
