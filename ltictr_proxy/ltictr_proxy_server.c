@@ -2,9 +2,10 @@
     Proxy Server for JupyterHub and LTIContainerSpawner 
         
                 by Fumi.Iseki '22 02/12   BSD License.
+                              '22 06/20   v1.1.0
 */
 
-#define  LTICTR_PROXY_VERSION   "1.0.2"
+#define  LTICTR_PROXY_VERSION   "1.1.0"
 
 
 #include "ltictr_proxy.h"
