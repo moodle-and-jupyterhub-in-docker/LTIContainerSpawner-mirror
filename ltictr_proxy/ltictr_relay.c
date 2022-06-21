@@ -62,7 +62,7 @@ int   relay_to_client(int sock, SSL* ssl, tList* hdr, Buffer buf)
     json = ws_json_server(buf.buf, buf.vldsz);
 
     if (json!=NULL && json->next!=NULL) {
-        //
+
         tJson* sister = json->next;
         while (sister->esis!=NULL) sister = sister->esis;
         while (sister!=NULL) {
@@ -96,7 +96,6 @@ int   relay_to_client(int sock, SSL* ssl, tList* hdr, Buffer buf)
             }
             sister = sister->ysis;
         }
-
         del_json(&json);
     }
 
@@ -185,10 +184,11 @@ int   relay_to_server(int sock, SSL* ssl, tList* hdr, Buffer buf, char* proto)
     json = ws_json_client(buf.buf, buf.vldsz);
 
     if (json!=NULL && json->next!=NULL) {
-        //
+
         tJson* sister = json->next;
         while (sister->esis!=NULL) sister = sister->esis;
         while (sister!=NULL) {
+            //
             struct ws_info info;
             memset(&info, 0, sizeof(struct ws_info));
             //
@@ -215,7 +215,7 @@ int   relay_to_server(int sock, SSL* ssl, tList* hdr, Buffer buf, char* proto)
             }
             sister = sister->ysis;
         }
-
+        //
         del_json(&json);
     }
 
@@ -317,4 +317,5 @@ char*  get_info_from_ltidata(char* mesg)
 
     return ssninfo;
 }
+
 
