@@ -272,7 +272,7 @@ void  receipt_proxy(int ssock, SSL_CTX* server_ctx, SSL_CTX* client_ctx, Buffer 
                         if (lst->ldat.ptr!=NULL) lst->ldat.ptr = NULL;
                         lst->ldat.sz = 0;
                         lst->ctrl    = 0;
-                        //break;      // cc==0
+                        break;      // cc==0
                     }
                     if (hdr!=NULL) del_tList(&hdr);
                 }
