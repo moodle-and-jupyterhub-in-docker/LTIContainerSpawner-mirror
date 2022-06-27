@@ -1,5 +1,4 @@
 FROM jupyter/base-notebook
-#FROM jupyterhub/singleuser
 #FROM jupyter/datascience-notebook
 #FROM jupyter/tensorflow-notebook
 #FROM jupyter/scipy-notebook
@@ -39,9 +38,6 @@ RUN  /opt/conda/bin/conda update  --prefix /opt/conda -c conda-forge jupyterhub 
   && /opt/conda/bin/conda update  --prefix /opt/conda -c conda-forge jupyterlab -y \
   && /opt/conda/bin/conda install --prefix /opt/conda jupyterhub-singleuser -y \
   && /opt/conda/bin/conda install --prefix /opt/conda jupyterlab-language-pack-ja-JP -y \
-#  && /opt/conda/bin/conda install --prefix /opt/conda matplotlib -y \
-#  && /opt/conda/bin/conda install --prefix /opt/conda numpy -y \
-#  && /opt/conda/bin/conda install --prefix /opt/conda pandas -y \
 #  && /opt/conda/bin/conda update  --prefix /opt/conda --all -y \
   && /opt/conda/bin/conda clean   --all -y \
   && true

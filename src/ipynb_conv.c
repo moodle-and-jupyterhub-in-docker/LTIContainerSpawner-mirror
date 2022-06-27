@@ -67,13 +67,14 @@ int main(int argc, char** argv)
                     memset(buf, 0, LBUF);
                     snprintf(buf, LBUF-1, "[ \"filename: %s\", \"codenum: %d\" ]", filename, num);
                     tJson* js = json_array_parse(NULL, buf, 2);
-                    join_json(tags, &js);    
+                    join_json(tags, &js);
                 }
                 else {
                     // tags ノードが存在しない．
                     memset(buf, 0, LBUF);
                     snprintf(buf, LBUF-1, "{ \"tags\": [ \"filename: %s\", \"codenum: %d\" ] }", filename, num);
                     tJson* js = json_parse_prop(NULL, buf, 2);
+                    js->ldat.id = JSON_TEMP_NODE;       // 結合部分で { がダブるので
                     join_json(meta, &js);
                 }
             }
@@ -82,6 +83,7 @@ int main(int argc, char** argv)
                 memset(buf, 0, LBUF);
                 snprintf(buf, LBUF-1, "{ \"metadata\": { \"tags\": [ \"filename: %s\", \"codenum: %d\" ] } }", filename, num);
                 tJson* js = json_parse_prop(NULL, buf, 2);
+                js->ldat.id = JSON_TEMP_NODE;       // 結合部分で { がダブるので
                 join_json(ls->altp->prev, &js);    
             }
         }
@@ -96,7 +98,7 @@ int main(int argc, char** argv)
         fclose(fp);
     }
     else {
-        //print_tTree(stdout, pp, "    ");
+        //print_tTree(stdout, pp);
         print_json_opt(stdout, pp, "\n", " ");
     }
     del_json(&pp);
