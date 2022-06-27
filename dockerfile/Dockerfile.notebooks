@@ -16,6 +16,7 @@ ADD  bin/ipynb_conv \
      bin/ipynb_deploy_php \
      bin/ipynb_setup \
      bin/ipynb_submit \
+     bin/submit \
      /usr/bin/
 ADD  etc/.bashrc \
      etc/.bash_profile \

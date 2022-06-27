@@ -1,0 +1,22 @@
+#!/bin/bash
+#
+
+DST=`echo $NB_SUBMITS | awk -F":" '{print $1}'`
+LNK=`echo $NB_SUBMITS | awk -F":" '{print $2}'`
+if [ "$DST" = "" ] ; then 
+    exit
+fi
+
+if [ -d ../../${DST} ]; then
+    USR=`whoami`
+    IFS=$'\n'
+    FLS=`ls`
+    #
+    for FL in $FLS; do
+        if [ ! -d $FL ]; then
+            echo "copying ...  $FL ../${LNK}/${USR}_${FL}"
+            cp                 $FL ../../${DST}/${USR}_${FL}
+        fi
+    done
+fi
+
