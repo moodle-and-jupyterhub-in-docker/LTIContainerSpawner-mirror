@@ -86,7 +86,7 @@ tJson*  ws_json_client(unsigned char* mesg, int cc)
     tJson* jtmp = NULL;
 
     static ringBuffer* cring = NULL;
-    if (cring==NULL) cring =  new_ringBuffer(BUFSZ);
+    if (cring==NULL) cring =  new_ringBuffer(BUFSZ2M);
 
     if (mesg[0]!=0x81 && cring->state==JBXL_NORMAL) return NULL;
     if (mesg[0]==0x81 && cring->state==JBXL_INCOMPLETE) {
@@ -111,7 +111,7 @@ tJson*  ws_json_server(unsigned char* mesg, int cc)
     tJson* jtmp = NULL;
 
     static ringBuffer* sring = NULL;
-    if (sring==NULL) sring =  new_ringBuffer(BUFSZ);
+    if (sring==NULL) sring =  new_ringBuffer(BUFSZ2M);
 
     if (mesg[0]!=0x81 && sring->state==JBXL_NORMAL) return NULL;
     if (mesg[0]==0x81 && sring->state==JBXL_INCOMPLETE) {
