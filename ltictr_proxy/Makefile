@@ -62,13 +62,12 @@ $(LIB_EXT): $(LIB_DIR)/Makefile
 ltictr_proxy_server: $(LIB_BSC) $(LIB_EXT) ltictr_proxy_server.o ltictr_proxy.o ltictr_relay.o ltictr_xmlrpc.o ltictr_ws.o
 	$(CC) $(@).o ltictr_proxy.o ltictr_relay.o ltictr_xmlrpc.o ltictr_ws.o $(ELIB) $(SLIB) -O2 -o $@ 
 	strip ltictr_proxy_server
-	cp ltictr_proxy_server ../bin
+	#cp ltictr_proxy_server ../bin
 
 ltictr_api_server: $(LIB_BSC) $(LIB_EXT) ltictr_api_server.o ltictr_api.o 
 	$(CC) $(@).o ltictr_api.o $(ELIB) $(SLIB) -O2 -o $@ 
 	strip ltictr_api_server
-	cp ltictr_api_server ../bin
-
+	#cp ltictr_api_server ../bin
 
 
 install: ltictr_proxy_server  ltictr_api_server
@@ -77,6 +76,12 @@ install: ltictr_proxy_server  ltictr_api_server
 	[ -f /usr/local/etc/ltictr_proxy.conf ]             || install -m 0640 ltictr_proxy.conf     /usr/local/etc
 	[ -f /usr/lib/systemd/system/ltictr_proxy.service ] || install -m 0644 ltictr_proxy.service  /usr/lib/systemd/system
 	systemctl daemon-reload
+
+
+git: ltictr_proxy_server  ltictr_api_server
+	cp ltictr_proxy_server ../bin
+	cp ltictr_api_server ../bin
+
 
 clean:
 	rm -f *.o $(SUBJ) 
