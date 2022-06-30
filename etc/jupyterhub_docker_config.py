@@ -497,7 +497,7 @@ c.ConfigurableHTTPProxy.pid_file = '/var/run/jupyterhub-proxy.pid'
 # Distributed under the terms of the Modified BSD License.
 
 #
-# LTIDockerSpawner v1.0.1 for LTI by Fumi.Iseki
+# LTIDockerSpawner v1.0.2 for LTI by Fumi.Iseki
 #
 #                                      BSD License.
 #
@@ -533,7 +533,7 @@ class LTIDockerSpawner(DockerSpawner):
     # extension command
     ext_user_id_cmd     = 'user_userid'
     ext_group_id_cmd    = 'user_groupid'
-    ext_group_name_cmd  = 'user_groupname'
+    ext_grp_name_cmd    = 'user_groupname'
 
     # custom command
     custom_image_cmd    = 'lms_image'
@@ -548,21 +548,24 @@ class LTIDockerSpawner(DockerSpawner):
     custom_submits_cmd  = 'lms_sub_'
     custom_prsnals_cmd  = 'lms_prs_'
     custom_iframe_cmd   = 'lms_iframe'
+    custom_user_id_cmd  = 'lms_uid'
+    custom_group_id_cmd = 'lms_gid'
+    custom_grp_name_cmd = 'lms_gname'
     custom_options_cmd  = 'lms_options'
 
     #
-    user_id     = -1
-    group_id    = -1
-    group_name  = ''
-    lms_user_id = '0'
-    course_id   = '0'
-    host_name   = ''
-    host_url    = ''
-    userdata    = {}
+    user_id         = -1
+    group_id        = -1
+    grp_name        = ''
+    lms_user_id     = -1    # LMS USER ID
+    course_id       = '0'
+    host_name       = ''
+    host_url        = ''
+    userdata        = {}
     #
     ext_user_id     = -1
     ext_group_id    = -1
-    ext_group_name  = ''
+    ext_grp_name    = ''
     #
     custom_image    = ''
     custom_cpulimit = '0.0'
@@ -576,23 +579,26 @@ class LTIDockerSpawner(DockerSpawner):
     custom_submits  = {}
     custom_prsnals  = {}
     custom_iframe   = False
+    custom_user_id  = -1
+    custom_group_id = -1
+    custom_grp_name = ''
     custom_options  = ''
 
 
-    def init_custom_parameters(self):
-        #print('=== init_custom_parameters() ===')
-        self.user_id     = -1
-        self.group_id    = -1
-        self.group_name  = ''
-        self.lms_user_id = '0'
-        self.course_id   = '0'
-        self.host_name   = 'localhost'
-        self.host_url    = 'http://localhost'
-        self.userdara    = {}
+    def init_parameters(self):
+        #print('=== init_parameters() ===')
+        self.user_id         = -1
+        self.group_id        = -1
+        self.grp_name        = ''
+        self.lms_user_id     = -1
+        self.course_id       = '0'
+        self.host_name       = 'localhost'
+        self.host_url        = 'http://localhost'
+        self.userdara        = {}
         #
         self.ext_user_id     = -1
         self.ext_group_id    = -1
-        self.ext_group_name  = ''
+        self.ext_grp_name    = ''
         #
         self.custom_image    = ''
         self.custom_cpulimit = '0.0'
@@ -606,19 +612,22 @@ class LTIDockerSpawner(DockerSpawner):
         self.custom_submits  = {}
         self.custom_prsnals  = {}
         self.custom_iframe   = False
+        self.custom_user_id  = -1
+        self.custom_group_id = -1
+        self.custom_grp_name = ''
         self.custom_options  = ''
         #
         return
 
 
     def get_lms_userinfo(self):
-        group_name = self.default_group
+        grp_name = self.default_group
         userinfo = {}
         #
-        userinfo['uid']   = self.base_id + int(self.lms_user_id)
-        userinfo['gname'] = group_name 
+        userinfo['uid']   = self.base_id + self.lms_user_id
+        userinfo['gname'] = grp_name 
         try :
-            userinfo['gid'] = grp.getgrnam(group_name).gr_gid
+            userinfo['gid'] = grp.getgrnam(grp_name).gr_gid
         except :
             userinfo['gid'] = self.base_id
 
@@ -628,12 +637,14 @@ class LTIDockerSpawner(DockerSpawner):
     def get_userid(self):
         if self.user_id < 0:
             try :
-                self.user_id = pwd.getpwnam(self.user.name).pw_uid
+                self.user_id = pwd.getpwnam(self.user.name).pw_uid  # from system user account
             except :
                 if self.ext_user_id>=0 :
-                    self.user_id = int(self.ext_user_id)
+                    self.user_id = self.ext_user_id                 # from extension command
+                elif self.custom_user_id>=0 : 
+                    self.user_id = self.custom_user_id              # from custom command
                 else :
-                    self.user_id = self.get_lms_userinfo()['uid']
+                    self.user_id = self.get_lms_userinfo()['uid']   # form LMS user accound
         #
         return self.user_id
 
@@ -641,24 +652,28 @@ class LTIDockerSpawner(DockerSpawner):
     def get_groupname(self):
         if self.group_id < 0:
             try :
-                self.group_id = pwd.getpwnam(self.user.name).pw_gid
+                self.group_id = pwd.getpwnam(self.user.name).pw_gid # from system user account
             except :
                 if self.ext_group_id>=0 :
-                    self.group_id = int(self.ext_group_id)
+                    self.group_id = self.ext_group_id               # from extension command
+                elif self.custom_group_id>=0 :
+                    self.group_id = self.custom_group_id            # from custom command
                 else :
-                    self.group_id = self.get_lms_userinfo()['gid']
+                    self.group_id = self.get_lms_userinfo()['gid']  # form LMS user accound 
         #
         if self.use_group and self.group_id >= 0 :
-            if self.group_name == '' : 
+            if self.grp_name == '' : 
                 try :
-                    self.group_name = grp.getgrgid(self.group_id).gr_name
+                    self.grp_name = grp.getgrgid(self.group_id).gr_name     # from system user account
                 except :
-                    if self.ext_group_name != '' :
-                        self.group_name = self.ext_group_name
+                    if self.ext_grp_name != '' :
+                        self.grp_name = self.ext_grp_name                   # from extension command
+                    elif self.custom_grp_name != '' :
+                        self.grp_name = self.custom_grp_name                # from custom command
                     else :
-                        self.group_name = self.get_lms_userinfo()['gname']
+                        self.grp_name = self.get_lms_userinfo()['gname']    # form LMS user accound 
         #
-        return self.group_name
+        return self.grp_name
 
 
     def template_namespace(self):
@@ -715,13 +730,13 @@ class LTIDockerSpawner(DockerSpawner):
     def userdata_hook(self, auth_state):
         #print('=== userdata_hook() ===')
         self.userdata = auth_state              # raw data
-        self.init_custom_parameters()
+        self.init_parameters()
 
         for key, value in self.userdata.items():
 
-            if key == 'context_id' : self.course_id = value         # Course ID
+            if key == 'context_id' : self.course_id = value         # LMS Course ID (string)
 
-            elif key == 'user_id' : self.lms_user_id = value        # LMS USER ID
+            elif key == 'user_id'  : self.lms_user_id = int(value)  # LMS USER ID
 
             elif key == 'lis_outcome_service_url' :
                 parsed = urlparse(value)
@@ -740,9 +755,9 @@ class LTIDockerSpawner(DockerSpawner):
                     value = re.sub('[^0-9]', '', value)
                     self.ext_group_id = int(value)
                 #
-                elif ext_cmd == self.ext_group_name_cmd:                                        # User Group Name Command
+                elif ext_cmd == self.ext_grp_name_cmd:                                          # User Group Name Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
-                    self.ext_group_name = value
+                    self.ext_grp_name = value
                 #
             elif key.startswith('custom_'):                         # Custom Command
                 costom_cmd = key.replace('custom_', '')
@@ -782,6 +797,18 @@ class LTIDockerSpawner(DockerSpawner):
                 elif costom_cmd[0:len(self.custom_iframe_cmd)] == self.custom_iframe_cmd:       # iframe Command
                     if value == '1' :
                         self.custom_iframe = True
+                #
+                elif costom_cmd[0:len(self.custom_user_id_cmd)] == self.custom_user_id_cmd:     # User ID Command
+                    value = re.sub('[^0-9]', '', value)
+                    self.custom_user_id = int(value)
+                #
+                elif costom_cmd[0:len(self.custom_group_id_cmd)] == self.custom_group_id_cmd:   # Group ID Command
+                    value = re.sub('[^0-9]', '', value)
+                    self.custom_group_id = int(value)
+                #
+                elif costom_cmd[0:len(self.custom_grp_name_cmd)] == self.custom_grp_name_cmd:   # Group Name Command
+                    value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
+                    self.custom_grp_name = value.replace(',',' ').split()
                 #
                 elif costom_cmd[0:len(self.custom_options_cmd)] == self.custom_options_cmd:     # Option Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
@@ -845,8 +872,8 @@ class LTIDockerSpawner(DockerSpawner):
 
         userid    = self.get_userid()
         username  = self.user.name
-        groupid   = self.group_id
         groupname = self.get_groupname()
+        groupid   = self.group_id
 
         env.update(NB_UID       = userid)
         env.update(NB_USER      = username)
