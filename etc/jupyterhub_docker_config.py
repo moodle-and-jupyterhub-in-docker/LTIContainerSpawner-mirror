@@ -997,7 +997,7 @@ class LTIDockerSpawner(DockerSpawner):
 c.LTIDockerSpawner.use_group = True
 
 # Volumes are mounted at /user_home_dir/projects_dir/works_dir/volumes_dir
-default_group  = 'users'                        # ホストに存在しないユーザ（ID不明）のグループ（予め作って置く）
+default_group  = 'others'                       # ホストに存在しないユーザ（ID不明）のグループ（予め作って置く）
 group_home_dir = '/home/{groupname}'
 user_home_dir  = group_home_dir + '/{username}'
 projects_dir   = 'jupyter'
