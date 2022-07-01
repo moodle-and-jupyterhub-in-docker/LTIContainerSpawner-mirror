@@ -625,7 +625,7 @@ class LTIDockerSpawner(DockerSpawner):
         userinfo = {}
         #
         userinfo['uid']   = self.base_id + self.lms_user_id
-        userinfo['gname'] = grp_name 
+        userinfo['gname'] = grp_name
         try :
             userinfo['gid'] = grp.getgrnam(grp_name).gr_gid
         except :
@@ -641,7 +641,7 @@ class LTIDockerSpawner(DockerSpawner):
             except :
                 if self.ext_user_id>=0 :
                     self.user_id = self.ext_user_id                 # from extension command
-                elif self.custom_user_id>=0 : 
+                elif self.custom_user_id>=0 :
                     self.user_id = self.custom_user_id              # from custom command
                 else :
                     self.user_id = self.get_lms_userinfo()['uid']   # form LMS user accound
@@ -659,10 +659,10 @@ class LTIDockerSpawner(DockerSpawner):
                 elif self.custom_group_id>=0 :
                     self.group_id = self.custom_group_id            # from custom command
                 else :
-                    self.group_id = self.get_lms_userinfo()['gid']  # form LMS user accound 
+                    self.group_id = self.get_lms_userinfo()['gid']  # form LMS user accound
         #
         if self.use_group and self.group_id >= 0 :
-            if self.grp_name == '' : 
+            if self.grp_name == '' :
                 try :
                     self.grp_name = grp.getgrgid(self.group_id).gr_name     # from system user account
                 except :
@@ -671,7 +671,7 @@ class LTIDockerSpawner(DockerSpawner):
                     elif self.custom_grp_name != '' :
                         self.grp_name = self.custom_grp_name                # from custom command
                     else :
-                        self.grp_name = self.get_lms_userinfo()['gname']    # form LMS user accound 
+                        self.grp_name = self.get_lms_userinfo()['gname']    # form LMS user accound
         #
         return self.grp_name
 

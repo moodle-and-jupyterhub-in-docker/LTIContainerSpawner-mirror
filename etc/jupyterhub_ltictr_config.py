@@ -745,9 +745,6 @@ class LTIDockerSpawner(DockerSpawner):
     custom_user_id  = -1
     custom_group_id = -1
     custom_grp_name = ''
-    custom_user_id  = -1
-    custom_group_id = -1
-    custom_grp_name = ''
     custom_options  = ''
 
 
@@ -790,7 +787,7 @@ class LTIDockerSpawner(DockerSpawner):
         grp_name = self.default_group
         userinfo = {}
         #
-        userinfo['uid']   = self.base_id + int(self.lms_user_id)
+        userinfo['uid']   = self.base_id + self.lms_user_id
         userinfo['gname'] = grp_name
         try :
             userinfo['gid'] = grp.getgrnam(grp_name).gr_gid
@@ -900,9 +897,9 @@ class LTIDockerSpawner(DockerSpawner):
 
         for key, value in self.userdata.items():
 
-            if key == 'context_id' : self.course_id = value         # Course ID (string)
+            if key == 'context_id' : self.course_id = value         # LMS Course ID (string)
 
-            elif key == 'user_id' : self.lms_user_id = int(value)   # LMS USER ID
+            elif key == 'user_id'  : self.lms_user_id = int(value)  # LMS USER ID
 
             elif key == 'lis_outcome_service_url' :
                 parsed = urlparse(value)
@@ -1285,14 +1282,14 @@ class LTIPodmanSpawner(Spawner):
 
     def init_parameters(self):
         #print('=== init_parameters() ===')
-        self.user_id     = -1
-        self.group_id    = -1
-        self.grp_name    = ''
-        self.lms_user_id = -1
-        self.course_id   = '0'
-        self.host_name   = 'localhost'
-        self.host_url    = 'http://localhost'
-        self.userdara    = {}
+        self.user_id         = -1
+        self.group_id        = -1
+        self.grp_name        = ''
+        self.lms_user_id     = -1
+        self.course_id       = '0'
+        self.host_name       = 'localhost'
+        self.host_url        = 'http://localhost'
+        self.userdara        = {}
         #
         self.ext_user_id     = -1
         self.ext_group_id    = -1
@@ -1456,9 +1453,9 @@ class LTIPodmanSpawner(Spawner):
 
         for key, value in self.userdata.items():
 
-            if key == 'context_id' : self.course_id = value         # Course ID
+            if key == 'context_id' : self.course_id = value         # LMS Course ID (string)
 
-            elif key == 'user_id' : self.lms_user_id = value        # LMS USER ID
+            elif key == 'user_id'  : self.lms_user_id = int(value)  # LMS USER ID
 
             elif key == 'lis_outcome_service_url' :
                 parsed = urlparse(value)
@@ -1477,10 +1474,10 @@ class LTIPodmanSpawner(Spawner):
                     value = re.sub('[^0-9]', '', value)
                     self.group_id = int(value)
                 #
-                elif ext_cmd == self.ext_grp_name_cmd:                                        # User Group Name Command
+                elif ext_cmd == self.ext_grp_name_cmd:                                          # User Group Name Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
                     self.grp_name = value
-                #
+            #
             elif key.startswith('custom_'):                         # Custom Command
                 costom_cmd = key.replace('custom_', '')
                 #
@@ -1519,6 +1516,18 @@ class LTIPodmanSpawner(Spawner):
                 elif costom_cmd[0:len(self.custom_iframe_cmd)] == self.custom_iframe_cmd:       # iframe Command
                     if value == '1' :
                         self.custom_iframe = True
+                #
+                elif costom_cmd[0:len(self.custom_user_id_cmd)] == self.custom_user_id_cmd:     # User ID Command
+                    value = re.sub('[^0-9]', '', value)
+                    self.custom_user_id = int(value)
+                #
+                elif costom_cmd[0:len(self.custom_group_id_cmd)] == self.custom_group_id_cmd:   # Group ID Command
+                    value = re.sub('[^0-9]', '', value)
+                    self.custom_group_id = int(value)
+                #
+                elif costom_cmd[0:len(self.custom_grp_name_cmd)] == self.custom_grp_name_cmd:   # Grpup Name Command
+                    value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
+                    self.custom_grp_name = value.replace(',',' ').split()
                 #
                 elif costom_cmd[0:len(self.custom_options_cmd)] == self.custom_options_cmd:     # Option Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
@@ -1560,6 +1569,8 @@ class LTIPodmanSpawner(Spawner):
                     if ('*' in usrs) or (self.user.name in usrs) :
                         mnt = True
                 elif ('*' in self.custom_users) or (self.user.name in self.custom_users) :  # : によるアクセス制限の指定なし
+                    mnt = True
+                elif (self.user.name in self.custom_teachers) :                             # 教師
                     mnt = True
 
                 if mnt:
@@ -1715,7 +1726,7 @@ class LTIPodmanSpawner(Spawner):
                 #         hostport=self.port, port=self.standard_jupyter_port
                 #         ),
                 #
-                '--name', f'jupyterb-{username}',
+                '--name', f'jupyter-{username}',
                 '--net', 'host',
                 #'-w', mountdir,
                 #'-v', '{}:{}'.format(hosthome, hosthome),

@@ -734,7 +734,7 @@ class LTIPodmanSpawner(Spawner):
             os.chown(directory, uid, gid)
             os.chmod(directory, mode)
 
-    
+
     #def auth_hook(authenticator, handler, authentication):
     #    print('=== auth_hook() ===')
     #    return authentication
@@ -755,7 +755,7 @@ class LTIPodmanSpawner(Spawner):
 
         for key, value in self.userdata.items():
 
-            if key == 'context_id' : self.course_id = value         # Course ID (string)
+            if key == 'context_id' : self.course_id = value         # LMS Course ID (string)
 
             elif key == 'user_id'  : self.lms_user_id = int(value)  # LMS USER ID
 
@@ -779,7 +779,7 @@ class LTIPodmanSpawner(Spawner):
                 elif ext_cmd == self.ext_grp_name_cmd:                                          # User Group Name Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
                     self.grp_name = value
-                #
+            #
             elif key.startswith('custom_'):                         # Custom Command
                 costom_cmd = key.replace('custom_', '')
                 #
@@ -910,12 +910,12 @@ class LTIPodmanSpawner(Spawner):
     def get_env(self):
         #print('=== get_env() ===')
         env = super(LTIPodmanSpawner, self).get_env()
-        
+
         userid    = self.get_userid()
         username  = self.user.name
         groupname = self.get_groupname()
         groupid   = self.group_id
-        
+
         env.update(NB_UID       = userid)
         env.update(NB_USER      = username)
         env.update(NB_GID       = groupid)
@@ -1019,7 +1019,7 @@ class LTIPodmanSpawner(Spawner):
         if rslt=='' : subprocess.run(['usermod', '--add-subgids', '200000-210000',  'root'])
 
         podman_base_cmd = [
-                'podman', 'run', '-d', '--privileged', 
+                'podman', 'run', '-d', '--privileged',
                 # https://www.redhat.com/sysadmin/rootless-podman
                 #"--storage-opt", "ignore_chown_errors",
                 # "--rm",
@@ -1043,7 +1043,7 @@ class LTIPodmanSpawner(Spawner):
 
         if self.remove :
             podman_base_cmd.append('--rm')
-    
+
         # volumes
         for k, v in self.volumes.items():
             podman_base_cmd.append('-v')
@@ -1089,7 +1089,7 @@ class LTIPodmanSpawner(Spawner):
         #
         popen_kwargs = dict(
             preexec_fn = preexec_fn,
-            stdout = PIPE, 
+            stdout = PIPE,
             stderr = PIPE,
             start_new_session = True,  # don't forward signals
         )
