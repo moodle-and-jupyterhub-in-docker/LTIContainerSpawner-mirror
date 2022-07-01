@@ -1896,7 +1896,7 @@ c.LTIDockerSpawner.volumes_dir   = volumes_dir
 c.LTIDockerSpawner.teacher_gid   = teacher_gid
 c.LTIDockerSpawner.base_id       = base_id
 
-c.DockerSpawner.image = 'jupyterhub-ltids/jupyter-singleuser'
+c.DockerSpawner.image = 'www.nsl.tuis.ac.jp:5000/jupyterhub-ltictr/jupyter-singleuser'
 c.DockerSpawner.remove = True
 c.DockerSpawner.extra_create_kwargs = {'user': 'root'}          # root or rootless mode
 c.DockerSpawner.extra_host_config = {'privileged': True}
@@ -1912,7 +1912,7 @@ c.LTIPodmanSpawner.volumes_dir   = volumes_dir
 c.LTIPodmanSpawner.teacher_gid   = teacher_gid
 c.LTIPodmanSpawner.base_id       = base_id
 #
-c.LTIPodmanSpawner.image  = 'jupyterhub-ltids/jupyter-singleuser'
+c.LTIPodmanSpawner.image  = 'www.nsl.tuis.ac.jp:5000/jupyterhub-ltictr/jupyter-singleuser'
 c.LTIPodmanSpawner.remove = True
 c.LTIPodmanSpawner.extra_create_kwargs = {'user': 'root'}       # root or rootless mode
 #c.LTIPodmanSpawner.extra_host_config = {'runtime': 'nvidia'}

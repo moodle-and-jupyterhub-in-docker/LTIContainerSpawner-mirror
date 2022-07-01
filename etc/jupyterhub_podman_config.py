@@ -1311,7 +1311,7 @@ c.JupyterHub.spawner_class = LTIPodmanSpawner
 #c.LTIPodmanSpawner.image = 'jupyterhub/singleuser'
 #c.LTIPodmanSpawner.image = 'docker.io/jupyterhub/singleuser'
 #c.LTIPodmanSpawner.image = 'localhost:5000/jupyterhub/singleuser-ltids'
-c.LTIPodmanSpawner.image = 'jupyterhub-ltids/jupyter-singleuser'
+c.LTIPodmanSpawner.image = 'www.nsl.tuis.ac.jp:5000/jupyterhub-ltictr/jupyter-singleuser'
 
 #c.LTIPodmanSpawner.image_whitelist = {
 #    "deepdetect-gpu (Tensorflow+PyTorch)": "jolibrain/jupyter-dd-notebook-gpu",

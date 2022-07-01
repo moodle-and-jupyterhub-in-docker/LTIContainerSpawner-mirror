@@ -1133,7 +1133,7 @@ c.JupyterHub.spawner_class = LTIDockerSpawner
 #c.DockerSpawner.image = 'niicloudoperation/notebook'
 #c.DockerSpawner.image = 'jupyter/datascience-notebook'
 #c.DockerSpawner.image = 'jupyterhub/singleuser'
-c.DockerSpawner.image = 'jupyterhub-ltids/jupyter-singleuser'
+c.DockerSpawner.image = 'www.nsl.tuis.ac.jp:5000/jupyterhub-ltictr/jupyter-singleuser'
 
 #c.DockerSpawner.image_whitelist = {
 #    "deepdetect-gpu (Tensorflow+PyTorch)": "jolibrain/jupyter-dd-notebook-gpu",
