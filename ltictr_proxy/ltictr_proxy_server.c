@@ -437,7 +437,7 @@ void  sig_child(int signal)
 
 
 //
-// Termination of proxy process
+// Segmentation Falt
 //
 void  sig_segmen(int signal)
 {

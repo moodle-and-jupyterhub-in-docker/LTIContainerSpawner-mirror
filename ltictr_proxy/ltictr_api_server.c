@@ -226,11 +226,11 @@ int  init_main(Buffer configfile)
         filelist = read_index_tList_file((char*)configfile.buf, '=');
         //
         if (filelist!=NULL) {
-            PIDFile      = get_str_param_tList (filelist, LTICTR_PID_FILE,     PIDFile);
-            TLS_CertPem  = get_str_param_tList (filelist, LTICTR_SERVER_CERT,  TLS_CertPem);
-            TLS_ChainPem = get_str_param_tList (filelist, LTICTR_SERVER_CHAIN, TLS_ChainPem);
-            TLS_KeyPem   = get_str_param_tList (filelist, LTICTR_PRIVATE_KEY,  TLS_KeyPem);
-            API_Token    = get_str_param_tList (filelist, LTICTR_API_TOKEN,    API_Token);
+            PIDFile      = get_str_param_tList(filelist, LTICTR_PID_FILE,     PIDFile);
+            TLS_CertPem  = get_str_param_tList(filelist, LTICTR_SERVER_CERT,  TLS_CertPem);
+            TLS_ChainPem = get_str_param_tList(filelist, LTICTR_SERVER_CHAIN, TLS_ChainPem);
+            TLS_KeyPem   = get_str_param_tList(filelist, LTICTR_PRIVATE_KEY,  TLS_KeyPem);
+            API_Token    = get_str_param_tList(filelist, LTICTR_API_TOKEN,    API_Token);
             //
             del_tList(&filelist);
         }
@@ -274,7 +274,7 @@ void  sig_term(int signal)
 
 
 //
-// Termination of proxy process
+// Segmentation Falt  
 //
 void  sig_segmen(int signal)
 {

@@ -1,5 +1,6 @@
 #!/bin/bash
 #
+
 SBT=`echo $NB_SUBMITS | awk -F" " '{print $1}'`
 DST=`echo $SBT | awk -F":" '{print $1}'`
 LNK=`echo $SBT | awk -F":" '{print $2}'`
@@ -8,23 +9,24 @@ if [ "$DST" = "" ] ; then
 fi
 DST=${HOME}/${PRJCT_DIR}/${WORK_DIR}/${DST}
 
-if [ -d ${DST} ]; then
+#
+if [ -d $DST ]; then
     IFS=$'\n'
     USR=`whoami`
     #
     if [ $# -gt 0 ]; then
         for FL in $*; do
             if [ ! -d $FL ]; then
-                echo "copying ...  \"$FL\" \"${LNK}/${USR}_${FL}\""
-                cp                 "$FL" "${DST}/${USR}_${FL}"
+                echo "copying ...  \"$FL\"  \"${LNK}/${USR}_${FL}\""
+                cp "$FL" "${DST}/${USR}_${FL}"
             fi
         done
     else 
         FLS=`ls | grep -e '\.ipynb$'`
         for FL in $FLS; do
             if [ ! -d $FL ]; then
-                echo "copying ...  \"$FL\" \"${LNK}/${USR}_${FL}\""
-                cp                 "$FL" "${DST}/${USR}_${FL}"
+                echo "copying ...  \"$FL\"  \"${LNK}/${USR}_${FL}\""
+                cp "$FL" "${DST}/${USR}_${FL}"
             fi
         done
     fi
