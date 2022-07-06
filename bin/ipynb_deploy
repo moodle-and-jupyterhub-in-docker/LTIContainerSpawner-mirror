@@ -21,7 +21,7 @@ if [ "$FLS" != "" ]; then
             #
             if [ "$EXN" == "ipynb" ]; then
                 echo "deploying ... "$FL $D_DIR/${FNM}.$EXN
-                /usr/bin/ipynb_conv  $FL $D_DIR/${FNM}.$EXN $N_FAC
+                /usr/local/bin/ipynb_conv  $FL $D_DIR/${FNM}.$EXN $N_FAC
             else
                 echo "deploying ... "$FL $D_DIR/${FNM}.$EXN
                 /usr/bin/cp          $FL $D_DIR/${FNM}.$EXN

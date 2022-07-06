@@ -4,6 +4,7 @@
 #
 # /usr/local/bin/start.sh   
 #    This is modified by Fumi.Iseki for LTIDockerSpawner/LTIPodmanSpawner
+#       v1.0.4  2022 07/06
 #       v1.0.3  2022 05/16
 #       v1.0.2  2022 05/16
 #       v1.0.1  2022 04/18
@@ -281,8 +282,8 @@ if [ $(id -u) == 0 ] ; then
                 VF=`echo $DR | sed -e "s/\/lms_prs_/\/lms_vol_/"`
                 if [[ -d "$VF" && "$VF" != "$DR" ]]; then
                     cp --no-clobber -Rd $VF/* $DR || true
-                    if [[ -x "/usr/bin/ipynb_setup" && -x "/usr/bin/ipynb_conv" ]]; then
-                        /usr/bin/ipynb_setup $DR || true
+                    if [[ -x "/usr/local/bin/ipynb_setup" && -x "/usr/local/bin/ipynb_conv" ]]; then
+                        /usr/local/bin/ipynb_setup $DR || true
                     fi
                     chown -R $NB_UID:$NB_GID $DR || true
                 fi

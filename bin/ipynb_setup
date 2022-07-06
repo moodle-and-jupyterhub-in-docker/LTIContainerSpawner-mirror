@@ -16,7 +16,7 @@ IFS=$'\n'
 if [ "$FLS" != "" ]; then
     for FL in $FLS ; do
         echo "setup ... "$FL
-        /usr/bin/ipynb_conv  $FL $FL $N_FAC
+        /usr/local/bin/ipynb_conv  $FL $FL $N_FAC
     done
 fi
 
