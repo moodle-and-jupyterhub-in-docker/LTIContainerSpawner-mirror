@@ -545,9 +545,6 @@ class LTIPodmanSpawner(Spawner):
     custom_submits_cmd  = 'lms_sub_'
     custom_prsnals_cmd  = 'lms_prs_'
     custom_iframe_cmd   = 'lms_iframe'
-    custom_user_id_cmd  = 'lms_uid'
-    custom_group_id_cmd = 'lms_gid'
-    custom_grp_name_cmd = 'lms_gname'
     custom_options_cmd  = 'lms_options'
 
     #
@@ -558,6 +555,7 @@ class LTIPodmanSpawner(Spawner):
     course_id       = '0'
     host_name       = ''
     host_url        = ''
+    host_port       = 80
     userdata        = {}
     #
     ext_user_id     = -1
@@ -576,9 +574,6 @@ class LTIPodmanSpawner(Spawner):
     custom_submits  = {}
     custom_prsnals  = {}
     custom_iframe   = False
-    custom_user_id  = -1
-    custom_group_id = -1
-    custom_grp_name = ''
     custom_options  = ''
 
 
@@ -591,6 +586,7 @@ class LTIPodmanSpawner(Spawner):
         self.course_id       = '0'
         self.host_name       = 'localhost'
         self.host_url        = 'http://localhost'
+        self.host_port       = 80
         self.userdara        = {}
         #
         self.ext_user_id     = -1
@@ -609,9 +605,6 @@ class LTIPodmanSpawner(Spawner):
         self.custom_submits  = {}
         self.custom_prsnals  = {}
         self.custom_iframe   = False
-        self.custom_user_id  = -1
-        self.custom_group_id = -1
-        self.custom_grp_name = ''
         self.custom_options  = ''
         #
         return
@@ -638,8 +631,8 @@ class LTIPodmanSpawner(Spawner):
             except :
                 if self.ext_user_id>=0 :
                     self.user_id = self.ext_user_id                 # from extension command
-                elif self.custom_user_id>=0 :
-                    self.user_id = self.custom_user_id              # from custom command
+                #elif self.custom_user_id>=0 :
+                #    self.user_id = self.custom_user_id              # from custom command
                 else :
                     self.user_id = self.get_lms_userinfo()['uid']   # form LMS user accound
         #
@@ -653,8 +646,6 @@ class LTIPodmanSpawner(Spawner):
             except :
                 if self.ext_group_id>=0 :
                     self.group_id = self.ext_group_id               # from extension command
-                elif self.custom_group_id>=0 :
-                    self.group_id = self.custom_group_id            # from custom command
                 else :
                     self.group_id = self.get_lms_userinfo()['gid']  # form LMS user accound
         #
@@ -665,8 +656,6 @@ class LTIPodmanSpawner(Spawner):
                 except :
                     if self.ext_grp_name != '' :
                         self.grp_name = self.ext_grp_name                   # from extension command
-                    elif self.custom_grp_name != '' :
-                        self.grp_name = self.custom_grp_name                # from custom command
                     else :
                         self.grp_name = self.get_lms_userinfo()['gname']    # form LMS user accound
         #
@@ -762,19 +751,24 @@ class LTIPodmanSpawner(Spawner):
             elif key == 'lis_outcome_service_url' :
                 parsed = urlparse(value)
                 self.host_name = parsed.netloc                      # Host Name
-                scheme = parsed.scheme
-                self.host_url  = scheme + '://' + self.host_name    # Host URL
+                scheme = parsed.scheme                              # HTTP Scheme
+                self.host_url = scheme + '://' + self.host_name     # Host URL
+                portnm = parsed.port
+                if portnm is None:
+                    if   scheme == 'https' : portnm = 443
+                    elif scheme == 'http'  : portnm = 80
+                self.host_port = portnm
             #
             elif key.startswith('ext_'):                            # Extension Command
                 ext_cmd = key.replace('ext_', '')
                 #
                 if ext_cmd == self.ext_user_id_cmd:                                             # User ID Command
                     value = re.sub('[^0-9]', '', value)
-                    self.user_id = int(value)
+                    if value != '' : self.user_id = int(value)
                 #
                 elif ext_cmd == self.ext_group_id_cmd:                                          # User Group ID Command
                     value = re.sub('[^0-9]', '', value)
-                    self.group_id = int(value)
+                    if value != '' : self.group_id = int(value)
                 #
                 elif ext_cmd == self.ext_grp_name_cmd:                                          # User Group Name Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
@@ -818,18 +812,6 @@ class LTIPodmanSpawner(Spawner):
                 elif costom_cmd[0:len(self.custom_iframe_cmd)] == self.custom_iframe_cmd:       # iframe Command
                     if value == '1' :
                         self.custom_iframe = True
-                #
-                elif costom_cmd[0:len(self.custom_user_id_cmd)] == self.custom_user_id_cmd:     # User ID Command
-                    value = re.sub('[^0-9]', '', value)
-                    self.custom_user_id = int(value)
-                #
-                elif costom_cmd[0:len(self.custom_group_id_cmd)] == self.custom_group_id_cmd:   # Group ID Command
-                    value = re.sub('[^0-9]', '', value)
-                    self.custom_group_id = int(value)
-                #
-                elif costom_cmd[0:len(self.custom_grp_name_cmd)] == self.custom_grp_name_cmd:   # Grpup Name Command
-                    value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
-                    self.custom_grp_name = value.replace(',',' ').split()
                 #
                 elif costom_cmd[0:len(self.custom_options_cmd)] == self.custom_options_cmd:     # Option Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
