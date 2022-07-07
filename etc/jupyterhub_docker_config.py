@@ -1154,16 +1154,18 @@ c.DockerSpawner.notebook_dir = notebook_dir
 ## Path to SSL certificate file for the public facing interface of the proxy
 #  
 #  When setting this, you should also set ssl_key
-c.JupyterHub.ssl_cert = '/etc/gitlab/ssl/gitlab.crt'
+#c.JupyterHub.ssl_cert = '/etc/gitlab/ssl/gitlab.crt'
 #c.JupyterHub.ssl_cert = '/etc/letsencrypt/live/gitlab.nsl.tuis.ac.jp/cert.pem'
 #c.JupyterHub.ssl_cert = '/etc/pki/tls/certs/server.pem'
+c.JupyterHub.ssl_cert = '/etc/letsencrypt/live/jupyterhub01.nsl.tuis.ac.jp/cert.pem'
 
 ## Path to SSL key file for the public facing interface of the proxy
 #  
 #  When setting this, you should also set ssl_cert
-c.JupyterHub.ssl_key = '/etc/gitlab/ssl/gitlab.key'
+#c.JupyterHub.ssl_key = '/etc/gitlab/ssl/gitlab.key'
 #c.JupyterHub.ssl_key = '/etc/letsencrypt/live/gitlab.nsl.tuis.ac.jp/privkey.pem'
 #c.JupyterHub.ssl_key = '/etc/pki/tls/private/key.pem' 
+c.JupyterHub.ssl_key = '/etc/letsencrypt/live/jupyterhub01.nsl.tuis.ac.jp/privkey.pem'
 
 ## Host to send statsd metrics to. An empty string (the default) disables sending
 #  metrics.
