@@ -5,6 +5,7 @@
 
 
 void  init_xmlrpc_header(void);
+void  setup_xmlrpc_params(void);
 
 void  post_xmlrpc_server(struct ws_info* info);
 void  send_xmlrpc_data(char* host, int port, int tls, tList* header, int response);

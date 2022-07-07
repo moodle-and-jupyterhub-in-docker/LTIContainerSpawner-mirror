@@ -3,9 +3,10 @@
         
                 by Fumi.Iseki '22 02/12   BSD License.
                               '22 06/20   v1.1.0
+                              '22 07/07   v1.2.0
 */
 
-#define  LTICTR_PROXY_VERSION   "1.1.0"
+#define  LTICTR_PROXY_VERSION   "1.2.0"
 
 
 #include "ltictr_proxy.h"
@@ -18,14 +19,10 @@
 #define  LTICTR_PRIVATE_KEY     "LTICTR_Private_Key"
 #define  LTICTR_API_TOKEN       "LTICTR_API_Token"
 
-#define  MOODLE_HOST_KEY        "Moodle_Host"
-#define  MOODLE_PORT_KEY        "Moodle_Port"
-#define  MOODLE_URL_KEY         "Moodle_URL"
-#define  MOODLE_TOKEN_KEY       "Moodle_Token"
-#define  MOODLE_SERVICE_KEY     "Moodle_Servide"
-#define  MOODLE_DBANS_KEY       "Moodle_DBAns"
-#define  MOODLE_TLS_KEY         "Moodle_TLS"
-#define  MOODLE_HTTP_KEY        "Moodle_HTTP"
+#define  XMLRPC_PATH_KEY        "XmlRpc_Path"
+#define  XMLRPC_SERVICE_KEY     "XmlRpc_Service"
+#define  XMLRPC_HTTPVER_KEY     "XmlRpc_HTTPver"
+#define  XMLRPC_RESPONSE_KEY    "XmlRpc_Response"
 
 #define  API_SERVER_NAME        "ltictr_api_server"
 
@@ -52,20 +49,16 @@ int      PendingSigchld = 0;
 //int      Logtype        = LOG_ERR;
 
 //default config value
-char*    PIDFile        = "/var/run/ltictr_proxy.pid";
-char*    TLS_CertPem    = "/etc/pki/tls/certs/server.pem";
-char*    TLS_ChainPem   = NULL;
-char*    TLS_KeyPem     = "/etc/pki/tls/private/key.pem";
-char*    API_Token      = "default_token";
+char*    PIDFile         = "/var/run/ltictr_proxy.pid";
+char*    TLS_CertPem     = "/etc/pki/tls/certs/server.pem";
+char*    TLS_ChainPem    = NULL;
+char*    TLS_KeyPem      = "/etc/pki/tls/private/key.pem";
+char*    API_Token       = "default_token";
 
-char*    Moodle_Host    = "localhost";
-char*    Moodle_URL     = "/webservice/xmlrpc/server.php";
-char*    Moodle_Token   = "";
-char*    Moodle_Service = "mod_lticontainer_write_nbdata";
-char*    Moodle_HTTP    = "1.1";
-int      Moodle_Port    = 80;
-int      Moodle_DBAns   = FALSE;
-int      Moodle_TLS     = FALSE;
+char*    XmlRpc_Path     = "/webservice/xmlrpc/server.php";
+char*    XmlRpc_Service  = "mod_lticontainer_write_nbdata";
+char*    XmlRpc_HTTPver  = "1.1";
+int      XmlRpc_Response = FALSE;
 
 
 
@@ -91,7 +84,7 @@ int main(int argc, char** argv)
     Buffer configfile;
 
     // for arguments
-    hosturl  = init_Buffer();
+    hosturl    = init_Buffer();
     apiurl     = init_Buffer();
     efctvuser  = init_Buffer();
     pidfile    = init_Buffer();
@@ -329,24 +322,17 @@ int  init_main(Buffer configfile)
         filelist = read_index_tList_file((char*)configfile.buf, '=');
         //
         if (filelist!=NULL) {
-            PIDFile        = get_str_param_tList (filelist, LTICTR_PID_FILE,     PIDFile);
-            TLS_CertPem    = get_str_param_tList (filelist, LTICTR_SERVER_CERT,  TLS_CertPem);
-            TLS_ChainPem   = get_str_param_tList (filelist, LTICTR_SERVER_CHAIN, TLS_ChainPem);
-            TLS_KeyPem     = get_str_param_tList (filelist, LTICTR_PRIVATE_KEY,  TLS_KeyPem);
-            API_Token      = get_str_param_tList (filelist, LTICTR_API_TOKEN,    API_Token);
+            PIDFile         = get_str_param_tList (filelist, LTICTR_PID_FILE,     PIDFile);
+            TLS_CertPem     = get_str_param_tList (filelist, LTICTR_SERVER_CERT,  TLS_CertPem);
+            TLS_ChainPem    = get_str_param_tList (filelist, LTICTR_SERVER_CHAIN, TLS_ChainPem);
+            TLS_KeyPem      = get_str_param_tList (filelist, LTICTR_PRIVATE_KEY,  TLS_KeyPem);
+            API_Token       = get_str_param_tList (filelist, LTICTR_API_TOKEN,    API_Token);
             //
-            Moodle_Host    = get_str_param_tList (filelist, MOODLE_HOST_KEY,     Moodle_Host);
-            Moodle_URL     = get_str_param_tList (filelist, MOODLE_URL_KEY ,     Moodle_URL);
-            Moodle_Token   = get_str_param_tList (filelist, MOODLE_TOKEN_KEY,    Moodle_Token);
-            Moodle_Service = get_str_param_tList (filelist, MOODLE_SERVICE_KEY,  Moodle_Service);
-            Moodle_HTTP    = get_str_param_tList (filelist, MOODLE_HTTP_KEY,     Moodle_HTTP);
-            Moodle_Port    = get_int_param_tList (filelist, MOODLE_PORT_KEY,     Moodle_Port);
-            Moodle_DBAns   = get_bool_param_tList(filelist, MOODLE_DBANS_KEY,    Moodle_DBAns);
-            Moodle_TLS     = get_bool_param_tList(filelist, MOODLE_TLS_KEY,      Moodle_TLS);
+            XmlRpc_Path     = get_str_param_tList (filelist, XMLRPC_PATH_KEY ,    XmlRpc_Path);
+            XmlRpc_Service  = get_str_param_tList (filelist, XMLRPC_SERVICE_KEY,  XmlRpc_Service);
+            XmlRpc_HTTPver  = get_str_param_tList (filelist, XMLRPC_HTTPVER_KEY,  XmlRpc_HTTPver);
+            XmlRpc_Response = get_bool_param_tList(filelist, XMLRPC_RESPONSE_KEY, XmlRpc_Response);
 
-            if (Moodle_Token[0]=='\0') {
-                DEBUG_MODE print_message("[LTICTR_PROXY_SERVER] The token used to connect to the Moodle Web Service has not been specified.\n");
-            }
             del_tList(&filelist);
         }
     }

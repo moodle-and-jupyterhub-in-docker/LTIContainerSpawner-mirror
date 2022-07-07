@@ -4,30 +4,27 @@
 #include "ltictr_xmlrpc.h"
 
 
-tList*   HTTP_Header  = NULL;
-tList*   HTTP_Length  = NULL;
-tList*   HTTP_Data    = NULL;
-
-
-extern char*    Moodle_Host;
-extern char*    Moodle_URL;
-extern char*    Moodle_Token;
-extern char*    Moodle_Service;
-extern char*    Moodle_HTTP;
-extern int      Moodle_Port;
-extern int      Moodle_TLS;
-extern int      Moodle_DBAns;
+tList*   HTTP_Header = NULL;
+tList*   HTTP_Host   = NULL;
+tList*   HTTP_Length = NULL;
+tList*   HTTP_Data   = NULL;
 
 
 
-/**
-    .......
-    init_xml_rpc_header();
-    ......
-    ......
-    post_xml_server(info);  // -> send_xmlrpc_data()
-    ......
-*/
+char*    ServerName = NULL;
+int      ServerPort = 443;
+int      ServerTLS  = TRUE;
+
+
+extern char*    ServerURL;
+extern char*    ServerPath;
+extern char*    ServerToken;
+
+extern char*    XmlRpc_Path;
+extern char*    XmlRpc_Service;
+extern char*    XmlRpc_HTTPver;
+extern int      XmlRpc_Response;
+
 
 
 ///////////////////////////////////////////////////////////////////////
@@ -86,12 +83,26 @@ void  post_xmlrpc_server(struct ws_info* info)
     xml = xml_rpc_add_member(xml, "date",     info->date, "");
     xml = xml_rpc_end_member(xml);
     
-    Buffer buf = xml_rpc_request_pack(Moodle_Service, xml);
+    setup_xmlrpc_params();
+
+    // data -> HTTP_Header, HTTP_Host
+    char* path = ServerPath;
+    if (*path=='%') path += 3;
+    if (*path=='/') path++;
+    //
+    char url[LMESG];
+    snprintf(url, LMESG-1, "POST /%s%s?wstoken=%s HTTP/%s", path, XmlRpc_Path, ServerToken, XmlRpc_HTTPver);
+    copy_s2Buffer(url, &(HTTP_Header->ldat.val));
+    copy_s2Buffer(ServerName, &(HTTP_Host->ldat.val));
+
+    // data -> HTTP_Length, HTTP_Data
+    Buffer buf = xml_rpc_request_pack(XmlRpc_Service, xml);
     copy_i2Buffer((int)buf.vldsz, &(HTTP_Length->ldat.val));
     copy_Buffer(&buf, &(HTTP_Data->ldat.val));
 
-    send_xmlrpc_data(Moodle_Host, Moodle_Port, Moodle_TLS, HTTP_Header, Moodle_DBAns);
+    send_xmlrpc_data(ServerName, ServerPort, ServerTLS, HTTP_Header, XmlRpc_Response);
 
+    freenull(ServerName);
     free_Buffer(&buf);
     del_xml(&xml);
 }
@@ -100,17 +111,48 @@ void  post_xmlrpc_server(struct ws_info* info)
 
 void  init_xmlrpc_header(void)
 {
-    char url[LMESG];
-    snprintf(url, LMESG-1, "POST %s?wstoken=%s HTTP/%s", Moodle_URL, Moodle_Token, Moodle_HTTP);
-
     tList* pp = NULL;
-    pp = HTTP_Header = add_tList_node_str(pp, HDLIST_FIRST_LINE_KEY, url);
-    pp               = add_tList_node_str(pp, "Host", Moodle_Host);
+    pp = HTTP_Header = add_tList_node_str(pp, HDLIST_FIRST_LINE_KEY, "");
+    pp = HTTP_Host   = add_tList_node_str(pp, "Host", "");
     pp               = add_tList_node_str(pp, "Content-Type", "text/html");
     pp = HTTP_Length = add_tList_node_str(pp, "Content-Length", "");
     pp               = add_tList_node_str(pp, "Connection", "close");
     pp               = add_tList_node_str(pp, HDLIST_END_KEY, "");
     pp = HTTP_Data   = add_tList_node_str(pp, HDLIST_CONTENTS_KEY,  "");
+
+    return;
+}
+
+
+void  setup_xmlrpc_params(void)
+{
+    char* p;
+    char* s;
+    char  b;
+
+    if (ServerURL==NULL) return;
+
+    p = ServerURL;
+    s = p;
+    while (*p!='%' && *p!='\0') p++;
+    b  = *p;
+    *p = '\0';
+    if (!strncmp("https", s, 5)) ServerTLS = TRUE;
+    else                         ServerTLS = FALSE;
+    *p = b;
+    if (*p=='%') p += 3;
+
+    freenull(ServerName);
+    s = p;
+    while (*p!='%' && *p!='\0') p++;
+    b  = *p;
+    *p = '\0';
+    ServerName = dup_str(s);
+    *p = b;
+    if (b=='%') p += 3;
+
+    s = p;
+    ServerPort = atoi(s);
 
     return;
 }

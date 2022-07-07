@@ -563,5 +563,3 @@ Buffer  get_proxy_target(char* api_host, int api_port, SSL_CTX* ctx, char* uname
     return target;
 }
 
-
-
