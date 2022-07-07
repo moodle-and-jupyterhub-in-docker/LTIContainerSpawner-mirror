@@ -631,8 +631,6 @@ class LTIPodmanSpawner(Spawner):
             except :
                 if self.ext_user_id>=0 :
                     self.user_id = self.ext_user_id                 # from extension command
-                #elif self.custom_user_id>=0 :
-                #    self.user_id = self.custom_user_id              # from custom command
                 else :
                     self.user_id = self.get_lms_userinfo()['uid']   # form LMS user accound
         #
