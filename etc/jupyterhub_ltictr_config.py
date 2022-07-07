@@ -711,67 +711,72 @@ class LTIDockerSpawner(DockerSpawner):
     custom_submits_cmd  = 'lms_sub_'
     custom_prsnals_cmd  = 'lms_prs_'
     custom_iframe_cmd   = 'lms_iframe'
+    custom_ssninfo_cmd  = 'lms_sessioninfo'
     custom_options_cmd  = 'lms_options'
 
     #
-    user_id         = -1
-    group_id        = -1
-    grp_name        = ''
-    lms_user_id     = -1    # LMS USER ID
-    course_id       = '0'
-    host_name       = ''
-    host_url        = ''
-    host_port       = 80
-    userdata        = {}
+    user_id          = -1
+    group_id         = -1
+    grp_name         = ''
+    lms_user_id      = -1    # LMS USER ID
+    course_id        = '0'
+    host_name        = ''
+    host_url         = ''
+    host_port        = 80
+    userdata         = {}
     #
-    ext_user_id     = -1
-    ext_group_id    = -1
-    ext_grp_name    = ''
+    ext_user_id      = -1
+    ext_group_id     = -1
+    ext_grp_name     = ''
     #
-    custom_image    = ''
-    custom_cpulimit = '0.0'
-    custom_memlimit = '0'
-    custom_cpugrnt  = '0.0'
-    custom_memgrnt  = '0'
-    custom_defurl   = '/lab'
-    custom_users    = []
-    custom_teachers = []
-    custom_volumes  = {}
-    custom_submits  = {}
-    custom_prsnals  = {}
-    custom_iframe   = False
-    custom_options  = ''
+    custom_image     = ''
+    custom_cpulimit  = '0.0'
+    custom_memlimit  = '0'
+    custom_cpugrnt   = '0.0'
+    custom_memgrnt   = '0'
+    custom_defurl    = '/lab'
+    custom_users     = []
+    custom_teachers  = []
+    custom_volumes   = {}
+    custom_submits   = {}
+    custom_prsnals   = {}
+    custom_iframe    = False
+    custom_ltictr_id = 0
+    custom_lti_id    = 0
+    custom_options   = ''
 
 
     def init_parameters(self):
         #print('=== init_parameters() ===')
-        self.user_id         = -1
-        self.group_id        = -1
-        self.grp_name        = ''
-        self.lms_user_id     = -1
-        self.course_id       = '0'
-        self.host_name       = 'localhost'
-        self.host_url        = 'http://localhost'
-        self.host_port       = 80
-        self.userdara        = {}
+        self.user_id          = -1
+        self.group_id         = -1
+        self.grp_name         = ''
+        self.lms_user_id      = -1
+        self.course_id        = '0'
+        self.host_name        = 'localhost'
+        self.host_url         = 'http://localhost'
+        self.host_port        = 80
+        self.userdara         = {}
         #
-        self.ext_user_id     = -1
-        self.ext_group_id    = -1
-        self.ext_grp_name    = ''
+        self.ext_user_id      = -1
+        self.ext_group_id     = -1
+        self.ext_grp_name     = ''
         #
-        self.custom_image    = ''
-        self.custom_cpulimit = '0.0'
-        self.custom_memlimit = '0'
-        self.custom_cpugrnt  = '0.0'
-        self.custom_memgrnt  = '0'
-        self.custom_defurl   = '/lab'
-        self.custom_users    = []
-        self.custom_teachers = []
-        self.custom_volumes  = {}
-        self.custom_submits  = {}
-        self.custom_prsnals  = {}
-        self.custom_iframe   = False
-        self.custom_options  = ''
+        self.custom_image     = ''
+        self.custom_cpulimit  = '0.0'
+        self.custom_memlimit  = '0'
+        self.custom_cpugrnt   = '0.0'
+        self.custom_memgrnt   = '0'
+        self.custom_defurl    = '/lab'
+        self.custom_users     = []
+        self.custom_teachers  = []
+        self.custom_volumes   = {}
+        self.custom_submits   = {}
+        self.custom_prsnals   = {}
+        self.custom_iframe    = False
+        self.custom_ltictr_id = 0
+        self.custom_lti_id    = 0
+        self.custom_options   = ''
         #
         return
 
@@ -949,10 +954,6 @@ class LTIDockerSpawner(DockerSpawner):
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~ ]', '', value)
                     self.custom_defurl = value
                 #
-                elif costom_cmd[0:len(self.custom_iframe_cmd)] == self.custom_iframe_cmd:       # iframe Command
-                    if value == '1' :
-                        self.custom_iframe = True
-                #
                 elif costom_cmd[0:len(self.custom_options_cmd)] == self.custom_options_cmd:     # Option Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
                     self.custom_options = value
@@ -968,6 +969,15 @@ class LTIDockerSpawner(DockerSpawner):
                 elif costom_cmd[0:len(self.custom_prsnals_cmd)] == self.custom_prsnals_cmd:     # Personals Volume Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
                     self.custom_prsnals[costom_cmd] = value
+                #
+                elif costom_cmd[0:len(self.custom_iframe_cmd)] == self.custom_iframe_cmd:       # iframe Command
+                    if value == '1' :
+                        self.custom_iframe = True
+                #
+                elif costom_cmd[0:len(self.custom_ssninfo_cmd)] == self.custom_ssninfo_cmd:     # sessioninfo Command
+                    value = re.sub('[^0-9]', ' ', value)
+                    self.custom_ltictr_id = value.split()[0]
+                    self.custom_lti_id    = value.split()[1]
                 #
         return
 
@@ -1058,6 +1068,11 @@ class LTIDockerSpawner(DockerSpawner):
         grouphome = self.groupdir
         self.notebook_dir = hosthome
         self.volumes = {}
+
+        course_id = self.course_id
+        lti_id    = self.custom_lti_id
+        host_name = self.host_name
+        self.object_name = f'jupyterhub-{username}-{course_id}-{lti_id}-{host_name}'
 
         # cpu and memory
         if self.custom_cpugrnt != '':
@@ -1223,67 +1238,72 @@ class LTIPodmanSpawner(Spawner):
     custom_submits_cmd  = 'lms_sub_'
     custom_prsnals_cmd  = 'lms_prs_'
     custom_iframe_cmd   = 'lms_iframe'
+    custom_ssninfo_cmd  = 'lms_sessioninfo'
     custom_options_cmd  = 'lms_options'
 
     #
-    user_id         = -1
-    group_id        = -1
-    grp_name        = ''
-    lms_user_id     = -1    # LMS USER ID
-    course_id       = '0'
-    host_name       = ''
-    host_url        = ''
-    host_port       = 80
-    userdata        = {}
+    user_id          = -1
+    group_id         = -1
+    grp_name         = ''
+    lms_user_id      = -1    # LMS USER ID
+    course_id        = '0'
+    host_name        = ''
+    host_url         = ''
+    host_port        = 80
+    userdata         = {}
     #
-    ext_user_id     = -1
-    ext_group_id    = -1
-    ext_grp_name    = ''
+    ext_user_id      = -1
+    ext_group_id     = -1
+    ext_grp_name     = ''
     #
-    custom_image    = ''
-    custom_cpulimit = '0.0'
-    custom_memlimit = '0'
-    custom_cpugrnt  = '0.0'
-    custom_memgrnt  = '0'
-    custom_defurl   = '/lab'
-    custom_users    = []
-    custom_teachers = []
-    custom_volumes  = {}
-    custom_submits  = {}
-    custom_prsnals  = {}
-    custom_iframe   = False
-    custom_options  = ''
+    custom_image     = ''
+    custom_cpulimit  = '0.0'
+    custom_memlimit  = '0'
+    custom_cpugrnt   = '0.0'
+    custom_memgrnt   = '0'
+    custom_defurl    = '/lab'
+    custom_users     = []
+    custom_teachers  = []
+    custom_volumes   = {}
+    custom_submits   = {}
+    custom_prsnals   = {}
+    custom_iframe    = False
+    custom_ltictr_id = 0
+    custom_lti_id    = 0
+    custom_options   = ''
 
 
     def init_parameters(self):
         #print('=== init_parameters() ===')
-        self.user_id         = -1
-        self.group_id        = -1
-        self.grp_name        = ''
-        self.lms_user_id     = -1
-        self.course_id       = '0'
-        self.host_name       = 'localhost'
-        self.host_url        = 'http://localhost'
-        self.host_port       = 80
-        self.userdara        = {}
+        self.user_id          = -1
+        self.group_id         = -1
+        self.grp_name         = ''
+        self.lms_user_id      = -1
+        self.course_id        = '0'
+        self.host_name        = 'localhost'
+        self.host_url         = 'http://localhost'
+        self.host_port        = 80
+        self.userdara         = {}
         #
-        self.ext_user_id     = -1
-        self.ext_group_id    = -1
-        self.ext_grp_name    = ''
+        self.ext_user_id      = -1
+        self.ext_group_id     = -1
+        self.ext_grp_name     = ''
         #
-        self.custom_image    = ''
-        self.custom_cpulimit = '0.0'
-        self.custom_memlimit = '0'
-        self.custom_cpugrnt  = '0.0'
-        self.custom_memgrnt  = '0'
-        self.custom_defurl   = '/lab'
-        self.custom_users    = []
-        self.custom_teachers = []
-        self.custom_volumes  = {}
-        self.custom_submits  = {}
-        self.custom_prsnals  = {}
-        self.custom_iframe   = False
-        self.custom_options  = ''
+        self.custom_image     = ''
+        self.custom_cpulimit  = '0.0'
+        self.custom_memlimit  = '0'
+        self.custom_cpugrnt   = '0.0'
+        self.custom_memgrnt   = '0'
+        self.custom_defurl    = '/lab'
+        self.custom_users     = []
+        self.custom_teachers  = []
+        self.custom_volumes   = {}
+        self.custom_submits   = {}
+        self.custom_prsnals   = {}
+        self.custom_iframe    = False
+        self.custom_ltictr_id = 0
+        self.custom_lti_id    = 0
+        self.custom_options   = ''
         #
         return
 
@@ -1485,10 +1505,6 @@ class LTIPodmanSpawner(Spawner):
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~ ]', '', value)
                     self.custom_defurl = value
                 #
-                elif costom_cmd[0:len(self.custom_iframe_cmd)] == self.custom_iframe_cmd:       # iframe Command
-                    if value == '1' :
-                        self.custom_iframe = True
-                #
                 elif costom_cmd[0:len(self.custom_options_cmd)] == self.custom_options_cmd:     # Option Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
                     self.custom_options = value
@@ -1504,6 +1520,15 @@ class LTIPodmanSpawner(Spawner):
                 elif costom_cmd[0:len(self.custom_prsnals_cmd)] == self.custom_prsnals_cmd:     # Personals Volume Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
                     self.custom_prsnals[costom_cmd] = value
+                #
+                elif costom_cmd[0:len(self.custom_iframe_cmd)] == self.custom_iframe_cmd:       # iframe Command
+                    if value == '1' :
+                        self.custom_iframe = True
+                #
+                elif costom_cmd[0:len(self.custom_ssninfo_cmd)] == self.custom_ssninfo_cmd:     # sessioninfo Command
+                    value = re.sub('[^0-9]', ' ', value)
+                    self.custom_ltictr_id = value.split()[0]
+                    self.custom_lti_id    = value.split()[1]
                 #
         return
 
@@ -1668,6 +1693,9 @@ class LTIPodmanSpawner(Spawner):
     def podman_start(self):
         #print('=== podman_start() ===')
         username  = self.user.name
+        course_id = self.course_id
+        lti_id    = self.custom_lti_id
+        host_name = self.host_name
 
         import subprocess
         self.create_dir('/run/user/0', 0, 0, 0o0700)
@@ -1686,7 +1714,7 @@ class LTIPodmanSpawner(Spawner):
                 #         hostport=self.port, port=self.standard_jupyter_port
                 #         ),
                 #
-                '--name', f'jupyter-{username}',
+                '--name', f'jupyterhub-{username}-{course_id}-{lti_id}-{host_name}',
                 '--net', 'host',
                 #'-w', mountdir,
                 #'-v', '{}:{}'.format(hosthome, hosthome),
