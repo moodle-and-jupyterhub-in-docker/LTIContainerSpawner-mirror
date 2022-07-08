@@ -736,7 +736,7 @@ class LTIDockerSpawner(DockerSpawner):
                 scheme = parsed.scheme                              # HTTP Scheme
                 self.host_url = scheme + '://' + self.host_name     # Host URL
                 portnm = parsed.port
-                if portnm is None:
+                if portnm is None :
                     if   scheme == 'https' : portnm = 443
                     elif scheme == 'http'  : portnm = 80
                 self.host_port = portnm

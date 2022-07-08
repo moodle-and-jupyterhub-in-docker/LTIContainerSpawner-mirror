@@ -899,7 +899,7 @@ class LTIDockerSpawner(DockerSpawner):
                 scheme = parsed.scheme                              # HTTP Scheme
                 self.host_url = scheme + '://' + self.host_name     # Host URL
                 portnm = parsed.port
-                if portnm is None:
+                if portnm is None :
                     if   scheme == 'https' : portnm = 443
                     elif scheme == 'http'  : portnm = 80
                 self.host_port = portnm
@@ -913,11 +913,11 @@ class LTIDockerSpawner(DockerSpawner):
                 #
                 elif ext_cmd == self.ext_group_id_cmd:                                          # User Group ID Command
                     value = re.sub('[^0-9]', '', value)
-                    self.ext_group_id = int(value)
+                    if value != '' : self.ext_group_id = int(value)
                 #
                 elif ext_cmd == self.ext_grp_name_cmd:                                          # User Group Name Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
-                    if value != '' : self.ext_grp_name = value
+                    self.ext_grp_name = value
                 #
             elif key.startswith('custom_'):                         # Custom Command
                 costom_cmd = key.replace('custom_', '')
@@ -1450,7 +1450,7 @@ class LTIPodmanSpawner(Spawner):
                 scheme = parsed.scheme                              # HTTP Scheme
                 self.host_url = scheme + '://' + self.host_name     # Host URL
                 portnm = parsed.port
-                if portnm is None:
+                if portnm is None :
                     if   scheme == 'https' : portnm = 443
                     elif scheme == 'http'  : portnm = 80
                 self.host_port = portnm
@@ -1460,15 +1460,15 @@ class LTIPodmanSpawner(Spawner):
                 #
                 if ext_cmd == self.ext_user_id_cmd:                                             # User ID Command
                     value = re.sub('[^0-9]', '', value)
-                    if value != '' : self.user_id = int(value)
+                    if value != '' : self.ext_user_id = int(value)
                 #
                 elif ext_cmd == self.ext_group_id_cmd:                                          # User Group ID Command
                     value = re.sub('[^0-9]', '', value)
-                    if value != '' : self.group_id = int(value)
+                    if value != '' : self.ext_group_id = int(value)
                 #
                 elif ext_cmd == self.ext_grp_name_cmd:                                          # User Group Name Command
                     value = re.sub('[;$\!\"\'&|\\<>?^%\(\)\{\}\n\r~\/ ]', '', value)
-                    self.grp_name = value
+                    self.ext_grp_name = value
             #
             elif key.startswith('custom_'):                         # Custom Command
                 costom_cmd = key.replace('custom_', '')
