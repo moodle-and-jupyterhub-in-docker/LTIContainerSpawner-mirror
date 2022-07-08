@@ -9,7 +9,7 @@ else
 fi
 
 #
-LST=`docker images | grep $TAG | awk -F" " '{print $1":"$2}'`
+LST=`docker images | awk -F" " '{print $1":"$2}' | grep -e ":${TAG}$"`
 
 for IMG in $LST ; do
     echo "delete .... $IMG"
