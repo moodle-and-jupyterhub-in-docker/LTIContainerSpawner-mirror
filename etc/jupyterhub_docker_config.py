@@ -1031,9 +1031,10 @@ c.Spawner.environment = {
 
 
 #
-# culler
+# culler and admin-service
 #
 c.JupyterHub.services = [
+    # culler
     {
         'name': 'idle-culler',
         'admin': True,
@@ -1042,8 +1043,30 @@ c.JupyterHub.services = [
             '/usr/local/bin/cull_idle_servers.py',
             '--timeout=1200'
         ],
-    }
+    },
+
+    # admin-service
+    {
+        'name': 'admin-service',
+        'api_token': '',    # at least 8 characters
+    },
 ]
+
+#
+# role of admin-service
+#
+c.JupyterHub.load_roles = [
+    {
+        "name": "service-role",
+        "scopes": [
+            "admin:users",
+        ],
+        "services": [
+            "admin-service",
+        ],
+   }
+]
+
 
 #
 # for iframe
@@ -1097,6 +1120,15 @@ c.Exchange.timezone = time_zone
 #          }
 #      ]
 #c.JupyterHub.services = []
+
+
+## Instead of starting the Application, dump configuration to stdout
+#  See also: Application.show_config
+# c.JupyterHub.show_config = False
+
+## Instead of starting the Application, dump configuration to stdout (as JSON)
+#  See also: Application.show_config_json
+# c.JupyterHub.show_config_json = False
 
 ## Shuts down all user servers on logout
 c.JupyterHub.shutdown_on_logout = True

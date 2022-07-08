@@ -1926,6 +1926,44 @@ c.Spawner.environment = {
 
 
 #
+# culler and admin-service
+#
+c.JupyterHub.services = [
+    # culler
+    {
+        'name': 'idle-culler',
+        'admin': True,
+        'command': [
+            sys.executable,
+            '/usr/local/bin/cull_idle_servers.py',
+            '--timeout=1200'
+        ],
+    },
+
+    # admin-service
+    {
+        'name': 'admin-service',
+        'api_token': '',    # at least 8 characters
+    },
+]
+
+#
+# role of admin-service
+#
+c.JupyterHub.load_roles = [
+    {
+        "name": "service-role",
+        "scopes": [
+            "admin:users",
+        ],
+        "services": [
+            "admin-service",
+        ],
+   }
+]
+
+
+#
 # for iframe
 #
 iframe_url = 'https://*'                          # iframe Host URL
@@ -1984,17 +2022,6 @@ c.Exchange.timezone = time_zone
 #  Default: []
 # c.JupyterHub.services = []
 
-c.JupyterHub.services = [
-    {
-        'name': 'idle-culler',
-        'admin': True,
-        'command': [
-            sys.executable,
-            '/usr/local/bin/cull_idle_servers.py',
-            '--timeout=1200'
-        ],
-    }
-]
 
 ## Instead of starting the Application, dump configuration to stdout
 #  See also: Application.show_config
