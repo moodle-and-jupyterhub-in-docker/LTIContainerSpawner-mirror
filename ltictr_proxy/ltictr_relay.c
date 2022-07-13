@@ -7,7 +7,7 @@
 #define  SESSION_ID_KEY      "session_id="
 
 #define  LMS_SESSIONINFO_KEY "lms_sessioninfo="         // Instance id, LTI id
-#define  LMS_SERVERURL_KEY   "lms_serverurl="           // Scheme:Server Name:Port Num
+#define  LMS_SERVERURL_KEY   "lms_serverurl="           // Scheme://Server Name:Port Num
 #define  LMS_SERVERPATH_KEY  "lms_serverpath="          // 
 #define  LMS_RPCTOKEN_KEY    "lms_rpctoken="            //
 

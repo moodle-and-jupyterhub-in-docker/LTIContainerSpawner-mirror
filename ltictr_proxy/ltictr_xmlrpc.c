@@ -134,22 +134,29 @@ void  setup_xmlrpc_params(void)
 
     p = ServerURL;
     s = p;
-    while (*p!='%' && *p!='\0') p++;
+    while (*p!='%' && *p!=':' && *p!='\0') p++;
     b  = *p;
     *p = '\0';
     if (!strncmp("https", s, 5)) ServerTLS = TRUE;
     else                         ServerTLS = FALSE;
     *p = b;
-    if (*p=='%') p += 3;
+    if      (*p=='%') p += 3;        // :
+    else if (*p==':') p++;
+    //
+    if      (*p=='%') p += 3;        // /
+    else if (*p=='/') p++;
+    if      (*p=='%') p += 3;        // /
+    else if (*p=='/') p++;
 
     freenull(ServerName);
     s = p;
-    while (*p!='%' && *p!='\0') p++;
+    while (*p!='%' && *p!=':' && *p!='\0') p++;
     b  = *p;
     *p = '\0';
     ServerName = dup_str(s);
     *p = b;
-    if (b=='%') p += 3;
+    if      (*p=='%') p += 3;
+    else if (*p==':') p++;
 
     s = p;
     ServerPort = atoi(s);
