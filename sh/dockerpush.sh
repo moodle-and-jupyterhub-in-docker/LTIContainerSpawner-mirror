@@ -3,6 +3,8 @@
 #  docker login -u ${USRNAME} -p ${PASSWD} ${REPOSITORY_HOST}
 #  ./dockerpush ${UPDATE_IMAGE_TAG}
 #
+#  ex.) docker login -u alice -p password_of_alice  www.nsl.tuis.ac.jp:5000
+#
 
 IDSTR="ltictr"
 DKRREP="www.nsl.tuis.ac.jp:5000"
