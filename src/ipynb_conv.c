@@ -48,7 +48,7 @@ int main(int argc, char** argv)
         if (ls->altp!=NULL) {
             tJson* meta = search_key_sister_json(ls->altp, "metadata", FALSE);
             //
-            int num = ls->ldat.id * num_fac;
+            int num = (ls->ldat.id + 1) * num_fac;
             if (meta!=NULL) {
                 tJson* tags = search_key_json(meta, "tags", FALSE, 1);
                 if (tags!=NULL) {

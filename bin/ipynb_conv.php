@@ -70,7 +70,7 @@ function  chek_code_cell(&$p_val, $filename, &$num, $num_fac)
 
 
 //
-$num = 0;
+$num = 1;
 if (is_object($json)) {
     if (property_exists($json, "cells")) {
         foreach ($json->cells as &$val) {
