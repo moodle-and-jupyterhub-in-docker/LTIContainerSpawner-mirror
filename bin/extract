@@ -1,0 +1,31 @@
+#!/bin/bash
+#
+
+#
+if [ $# -lt 2 ]; then
+    echo "usage ... "$0" base_file_name codenum [codenum] [codenum] ...."
+    exit 1
+fi
+
+IFS=$'\n'
+BFL=$1
+
+TMPFL=$BFL".tmp"
+MTDFL=$BFL".meta.tmp"
+OUTFL=`printf "%03d" ${@:$#:1}`"-"$BFL
+
+rm -f $TMPFL $MTDFL $OUTFL
+
+FLS=`ls | grep -e '_'$BFL | sort`
+shift
+for FL in $FLS; do
+    ./ipynb_extract $FL $TMPFL $MTDFL $*
+    echo "extracting ... "$FL $*
+done
+
+cat $MTDFL >> $TMPFL
+echo "saving ... "$OUTFL
+./json_file $TMPFL >| $OUTFL
+
+rm -f $TMPFL $MTDFL
+

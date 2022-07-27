@@ -15,8 +15,8 @@ int main(int argc, char** argv)
 
     tJson* json = json_parse_file(argv[1], 100);
 
-    //print_tTree(stdout, json, "    ");
-    print_json_opt(stdout, json, "\n", "    ");
+    //print_tTree(stdout, json, "    ", TRUE);
+    print_json_opt(stdout, json, "\n", "    ", TRUE);
 
     return 0;
 }

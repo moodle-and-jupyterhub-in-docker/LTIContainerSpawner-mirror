@@ -94,12 +94,12 @@ int main(int argc, char** argv)
 
     if (out_file!=NULL) {
         FILE* fp = fopen(out_file, "w");
-        print_json_opt(fp, pp, "\n", " ");
+        print_json_opt(fp, pp, "\n", " ", TRUE);
         fclose(fp);
     }
     else {
         //print_tTree(stdout, pp);
-        print_json_opt(stdout, pp, "\n", " ");
+        print_json_opt(stdout, pp, "\n", " ", TRUE);
     }
     del_json(&pp);
 

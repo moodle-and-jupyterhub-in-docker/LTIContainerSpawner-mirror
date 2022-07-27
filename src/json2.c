@@ -69,7 +69,7 @@ int main(int argc, char** argv)
     tJson* json = json_parse_file(argv[1], 99);
     if (json==NULL) exit(1);
 
-    //print_tTree(stdout, json, "    ");
+    print_tTree(stdout, json);
 
     json = json->next;
     if (json==NULL) return 1;
@@ -85,7 +85,7 @@ int main(int argc, char** argv)
         json = json->ysis;
     }   
 
-    //printf("N= %d\n",n);
+    printf("N = %d\n",n);
 
     return 0;
 }
