@@ -136,7 +136,9 @@ int main(int argc, char** argv)
         //
         ll = ll->next;
     }
+    del_all_tList(&ld);
 
+    //
     int output_flg = OFF;
     if (count>0 && ipynb!=NULL) {
         join_json(ipynb, &tail);
