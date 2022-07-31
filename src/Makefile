@@ -10,7 +10,7 @@ CPU = Intel
 
 #
 #
-SUBJ = ipynb_tocsv ipynb_extract ipynb_conv json_file json2
+SUBJ = ipynb_tocsv ipynb_extract ipynb_conv json_file
 #
 all: $(SUBJ)
 
@@ -72,12 +72,12 @@ clean:
 ipynb_conv: $(LIB_BSC) ipynb_conv.o
 	$(CC) $(@).o $(ELIB) $(SLIB) -O2 -o $@   
 	strip $(@)
-	strip ipynb_conv
-	cp ipynb_conv ../bin
+	cp $(@) ../bin
 
 json_file: $(LIB_BSC) json_file.o
 	$(CC) $(@).o $(ELIB) $(SLIB) -O2 -o $@ 
 	strip $(@)
+	cp $(@) ../bin
 
 json2: $(LIB_BSC) json2.o
 	$(CC) $(@).o $(ELIB) $(SLIB) -O2 -o $@ 
@@ -86,8 +86,10 @@ json2: $(LIB_BSC) json2.o
 ipynb_extract: $(LIB_BSC) ipynb_extract.o
 	$(CC) $(@).o $(ELIB) $(SLIB) -O2 -o $@ 
 	strip $(@)
+	cp $(@) ../bin
 
 ipynb_tocsv: $(LIB_BSC) ipynb_tocsv.o
 	$(CC) $(@).o $(ELIB) $(SLIB) -O2 -o $@ 
 	strip $(@)
+	cp $(@) ../bin
 

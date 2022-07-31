@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 
-COM_EXTRACT=./ipynb_extract
+COM_TOCSV=./ipynb_tocsv
 
 #
 SBT=`echo $NB_SUBMITS | awk -F" " '{print $1}'`
@@ -11,9 +11,8 @@ if [ "$DST" != "" ] ; then
 fi
 
 BSEFL=$1
-OUTFL=`printf "%03d" ${@:$#:1}`"-"$BSEFL
+FNM=`echo $BSEFL | sed -e 's/\.[^\.]*$//'`
+OUTFL=${FNM}".csv"
 rm -f $OUTFL
 
-shift
-$COM_EXTRACT $BSEFL $* 
-
+$COM_TOCSV $BSEFL > $OUTFL
