@@ -17,7 +17,7 @@ if [ -d $DST ]; then
     if [ $# -gt 0 ]; then
         for FL in $*; do
             if [ ! -d $FL ]; then
-                echo "copying ...  \"$FL\"  \"${LNK}/${USR}_${FL}\""
+                echo "copying ...  \"$FL\"  \"${LNK}/${USR}_${FL}\"" 1>&2
                 cp "$FL" "${DST}/${USR}_${FL}"
             fi
         done
@@ -25,7 +25,7 @@ if [ -d $DST ]; then
         FLS=`ls | grep -e '\.ipynb$'`
         for FL in $FLS; do
             if [ ! -d $FL ]; then
-                echo "copying ...  \"$FL\"  \"${LNK}/${USR}_${FL}\""
+                echo "copying ...  \"$FL\"  \"${LNK}/${USR}_${FL}\"" 1>&2
                 cp "$FL" "${DST}/${USR}_${FL}"
             fi
         done

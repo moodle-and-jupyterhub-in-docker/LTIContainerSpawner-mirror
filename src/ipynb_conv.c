@@ -1,8 +1,11 @@
 /**  
-    pynb_conv.c : ipnb ファイル 変換 v0.9.3
+    ipynb_conv.c : ipnb ファイル 変換 v1.0.0
         filename: と codenum: を metadata の tags の配列に追加 
-                                                   
+
                     by Fumi.Iseki    2021 8/19    BSD License.
+
+        1.0.0  2022/7/29
+        0.9.3  2021/8/19
 
    ex.) ipynb_conv  example.ipynb
         ipynb_conv  example.ipynb  ../../mon1/test1.ipynb  10
@@ -94,12 +97,12 @@ int main(int argc, char** argv)
 
     if (out_file!=NULL) {
         FILE* fp = fopen(out_file, "w");
-        print_json_opt(fp, pp, "\n", " ", TRUE);
+        print_json_opt(fp, pp, "\n", " ");
         fclose(fp);
     }
     else {
         //print_tTree(stdout, pp);
-        print_json_opt(stdout, pp, "\n", " ", TRUE);
+        print_json_opt(stdout, pp, "\n", " ");
     }
     del_json(&pp);
 
