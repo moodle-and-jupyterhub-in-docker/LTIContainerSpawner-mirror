@@ -10,7 +10,7 @@ CPU = Intel
 
 #
 #
-SUBJ = ipynb_tocsv ipynb_extract ipynb_conv json_file
+SUBJ = ipynb_tocsv ipynb_extract ipynb_conv json_file json2
 #
 all: $(SUBJ)
 
