@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 
-COM_TOCSV=./ipynb_tocsv
+COM_TOCSV=/usr/local/bin/ipynb_tocsv
 
 #
 SBT=`echo $NB_SUBMITS | awk -F" " '{print $1}'`
