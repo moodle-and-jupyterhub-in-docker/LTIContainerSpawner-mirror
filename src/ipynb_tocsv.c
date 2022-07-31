@@ -1,10 +1,8 @@
 /**
-    del_all_tList(&ld);
-    ipynb_tocsv.c : CSV ファイル生成 v0.1.0
+    ipynb_tocsv.c : CSV ファイル生成 v0.2.0 by Fumi.Iseki  BSD License.
         ipynb_extract が生成したファイル（複数）から ユーザ毎に集計された CSVファイルを生成する．
 
-                    by Fumi.Iseki    2022 7/29    BSD License.
-
+        0.2.0  2022/7/31
         0.1.0  2022/7/29
 
    ex.) ipynb_tocsv example.ipynb > csv_example.csv

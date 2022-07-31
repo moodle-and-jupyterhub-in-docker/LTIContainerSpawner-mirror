@@ -1,8 +1,6 @@
 /**
-    ipynb_extract.c : code cell 抽出: v0.1.0
+    ipynb_extract.c : code cell 抽出: v0.1.0  by Fumi.Iseki BSD License.
         ipynb ファイルから，評価対象の code cell を抜き出す．
-
-                    by Fumi.Iseki    2022 7/29    BSD License.
 
         0.1.0  2022/7/29
 

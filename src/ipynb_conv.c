@@ -1,8 +1,6 @@
 /**  
-    ipynb_conv.c : ipnb ファイル 変換 v1.0.0
+    ipynb_conv.c : ipnb ファイル 変換 v1.0.0  by Fumi.Iseki BSD License.
         filename: と codenum: を metadata の tags の配列に追加 
-
-                    by Fumi.Iseki    2021 8/19    BSD License.
 
         1.0.0  2022/7/29
         0.9.3  2021/8/19
