@@ -88,7 +88,7 @@ int main(int argc, char** argv)
             }
 
             char* fname = get_file_name(in_file);
-            print_message("extracting %s\n", fname);
+            print_message("extracting ... %s\n", fname);
             //
             char* user = awk(fname, '_', 1);
             js = make_user_head(user);

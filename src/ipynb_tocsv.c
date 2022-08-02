@@ -49,9 +49,10 @@ int main(int argc, char** argv)
     while(ll!=NULL) {
         if (ll->ldat.lv==ON) {
             char* in_file = (char*)ll->ldat.val.buf;
-            print_message("reading file %s\n", in_file);
-            tJson* pp = json_parse_file(in_file, 999);
+            char* fname  = get_file_name(in_file);
+            print_message("reading ... %s\n", fname);
             //
+            tJson* pp = json_parse_file(in_file, 999);
             if (pp==NULL) {
                 print_message("PARSE error! No json file (%s)\n", in_file);
                 ll = ll->next;
@@ -64,7 +65,6 @@ int main(int argc, char** argv)
                 continue;
             }
 
-            char* fname  = get_file_name(in_file);
             char* monnum = awk(fname, '-', 1);
             //print_message("checking ... %s\n", fname);
             //
