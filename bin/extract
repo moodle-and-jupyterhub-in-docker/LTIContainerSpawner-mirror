@@ -3,6 +3,11 @@
 
 COM_EXTRACT=/usr/local/bin/ipynb_extract
 
+if [ $# -lt 2 ]; then
+    echo "usage ... "$0" base_filename codenum [codenum] [codenum] ..."
+    exit 1
+fi
+
 #
 SBT=`echo $NB_SUBMITS | awk -F" " '{print $1}'`
 if [ "$DST" != "" ] ; then

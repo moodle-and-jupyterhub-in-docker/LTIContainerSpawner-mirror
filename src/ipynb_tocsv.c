@@ -49,7 +49,9 @@ int main(int argc, char** argv)
     while(ll!=NULL) {
         if (ll->ldat.lv==ON) {
             char* in_file = (char*)ll->ldat.val.buf;
+            print_message("reading file %s\n", in_file);
             tJson* pp = json_parse_file(in_file, 999);
+            //
             if (pp==NULL) {
                 print_message("PARSE error! No json file (%s)\n", in_file);
                 ll = ll->next;
@@ -131,6 +133,7 @@ int main(int argc, char** argv)
     int  len = sizeof(int)*fnum;
     if (len==0) {
         del_all_tList(&lusr);
+        print_message("no input files.\n");
         return 1;
     }
 

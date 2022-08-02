@@ -3,6 +3,11 @@
 
 COM_TOCSV=/usr/local/bin/ipynb_tocsv
 
+if [ $# -lt 1 ]; then
+    echo "usage ... "$0" base_filename"
+    exit 1
+fi
+
 #
 SBT=`echo $NB_SUBMITS | awk -F" " '{print $1}'`
 if [ "$DST" != "" ] ; then
@@ -16,3 +21,9 @@ OUTFL=${FNM}".csv"
 rm -f $OUTFL
 
 $COM_TOCSV $BSEFL > $OUTFL
+
+FSZ=`ls -l $OUTFL | awk -F" " '{print $5}'`
+if [ "$FSZ" = "0" ]; then
+    rm -f $OUTFL
+fi
+
