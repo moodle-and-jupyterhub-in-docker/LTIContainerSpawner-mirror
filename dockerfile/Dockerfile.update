@@ -1,4 +1,4 @@
-FROM www.nsl.tuis.ac.jp:5000/jupyterhub-ltictr/jupyter-base
+FROM www.nsl.tuis.ac.jp:5000/jupyterhub-ltictr/jupyter-singleuser
 
 USER root
 

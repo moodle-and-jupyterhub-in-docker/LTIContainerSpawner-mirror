@@ -46,6 +46,7 @@ int main(int argc, char** argv)
         }
         ll = ll->next;
     }
+    free_Buffer(&basefn);
     
     //
     ll = ld;

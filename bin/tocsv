@@ -20,10 +20,5 @@ FNM=`echo $BSEFL | sed -e 's/\.[^\.]*$//'`
 OUTFL=${FNM}".csv"
 rm -f $OUTFL
 
-$COM_TOCSV $BSEFL > $OUTFL
-
-FSZ=`ls -l $OUTFL | awk -F" " '{print $5}'`
-if [ "$FSZ" = "0" ]; then
-    rm -f $OUTFL
-fi
+$COM_TOCSV $BSEFL 
 

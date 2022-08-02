@@ -39,6 +39,7 @@ int main(int argc, char** argv)
         }
         ll = ll->next;
     }
+    free_Buffer(&basefn);
     
     int fnum = 0;
     //
@@ -130,8 +131,7 @@ int main(int argc, char** argv)
     }
     del_all_tList(&ld);
 
-    int  len = sizeof(int)*fnum;
-    if (len==0) {
+    if (fnum==0) {
         del_all_tList(&lusr);
         print_message("no input files.\n");
         return 1;
@@ -139,6 +139,7 @@ int main(int argc, char** argv)
 
     //
     // Title データ score_ttl[]
+    int  len = sizeof(int)*fnum;
     int* score_ttl = (int*)malloc(len);
     memset(score_ttl, 0, len); 
     
@@ -208,20 +209,33 @@ int main(int argc, char** argv)
 
     //
     // output
-    for (int i=0; i<fnum; i++) {
-        fprintf(stdout, ", P%03d", score_ttl[i]);
-    }
-    fprintf(stdout, "\n");
+    char* fn = del_file_extension((const char*)get_file_name(argv[1]));
+    Buffer out_file = make_Buffer_str(fn);
+    cat_s2Buffer(".csv", &out_file);
 
-    lc = lcsv;
-    while (lc!=NULL) {
-        fprintf(stdout, "%s", lc->ldat.key.buf);
+    FILE* fp = fopen((char*)out_file.buf, "w");
+    if (fp!=NULL) {
         for (int i=0; i<fnum; i++) {
-            fprintf(stdout, ", %d", ((int*)lc->ldat.ptr)[i]);
+            fprintf(fp, ", P%03d", score_ttl[i]);
         }
-        fprintf(stdout, "\n");
-        lc = lc->next;
+        fprintf(fp, "\n");
+
+        lc = lcsv;
+        while (lc!=NULL) {
+            fprintf(fp, "%s", lc->ldat.key.buf);
+            for (int i=0; i<fnum; i++) {
+                fprintf(fp, ", %d", ((int*)lc->ldat.ptr)[i]);
+            }
+            fprintf(fp, "\n");
+            lc = lc->next;
+        }
+        print_message("%s is outputed.\n", out_file.buf);
     }
+    else {
+        print_message("OUTPUT error. can not open file (%s).\n", out_file.buf);
+        print_message("no output file.\n");
+    }
+    free_Buffer(&out_file);
 
     //
     free(score_ttl);
