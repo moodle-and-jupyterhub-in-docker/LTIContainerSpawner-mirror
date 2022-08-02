@@ -4,7 +4,7 @@
 SBT=`echo $NB_SUBMITS | awk -F" " '{print $1}'`
 DST=`echo $SBT | awk -F":" '{print $1}'`
 LNK=`echo $SBT | awk -F":" '{print $2}'`
-if [ "$DST" = "" ] ; then 
+if [ "$DST" == "" ] ; then 
     exit
 fi
 DST=${HOME}/${PRJCT_DIR}/${WORK_DIR}/${DST}
