@@ -1,19 +1,19 @@
 /**
-    ipynb_tocsv.c : CSV ファイル生成 v0.2.0 by Fumi.Iseki  BSD License.
+    ipynb_tocsv.c : CSV ファイル生成 v0.2.1 by Fumi.Iseki  BSD License.
         ipynb_extract が生成したファイル（複数）から ユーザ毎に集計された CSVファイルを生成する．
 
-        0.2.0  2022/7/31
-        0.1.0  2022/7/29
+        0.2.1  2022/08/02
+        0.2.0  2022/07/31
+        0.1.0  2022/07/29
 
-   ex.) ipynb_tocsv example.ipynb > csv_example.csv
+   ex.) ipynb_tocsv example.ipynb > example.csv
 */
 
 #include "xtools.h"
 #include "tjson.h"
 
 
-char*  get_username(char* buf);
-int    get_score(char* buf);
+char*  get_val(char* buf, const char* str);
 
 
 
@@ -77,13 +77,14 @@ int main(int argc, char** argv)
                         if (tag!=NULL && tag->next!=NULL) {
                             //
                             int codeflg = OFF;
-                            int score   = 0;
+                            //int score   = 0;
+                            char* score = 0;
                             char* user  = NULL;
                             tJson* code = tag->next;
                             do {
                                 if (code->ldat.id==JSON_ARRAY_VALUE_NODE && code->ldat.lv==JSON_VALUE_STR) {
                                     if (!strncmp("\"user: ", code->ldat.val.buf, 7)) {
-                                        user = get_username((char*)code->ldat.val.buf);
+                                        user = get_val((char*)code->ldat.val.buf, "\"user: ");
                                     }
                                     else if (!strncmp("\"codenum: 999\"", code->ldat.val.buf, 14)) {
                                         codeflg = ON;
@@ -102,13 +103,14 @@ int main(int argc, char** argv)
                                 if (source!=NULL && source->next!=NULL) {
                                     source = source->next;
                                     if (source->ldat.id==JSON_ARRAY_VALUE_NODE && source->ldat.lv==JSON_VALUE_STR) {
-                                        score = get_score((char*)source->ldat.val.buf);
+                                        score = get_val((char*)source->ldat.val.buf, "\"");
                                     }
                                 }
                                 //
                                 //print_message("%s %s %d\n", user, monnum, score);
-                                lu = add_tList_node_bystr(lu, atoi(monnum), score, user, monnum, NULL, 0);
+                                lu = add_tList_node_bystr(lu, atoi(monnum), atoi(score), user, score, NULL, 0);
                                 free(user);
+                                free(score);
                                 count++;
                             }
                         }
@@ -126,9 +128,14 @@ int main(int argc, char** argv)
     }
     del_all_tList(&ld);
 
+    int  len = sizeof(int)*fnum;
+    if (len==0) {
+        del_all_tList(&lusr);
+        return 1;
+    }
+
     //
     // Title データ score_ttl[]
-    int  len = sizeof(int)*fnum;
     int* score_ttl = (int*)malloc(len);
     memset(score_ttl, 0, len); 
     
@@ -158,8 +165,7 @@ int main(int argc, char** argv)
     }
     lcsv = del_tList_anchor(lcsv);
 
-
-    // ユーザ名で おばかソート
+    // ユーザ名でソート
     lc = lcsv;
     while (lc!=NULL) {
         tList* lv = lc->next;
@@ -200,7 +206,7 @@ int main(int argc, char** argv)
     //
     // output
     for (int i=0; i<fnum; i++) {
-        fprintf(stdout, ", N%03d", score_ttl[i]);
+        fprintf(stdout, ", P%03d", score_ttl[i]);
     }
     fprintf(stdout, "\n");
 
@@ -224,30 +230,17 @@ int main(int argc, char** argv)
 
 
 
-char*  get_username(char* buf)
+char*  get_val(char* buf, const char* str)
 {
-    char* pp = buf + 7;  // strlen("\"user: ")
+    char* pp = buf + strlen(str);
     char* pt = pp;
     while (*pt!='\"' && *pt!='\0') pt++;
     char bk = *pt;
     *pt = '\0';
-    char* rt = dup_str(pp);
+    char* name = dup_str(pp);
     *pt = bk;
 
-    return rt;
+    return name;
 }
 
-
-int  get_score(char* buf)
-{
-    char* pp = buf + 1;  // strlen("\"")
-    char* pt = pp;
-    while (*pt!='\"' && *pt!='\0') pt++;
-    char bk = *pt;
-    *pt = '\0';
-    int num = atoi(pp);
-    *pt = bk;
-
-    return num;
-}
 

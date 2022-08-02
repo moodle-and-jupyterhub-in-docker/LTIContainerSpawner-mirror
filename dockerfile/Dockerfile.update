@@ -1,0 +1,18 @@
+FROM jupyter/base-notebook
+#FROM jupyterhub/singleuser
+#FROM jupyter/datascience-notebook
+#FROM jupyter/tensorflow-notebook
+#FROM jupyter/scipy-notebook
+
+USER root
+
+ADD  \
+     bin/ipynb_extract \
+     bin/extract \
+     bin/ipynb_tocsv \
+     bin/tocsv \
+     /usr/local/bin/
+
+RUN  chmod a+rx /usr/local/bin/* \
+  && true
+

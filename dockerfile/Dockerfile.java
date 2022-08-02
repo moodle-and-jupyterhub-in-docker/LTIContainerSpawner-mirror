@@ -13,6 +13,10 @@ ADD  bin/start.sh \
      bin/ipynb_setup \
      bin/ipynb_submit \
      bin/submit \
+     bin/ipynb_extract \
+     bin/extract \
+     bin/ipynb_tocsv \
+     bin/tocsv \
      /usr/local/bin/
 ADD  etc/.bashrc \
      etc/.bash_profile \
